@@ -1,0 +1,11 @@
+[submodule "extern/hdf5"]
+	path = extern/hdf5
+	url = https://github.com/HDFGroup/hdf5.git
+	branch = 1.10/master
+	ignore = dirty
+[submodule "extern/kmer_models"]
+	path = extern/kmer_models
+	url = https://github.com/nanoporetech/kmer_models.git
+[submodule "extern/slow5lib"]
+	path = extern/slow5lib
+	url = https://github.com/hasindu2008/slow5lib

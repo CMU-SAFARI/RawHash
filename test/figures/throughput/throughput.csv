@@ -1,0 +1,22 @@
+Data,Tool,Throughput (bp/sec),idx
+D1 Covid,RawHash,625160.12,1
+D1 Covid,UNCALLED,7572.88,2
+D1 Covid,Sigmap,465399.45,3
+D2 Ecoli,RawHash,65995.96,5
+D2 Ecoli,UNCALLED,6154.1,6
+D2 Ecoli,Sigmap,14074.69,7
+D3 Yeast,RawHash,24677.34,9
+D3 Yeast,UNCALLED,6158.24,10
+D3 Yeast,Sigmap,7699.38,11
+D4 Green Algae,RawHash,8390.05,13
+D4 Green Algae,UNCALLED,7720.78,14
+D4 Green Algae,Sigmap,2379.6,15
+D5 Human,RawHash,1836.75,17
+D5 Human,UNCALLED,6994.76,18
+D5 Human,Sigmap,299,19
+Contamination,RawHash,672596.29,21
+Contamination,UNCALLED,8248.68,22
+Contamination,Sigmap,411325.09,23
+Relative Abund.,RawHash,938.66,25
+Relative Abund.,UNCALLED,8334.58,26
+Relative Abund.,Sigmap,269.82,27

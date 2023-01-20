@@ -1,0 +1,22 @@
+Data,Tool,Mean time spent per read (ms),idx
+D1 Covid,RawHash,0.7435836043,1
+D1 Covid,UNCALLED,26.01070454,2
+D1 Covid,Sigmap,0.8428431104,3
+D2 Ecoli,RawHash,14.77883999,5
+D2 Ecoli,UNCALLED,100.1708235,6
+D2 Ecoli,Sigmap,50.73894845,7
+D3 Yeast,RawHash,56.8216278,9
+D3 Yeast,UNCALLED,173.2376205,10
+D3 Yeast,Sigmap,138.5456454,11
+D4 Green Algae,RawHash,456.7042876,13
+D4 Green Algae,UNCALLED,553.9290395,14
+D4 Green Algae,Sigmap,623.3386466,15
+D5 Human,RawHash,4014.243067,17
+D5 Human,UNCALLED,877.3959191,18
+D5 Human,Sigmap,9925.055455,19
+Contamination,RawHash,0.8862503033,21
+Contamination,UNCALLED,157.7402623,22
+Contamination,Sigmap,1.174430672,23
+Relative Abund.,RawHash,1404.052806,25
+Relative Abund.,UNCALLED,257.8997392,26
+Relative Abund.,Sigmap,3676.31793,27
