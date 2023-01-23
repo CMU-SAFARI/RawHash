@@ -110,3 +110,26 @@ If you have conda you can simply install the following package (`ont_vbz_hdf_plu
 ```bash
 conda install ont_vbz_hdf_plugin
 ```
+
+# Upcoming Features
+
+* Support for reading SLOW5 Files.
+* Direct integration with the Read Until API.
+* Ability to specify even/odd channels to eject the reads only from these specified channels.
+* Please create issues if you want to see more features that can make RawHash easily integratable with nanopore sequencers for any use case.
+
+# Citing RawHash
+
+To cite RawHash, you can use the following BibTeX:
+
+```bibtex
+@article{firtina_rawhash_2023,
+	title = {{RawHash}: {Enabling} {Fast} and {Accurate} {Real}-{Time} {Analysis} of {Raw} {Nanopore} {Signals} for {Large} {Genomes}},
+	doi = {10.1101/2023.01.22.525080},
+	journal = {bioRxiv},
+	author = {Firtina, Can and Ghiasi, Nika Mansouri and Lindegger, Joel and Singh, Gagandeep and Cavlak, Meryem Banu and Mao, Haiyu and Mutlu, Onur},
+	month = jan,
+	year = {2023},
+	pages = {2023.01.22.525080},
+}
+```
