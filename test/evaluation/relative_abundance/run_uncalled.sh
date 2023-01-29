@@ -1,6 +1,6 @@
 #!/bin/bash
 
-THREAD=32
+THREAD=$1
 
 #relative_abundance
 OUTDIR="./uncalled/"

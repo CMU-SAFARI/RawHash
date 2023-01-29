@@ -1,6 +1,6 @@
 #!/bin/bash
 
-THREAD=32
+THREAD=$1
 
 #d4_green_algae_r94
 OUTDIR="./rawhash/"
@@ -10,14 +10,6 @@ PORE="../../../../extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.
 PREFIX="d4_green_algae_r94"
 mkdir -p ${OUTDIR}
 
-#Faster preset
-PRESET="faster"
-bash ../../../scripts/run_rawhash.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} > "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.err"
-
-#Fast preset
-PRESET="fast"
-bash ../../../scripts/run_rawhash.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} > "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.err"
-
 #The following is the run using default parameters:
-PRESET="sensitive"
+PRESET="fast"
 bash ../../../scripts/run_rawhash.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} > "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.err"

@@ -1,18 +1,16 @@
 #!/bin/bash
 
-shuf -n521211 ../../rawhash/relative_abundance_rawhash_faster.paf > relative_abundance_rawhash_faster_25.paf
-shuf -n208484 ../../rawhash/relative_abundance_rawhash_faster.paf > relative_abundance_rawhash_faster_10.paf
-shuf -n20848 ../../rawhash/relative_abundance_rawhash_faster.paf > relative_abundance_rawhash_faster_1.paf
-shuf -n2085 ../../rawhash/relative_abundance_rawhash_faster.paf > relative_abundance_rawhash_faster_01.paf
-shuf -n209 ../../rawhash/relative_abundance_rawhash_faster.paf > relative_abundance_rawhash_faster_001.paf
-shuf -n21 ../../rawhash/relative_abundance_rawhash_faster.paf > relative_abundance_rawhash_faster_001.paf
+shuf -n521211 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_25.paf
+shuf -n208484 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_10.paf
+shuf -n20848 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_1.paf
+shuf -n2085 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_01.paf
+shuf -n209 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_01.paf
 
 shuf -n521211 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_25.paf
 shuf -n208484 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_10.paf
 shuf -n20848 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_1.paf
 shuf -n2085 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_01.paf
-shuf -n209 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_001.paf
-shuf -n21 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_001.paf
+shuf -n209 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_01.paf
 
 for i in `echo *.paf` ; do
 if test -f $i; then

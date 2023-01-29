@@ -1,6 +1,6 @@
 #!/bin/bash
 
-THREAD=32
+THREAD=$1
 
 #d5_human_na12878_r94
 OUTDIR="./sigmap/"

@@ -110,6 +110,9 @@ If you have conda you can simply install the following package (`ont_vbz_hdf_plu
 ```bash
 conda install ont_vbz_hdf_plugin
 ```
+# Reproducing the results
+
+Please follow the instructions in the [README](test/README.md) file in [test](./test/).
 
 # Upcoming Features
 

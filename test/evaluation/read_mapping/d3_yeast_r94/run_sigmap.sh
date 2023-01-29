@@ -1,6 +1,6 @@
 #!/bin/bash
 
-THREAD=32
+THREAD=$1
 
 #d3_yeast_r94
 OUTDIR="./sigmap/"

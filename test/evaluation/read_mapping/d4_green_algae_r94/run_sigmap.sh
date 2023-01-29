@@ -1,6 +1,6 @@
 #!/bin/bash
 
-THREAD=32
+THREAD=$1
 
 #d4_green_algae_r94
 OUTDIR="./sigmap/"

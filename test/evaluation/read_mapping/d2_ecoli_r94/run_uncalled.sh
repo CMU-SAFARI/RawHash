@@ -1,6 +1,6 @@
 #!/bin/bash
 
-THREAD=32
+THREAD=$1
 
 #d2_ecoli_r94
 OUTDIR="./uncalled/"

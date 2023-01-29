@@ -11,6 +11,9 @@ test/data/*/*.tar
 test/data/*/*.tar.gz
 test/data/*/fast5_files
 test/data/*/slurm-*
+
+/test/data/random_community/1_symbolic_links.sh
+
 */*.paf
 test/evaluation/*/*/slurm*.out
 test/evaluation/*/*/*.paf

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-THREAD=32
+THREAD=$1
 
 #d1_sars-cov-2_r94
 OUTDIR="./sigmap/"
