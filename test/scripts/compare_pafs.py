@@ -4,15 +4,8 @@ import argparse
 import subprocess
 import fileinput
 
-import matplotlib.pyplot as plt
-import numpy as np
-from matplotlib import colors
-from matplotlib.ticker import PercentFormatter
-
 from statistics import median
 from statistics import mean
-
-# to create annotate files: uncalled pafstats -r eval/ecoli_minimap2.paf --annotate test.paf > test_annotated.paf
 
 if (len(sys.argv) < 4):
   print("usage: eval_rawhash.py uncalled_ann.paf sigmap_ann.paf rawhash_ann.paf")
@@ -46,11 +39,11 @@ print("Uncalled TP: " + str(uncalled_tp))
 print("Uncalled FP: " + str(uncalled_fp))
 print("Uncalled FN: " + str(uncalled_fn))
 print("Uncalled TN: " + str(uncalled_tn))
-uncalled_preciosion = uncalled_tp / (uncalled_tp + uncalled_fp)
-print("Uncalled precision: " + str(uncalled_preciosion))
+uncalled_precision = uncalled_tp / (uncalled_tp + uncalled_fp)
+print("Uncalled precision: " + str(uncalled_precision))
 uncalled_recall = uncalled_tp / (uncalled_tp + uncalled_fn)
 print("Uncalled recall: " + str(uncalled_recall))
-print("Uncalled F-1 score: " + str(2 * uncalled_preciosion * uncalled_recall / (uncalled_preciosion + uncalled_recall)))
+print("Uncalled F-1 score: " + str(2 * uncalled_precision * uncalled_recall / (uncalled_precision + uncalled_recall)))
 print("Uncalled Mean time per read : " + str(mean(uncalled_time_per_read)))
 print("Uncalled Median time per read : " + str(median(uncalled_time_per_read)))
 print("#Done with uncalled\n")
@@ -101,11 +94,11 @@ print("Sigmap TP: " + str(sigmap_tp))
 print("Sigmap FP: " + str(sigmap_fp))
 print("Sigmap FN: " + str(sigmap_fn))
 print("Sigmap TN: " + str(sigmap_tn))
-sigmap_preciosion = sigmap_tp / (sigmap_tp + sigmap_fp)
-print("Sigmap precision: " + str(sigmap_preciosion))
+sigmap_precision = sigmap_tp / (sigmap_tp + sigmap_fp)
+print("Sigmap precision: " + str(sigmap_precision))
 sigmap_recall = sigmap_tp / (sigmap_tp + sigmap_fn)
 print("Sigmap recall: " + str(sigmap_recall))
-print("Sigmap F-1 score: " + str(2 * sigmap_preciosion * sigmap_recall / (sigmap_preciosion + sigmap_recall)))
+print("Sigmap F-1 score: " + str(2 * sigmap_precision * sigmap_recall / (sigmap_precision + sigmap_recall)))
 print("Sigmap Mean time per mapped read : " + str(mean(sigmap_time_per_chunk)))
 print("Sigmap Median time per mapped read : " + str(median(sigmap_time_per_chunk)))
 print("Sigmap Mean time per unmapped read : " + str(mean(sigmap_time_per_read)))
@@ -159,11 +152,11 @@ print("RawHash TP: " + str(rawhash_tp))
 print("RawHash FP: " + str(rawhash_fp))
 print("RawHash FN: " + str(rawhash_fn))
 print("RawHash TN: " + str(rawhash_tn))
-rawhash_preciosion = rawhash_tp / (rawhash_tp + rawhash_fp)
-print("RawHash precision: " + str(rawhash_preciosion))
+rawhash_precision = rawhash_tp / (rawhash_tp + rawhash_fp)
+print("RawHash precision: " + str(rawhash_precision))
 rawhash_recall = rawhash_tp / (rawhash_tp + rawhash_fn)
 print("RawHash recall: " + str(rawhash_recall))
-print("RawHash F-1 score: " + str(2 * rawhash_preciosion * rawhash_recall / (rawhash_preciosion + rawhash_recall)))
+print("RawHash F-1 score: " + str(2 * rawhash_precision * rawhash_recall / (rawhash_precision + rawhash_recall)))
 print("RawHash Mean time per mapped read : " + str(mean(rawhash_time_per_chunk)))
 print("RawHash Median time per mapped read : " + str(median(rawhash_time_per_chunk)))
 print("RawHash Mean time per unmapped read : " + str(mean(rawhash_time_per_read)))

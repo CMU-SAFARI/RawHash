@@ -3,10 +3,7 @@
 #include <cassert>
 #include <fstream>
 #include <sstream>
-#include <string>
 #include <iostream>
-
-// #include "utils.cpp"
 
 // For sequence manipulation
 static constexpr uint8_t char_to_uint8_table_[256] = {

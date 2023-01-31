@@ -4,8 +4,6 @@
 #include <string>
 #include <vector>
 
-// #include "utils.h"
-
 namespace sigmap {
 struct PoreModelParameters {
   uint16_t kmer;

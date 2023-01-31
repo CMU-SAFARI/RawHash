@@ -2,13 +2,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <errno.h>
+
+#include "rawhash.h"
 #include "ketopt.h"
-
-#include "rawindex.h"
-
 #include "pore_model.h" //TODO, remove the CPP dependency
 
-#define RI_VERSION "0.9"
+#define RI_VERSION "0.91"
 
 #ifdef __linux__
 #include <sys/resource.h>
@@ -25,29 +24,29 @@ void liftrlimit() {}
 #endif
 
 static ko_longopt_t long_options[] = {
-	{ "min-events",			ko_required_argument, 300 },
-	{ "max-gap",			ko_required_argument, 301 },
-	{ "max-target-gap",		ko_required_argument, 302 },
-	{ "max-chains",			ko_required_argument, 303 },
-	{ "min-anchors",		ko_required_argument, 304 },
-	{ "best-chains",		ko_required_argument, 305 },
-	{ "min-score",			ko_required_argument, 306 },
-	{ "max-chunks",			ko_required_argument, 307 },
-	{ "stop-min-anchor",	ko_required_argument, 308 },
-	{ "map-min-anchor",		ko_required_argument, 309 },
-	{ "stop-best-ratio",	ko_required_argument, 310 },
-	{ "map-best-ratio",		ko_required_argument, 311 },
-	{ "stop-mean-ratio",	ko_required_argument, 312 },
-	{ "map-mean-ratio",		ko_required_argument, 313 },
-	{ "bp-per-sec",			ko_required_argument, 314 },
-	{ "sample-rate",		ko_required_argument, 315 },
-	{ "chunk-size",			ko_required_argument, 316 },
-	{ "version",			ko_no_argument, 317 },
-	{ "threshold",			ko_required_argument, 318 },
-	{ "n-samples",			ko_required_argument, 319 },
-	{ "test-frequency",		ko_required_argument, 320 },
-	{ "min-reads",			ko_required_argument, 321 },
-	{ "sequence-until",     ko_no_argument,       322 },
+	{ (char*)"min-events",			ko_required_argument, 300 },
+	{ (char*)"max-gap",			ko_required_argument, 301 },
+	{ (char*)"max-target-gap",		ko_required_argument, 302 },
+	{ (char*)"max-chains",			ko_required_argument, 303 },
+	{ (char*)"min-anchors",		ko_required_argument, 304 },
+	{ (char*)"best-chains",		ko_required_argument, 305 },
+	{ (char*)"min-score",			ko_required_argument, 306 },
+	{ (char*)"max-chunks",			ko_required_argument, 307 },
+	{ (char*)"stop-min-anchor",	ko_required_argument, 308 },
+	{ (char*)"map-min-anchor",		ko_required_argument, 309 },
+	{ (char*)"stop-best-ratio",	ko_required_argument, 310 },
+	{ (char*)"map-best-ratio",		ko_required_argument, 311 },
+	{ (char*)"stop-mean-ratio",	ko_required_argument, 312 },
+	{ (char*)"map-mean-ratio",		ko_required_argument, 313 },
+	{ (char*)"bp-per-sec",			ko_required_argument, 314 },
+	{ (char*)"sample-rate",		ko_required_argument, 315 },
+	{ (char*)"chunk-size",			ko_required_argument, 316 },
+	{ (char*)"version",			ko_no_argument, 317 },
+	{ (char*)"threshold",			ko_required_argument, 318 },
+	{ (char*)"n-samples",			ko_required_argument, 319 },
+	{ (char*)"test-frequency",		ko_required_argument, 320 },
+	{ (char*)"min-reads",			ko_required_argument, 321 },
+	{ (char*)"sequence-until",     ko_no_argument,       322 },
 	{ 0, 0, 0 }
 };
 
@@ -102,7 +101,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 	ri_mapopt_t opt;
   	ri_idxopt_t ipt;
-	int i, c, n_threads = 3;
+	int c, n_threads = 3;
 	// int n_parts;
 	char *fnw = 0, *fpore = 0;
 	FILE *fp_help = stderr;
@@ -264,7 +263,7 @@ int main(int argc, char *argv[])
 			return 1;
 		}
 		pore_vals = (float*)calloc(1U<<(pore_model.GetKmerSize()*2), sizeof(float));
-		for(int i = 0; i < 1U<<(pore_model.GetKmerSize()*2); ++i)
+		for(uint32_t i = 0; i < 1U<<(pore_model.GetKmerSize()*2); ++i)
 			pore_vals[i] = pore_model.pore_models_[i].level_mean;
 	}
 
