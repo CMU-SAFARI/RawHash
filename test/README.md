@@ -18,6 +18,7 @@ We use various tools to process and analyze the data we generate using each tool
 * [Python v3.6.15](https://www.python.org/downloads/release/python-3615/)
 * [pip v20.2.3 -- via conda](https://anaconda.org/conda-forge/pip/20.2.3/download/noarch/pip-20.2.3-py_0.tar.bz2)
 * [ont_vbz_hdf_plugin v1.0.1 -- via conda](https://anaconda.org/bioconda/ont_vbz_hdf_plugin/files?version=1.0.1)
+* [SRA Toolkit](https://github.com/ncbi/sra-tools/wiki/02.-Installing-SRA-Toolkit)
 
 Please make sure that all of these tools are in your `PATH`
 
@@ -37,12 +38,15 @@ mkdir -p rawhash-env/bin && cd rawhash-env
 conda create -n rawhash-env python=3.6.15 pip=20.2.3 ont_vbz_hdf_plugin=1.0.1
 conda activate rawhash-env
 
+#Installing SRA Toolkit
+wget -qO- https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-ubuntu64.tar.gz | tar xzv; cp -r ./sratoolkit.3.0.1-ubuntu64/bin/* bin/; rm -rf sratoolkit.3.0.1-ubuntu64
+
 #Step 1 Compiling the tools
 #Cloning and compiling RawHash
 git clone --recursive https://github.com/CMU-SAFARI/RawHash.git rawhash && cd rawhash && make && cp ./bin/rawhash ../bin/ && cd ..
 
 #Cloning and compiling Sigmap
-git clone --recursive https://github.com/haowenz/sigmap.git sigmap && cd sigmap && make & cp sigmap ../bin/ && cd ..
+git clone --recursive https://github.com/haowenz/sigmap.git sigmap && cd sigmap && make && cp sigmap ../bin/ && cd ..
 
 #Cloning and compiling UNCALLED
 git clone --recursive https://github.com/skovaka/UNCALLED.git uncalled && cd uncalled/submods/bwa && git pull origin master && cd ../../ && pip3 install . && cd ..

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir d1_sars-cov-2_r94/fast5_files/
+mkdir -p d1_sars-cov-2_r94/fast5_files/
 cd d1_sars-cov-2_r94
 
 #Download FAST5 and FASTQ Caddecentre

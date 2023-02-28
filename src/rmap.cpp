@@ -198,7 +198,7 @@ void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l
 	ri_sketch(km, sig, 0, 0, l_sig, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
 	//   ri_seed_mz_flt(0, &riv, 1000, 0.01f);
 
-	for (i = 0; i <= riv.n; ++i) {
+	for (i = 0; i < riv.n; ++i) {
 		hashVal = riv.a[i].x>>RI_HASH_SHIFT;
 		pi = (uint32_t)riv.a[i].y>>RI_POS_SHIFT;
 

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir d3_yeast_r94/fast5_files/
+mkdir -p d3_yeast_r94/fast5_files/
 cd d3_yeast_r94
 
 #Download FAST5 from AWS. NCBI SRA Accession: https://trace.ncbi.nlm.nih.gov/Traces/index.html?view=run_browser&acc=SRR8648503&display=metadata

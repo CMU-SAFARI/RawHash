@@ -1,6 +1,6 @@
 #!/bin/bash
 
-mkdir d2_ecoli_r94/fast5_files/
+mkdir -p d2_ecoli_r94/fast5_files/
 cd d2_ecoli_r94
 
 #Download FAST5 from AWS | Unzip; Mv FAST5 files into the fast5_files directory. NCBI SRA Link: https://trace.ncbi.nlm.nih.gov/Traces/?run=ERR9127551
