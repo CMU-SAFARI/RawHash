@@ -10,9 +10,13 @@ Below figure shows the overview of the steps that RawHash takes to find matching
 
 To efficiently identify similarities between a reference genome and reads, RawHash has two steps, similar to regular read mapping tools, 1) indexing and 2) mapping. The indexing step generates hash values from the expected signal representation of a reference genome and stores them in a hash table. In the mapping step, RawHash generates the hash values from raw signals and queries the hash table generated in the indexing step to find seed matches. To map the raw signal to a reference genome, RawHash performs chaining over the seed matches.
 
-RawHash can be used to map reads from FAST5 files to a reference genome in sequence format. We will provide the support for using SLOW5 files.
+RawHash can be used to map reads from **FAST5 or POD5** files to a reference genome in sequence format. We will provide the support for using SLOW5 files.
 
-RawHash performs real-time mapping of nanopore raw signals. When the prefix of reads in FAST5 file can be mapped to a reference genome, RawHash will stop mapping and provide the mapping information in PAF format. We follow the similar PAF template used in [UNCALLED](https://github.com/skovaka/UNCALLED) and [Sigmap](https://github.com/haowenz/sigmap) to report the mapping information.
+RawHash performs real-time mapping of nanopore raw signals. When the prefix of reads in FAST5 or POD5 file can be mapped to a reference genome, RawHash will stop mapping and provide the mapping information in PAF format. We follow the similar PAF template used in [UNCALLED](https://github.com/skovaka/UNCALLED) and [Sigmap](https://github.com/haowenz/sigmap) to report the mapping information.
+
+# Recent changes
+
+* RawHash now supports **POD5** files. RawHash will automatically detect the POD5 files from the file prefix (i.e., ".pod5"). Note: This feature is tested only on the Linux systems.
 
 # Installation
 

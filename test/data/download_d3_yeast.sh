@@ -13,6 +13,14 @@ find ./GLU1II_basecalled_fast5_1 -type f -name '*.fast5' | head -50000 | xargs -
 # git clone https://github.com/rrwick/Fast5-to-Fastq
 # Fast5-to-Fastq/fast5_to_fastq.py fast5_files/ | awk 'BEGIN{line = 0}{line++; if(line %4 == 1){print ">"substr($1,2,36)}else if(line % 4 == 2){print $0}}' > reads.fasta
 
+# Optional: Single to multi conversion. Requires the following tool: https://github.com/nanoporetech/ont_fast5_api
+# single_to_multi_fast5 --input_path ./fast5_files/ --save_path ./multi_fast5_files/ -t 32
+# rm -rf ./fast5_files; mv ./multi_fast5_files/ ./fast5_files;
+
+# Optional: fast5 -> pod5 conversion. Requires the pod5 tool: https://github.com/nanoporetech/pod5-file-format 
+# Note: Single to multi conversion (see above) must be performed to convert these fast5 files to pod5.
+# pod5 convert fast5 -r -t 32 --output-one-to-one ./fast5_files/ ./fast5_files/ ./pod5_files/
+
 #We have provided the Zenodo link to this reads.fasta file to avoid the hassle above
 wget https://zenodo.org/record/7582018/files/reads.fasta
 

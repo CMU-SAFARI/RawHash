@@ -53,3 +53,5 @@ test/eval/*.summary
 test/*.time
 test/*.idx
 src/*.o
+
+extern/pod5*

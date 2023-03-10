@@ -511,7 +511,7 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl, int64_t chunk_size, int *n_){
 
 				ri_char_v fnames = {0,0,0};
 				kv_resize(char*, 0, fnames, 256);
-				find_fast5(pl->fn[pl->cur_fp++], &fnames);
+				find_sfiles(pl->fn[pl->cur_fp++], &fnames);
 				pl->f =  fnames.a;
 				if(!fnames.n || ((pl->fp = open_sig(pl->f[pl->cur_f++])) == 0)) break;
 				pl->n_f = fnames.n;
@@ -648,7 +648,7 @@ int ri_map_file_frag(const ri_idx_t *idx, int n_segs, const char **fn, const ri_
 	pl.n_f = 0; pl.cur_f = 0;
 	ri_char_v fnames = {0,0,0};
 	kv_resize(char*, 0, fnames, 256);
-	find_fast5(fn[0], &fnames);
+	find_sfiles(fn[0], &fnames);
 	pl.f =  fnames.a;
 	if(!fnames.n || ((pl.fp = open_sig(pl.f[0])) == 0)) return -1;
 	if (pl.fp == 0) return -1;

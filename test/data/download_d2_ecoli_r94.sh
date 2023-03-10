@@ -6,6 +6,9 @@ cd d2_ecoli_r94
 #Download FAST5 from AWS | Unzip; Mv FAST5 files into the fast5_files directory. NCBI SRA Link: https://trace.ncbi.nlm.nih.gov/Traces/?run=ERR9127551
 wget -qO- https://sra-pub-src-2.s3.amazonaws.com/ERR9127551/ecoli_r9.tar.gz.1 | tar xzv; mv r9/f5s/RefStrains210914_NK/f5s/barcode02/*.fast5 fast5_files; rm -rf r9
 
+# Optional: fast5 -> pod5 conversion. Requires the pod5 tool: https://github.com/nanoporetech/pod5-file-format 
+# pod5 convert fast5 -r -t 32 --output-one-to-one ./fast5_files/ ./fast5_files/ ./pod5_files/
+
 #Download FASTQ from SRA (Note: fastq-dump should exist in your path.) | #Processing the FASTA file so that read names contain the read ids as stored in FAST5 files
 fastq-dump -Z --fasta 0 ERR9127551 | awk '{if(substr($1,1,1) == ">"){print ">"$2}else{print $0}}' > reads.fasta
 

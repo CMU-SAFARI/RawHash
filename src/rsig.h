@@ -3,6 +3,7 @@
 
 #include "rutils.h"
 #include "hdf5_tools.hpp"
+#include "pod5_format/c_api.h"
 // #include <slow5/slow5.h>
 
 #ifdef __cplusplus
@@ -13,7 +14,7 @@ typedef struct ri_sig_s{
 	uint32_t rid, l_sig; //read id and length of the signal values
 	char *name; //name of the read
 
-	float dig, ran, offset; //digitalisation, range, offset
+	// float dig, ran, offset; //digitalisation, range, offset
 	float* sig; //signal values of a read
 } ri_sig_t;
 
@@ -21,11 +22,22 @@ typedef struct ri_sig_file_s {
 	// gzFile fp;
 	// kseq_t *ks;
 	// ri_sig_t s;
-	char** raw_path; //List of paths to raw values
-	char** ch_path; //List of paths to channel
 	int num_read; //Number of reads
 	int cur_read; //Number of processed reads by RawHash (shows the id of the next read to process)
+	
+	//HDF5-related
+	char** raw_path; //List of paths to raw values
+	char** ch_path; //List of paths to channel
 	hdf5_tools::File* fp; //FAST5 file pointer
+	
+	//POD5-related
+	unsigned long int pod5_batch_count;
+	unsigned long int pod5_batch;
+	unsigned long int pod5_row_count;
+	unsigned long int pod5_row;
+	Pod5ReadRecordBatch_t* batch;
+	
+	Pod5FileReader_t* pp; //POD5 file pointer
 } ri_sig_file_t;
 
 /**
@@ -85,11 +97,11 @@ void ri_read_sig(ri_sig_file_t* fp, ri_sig_t* s);
  * Recursively find all files that ends with "fast5" under input directory const char *A
  *
  * @param A			path to a directory where the fast5 files are searched
- * @param fnames	list of fast5 files
+ * @param fnames	list of fast5 or pod5 files
  * 					fnames->a = List of file names
  * 					fnames->n = Number of fast5 files
  */
-void find_fast5(const char *A, ri_char_v *fnames);
+void find_sfiles(const char *A, ri_char_v *fnames);
 
 #ifdef __cplusplus
 }
