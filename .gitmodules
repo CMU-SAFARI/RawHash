@@ -9,3 +9,6 @@
 [submodule "extern/slow5lib"]
 	path = extern/slow5lib
 	url = https://github.com/hasindu2008/slow5lib
+[submodule "extern/zstd"]
+	path = extern/zstd
+	url = https://github.com/facebook/zstd
