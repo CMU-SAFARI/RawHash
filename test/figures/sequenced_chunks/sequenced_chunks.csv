@@ -1,0 +1,11 @@
+Data,Tool,Sequenced chunks (#),idx
+D1 Covid,RawHash,1.2378,1
+D1 Covid,Sigmap,1.0053,2
+D2 Ecoli,RawHash,3.2003,4
+D2 Ecoli,Sigmap,2.1112,5
+D3 Yeast,RawHash,5.8263,7
+D3 Yeast,Sigmap,4.1393,8
+D4 Green Algae,RawHash,10.7183,10
+D4 Green Algae,Sigmap,5.7581,11
+D5 Human,RawHash,10.6955,13
+D5 Human,Sigmap,10.4011,14

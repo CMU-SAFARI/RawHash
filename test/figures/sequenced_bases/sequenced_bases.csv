@@ -1,0 +1,11 @@
+Data,Tool,Sequenced bases (#),idx
+D1 Covid,RawHash,513.9491,1
+D1 Covid,UNCALLED,184.5084,2
+D2 Ecoli,RawHash,1376.1354,4
+D2 Ecoli,UNCALLED,580.5194,5
+D3 Yeast,RawHash,2565.0867,7
+D3 Yeast,UNCALLED,1233.1967,8
+D4 Green Algae,RawHash,4760.5932,10
+D4 Green Algae,UNCALLED,5300.1519,11
+D5 Human,RawHash,4773.5825,13
+D5 Human,UNCALLED,6060.2334,14
