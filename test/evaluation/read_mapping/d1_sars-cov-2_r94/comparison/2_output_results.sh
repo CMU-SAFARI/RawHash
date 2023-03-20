@@ -13,6 +13,34 @@ grep "Sigmap Mean time per read" d1_sars-cov-2_r94_rawhash_viral.comparison
 grep "RawHash Mean time per read" d1_sars-cov-2_r94_rawhash_viral.comparison
 
 echo;
+grep "RawHash Mean gap between read anchors in the best chain" d1_sars-cov-2_r94_rawhash_viral.comparison
+grep "RawHash Mean gap between reference anchors in the best chain" d1_sars-cov-2_r94_rawhash_viral.comparison
+
+echo;
+grep "Uncalled Mean # of sequenced bases per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+grep "RawHash Mean # of sequenced bases per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+
+echo;
+grep "Sigmap Mean # of sequenced chunks per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+grep "RawHash Mean # of sequenced chunks per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+
+echo;
+grep "Uncalled Mean (only mapped) # of sequenced bases per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+grep "RawHash Mean (only mapped) # of sequenced bases per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+
+echo;
+grep "Sigmap Mean (only mapped) # of sequenced chunks per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+grep "RawHash Mean (only mapped) # of sequenced chunks per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+
+echo;
+grep "Uncalled Mean (only unmapped) # of sequenced bases per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+grep "RawHash Mean (only unmapped) # of sequenced bases per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+
+echo;
+grep "Sigmap Mean (only unmapped) # of sequenced chunks per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+grep "RawHash Mean (only unmapped) # of sequenced chunks per read" d1_sars-cov-2_r94_rawhash_viral.comparison
+
+echo;
 echo '(Indexing) Timing and memory usage results:'
 for i in `echo ../*/*index*.time`; do echo $i; 
 	awk '{

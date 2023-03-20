@@ -13,6 +13,34 @@ grep "Sigmap Mean time per read" d5_human_na12878_r94_rawhash_fast.comparison
 grep "RawHash Mean time per read" d5_human_na12878_r94_rawhash_fast.comparison
 
 echo;
+grep "RawHash Mean gap between read anchors in the best chain" d5_human_na12878_r94_rawhash_fast.comparison
+grep "RawHash Mean gap between reference anchors in the best chain" d5_human_na12878_r94_rawhash_fast.comparison
+
+echo;
+grep "Uncalled Mean # of sequenced bases per read" d5_human_na12878_r94_rawhash_fast.comparison
+grep "RawHash Mean # of sequenced bases per read" d5_human_na12878_r94_rawhash_fast.comparison
+
+echo;
+grep "Sigmap Mean # of sequenced chunks per read" d5_human_na12878_r94_rawhash_fast.comparison
+grep "RawHash Mean # of sequenced chunks per read" d5_human_na12878_r94_rawhash_fast.comparison
+
+echo;
+grep "Uncalled Mean (only mapped) # of sequenced bases per read" d5_human_na12878_r94_rawhash_fast.comparison
+grep "RawHash Mean (only mapped) # of sequenced bases per read" d5_human_na12878_r94_rawhash_fast.comparison
+
+echo;
+grep "Sigmap Mean (only mapped) # of sequenced chunks per read" d5_human_na12878_r94_rawhash_fast.comparison
+grep "RawHash Mean (only mapped) # of sequenced chunks per read" d5_human_na12878_r94_rawhash_fast.comparison
+
+echo;
+grep "Uncalled Mean (only unmapped) # of sequenced bases per read" d5_human_na12878_r94_rawhash_fast.comparison
+grep "RawHash Mean (only unmapped) # of sequenced bases per read" d5_human_na12878_r94_rawhash_fast.comparison
+
+echo;
+grep "Sigmap Mean (only unmapped) # of sequenced chunks per read" d5_human_na12878_r94_rawhash_fast.comparison
+grep "RawHash Mean (only unmapped) # of sequenced chunks per read" d5_human_na12878_r94_rawhash_fast.comparison
+
+echo;
 echo '(Indexing) Timing and memory usage results:'
 for i in `echo ../*/*index*.time`; do echo $i; 
 	awk '{

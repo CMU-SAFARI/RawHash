@@ -2,9 +2,14 @@
 #wo SIMD
 CFLAGS=-Wall -O3 -Wc++-compat -DHAVE_KALLOC
 CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -DHAVE_KALLOC
+
 # For debugging
 # CPPFLAGS=--std=c++11 -Wall -O2 -g -pg -fopenmp -march=native -DHAVE_KALLOC
 # CFLAGS=-Wall -O2 -g -pg -Wc++-compat -DHAVE_KALLOC
+
+# For profiling
+# CFLAGS+=-DPROFILERH=1
+# CPPFLAGS+=-DPROFILERH=1
 
 OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o pore_model.o rsig.o revent.o rsketch.o rawindex.o rmap.o main.o
 

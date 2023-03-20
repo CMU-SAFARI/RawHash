@@ -16,6 +16,34 @@ grep "RawHash Mean time per read" d2_ecoli_r94_rawhash_sensitive.comparison
 # grep "RawHash (pod5) Mean time per read" d2_ecoli_r94_pod5_rawhash_sensitive.comparison
 
 echo;
+grep "RawHash Mean gap between read anchors in the best chain" d2_ecoli_r94_rawhash_sensitive.comparison
+grep "RawHash Mean gap between reference anchors in the best chain" d2_ecoli_r94_rawhash_sensitive.comparison
+
+echo;
+grep "Uncalled Mean # of sequenced bases per read" d2_ecoli_r94_rawhash_sensitive.comparison
+grep "RawHash Mean # of sequenced bases per read" d2_ecoli_r94_rawhash_sensitive.comparison
+
+echo;
+grep "Sigmap Mean # of sequenced chunks per read" d2_ecoli_r94_rawhash_sensitive.comparison
+grep "RawHash Mean # of sequenced chunks per read" d2_ecoli_r94_rawhash_sensitive.comparison
+
+echo;
+grep "Uncalled Mean (only mapped) # of sequenced bases per read" d2_ecoli_r94_rawhash_sensitive.comparison
+grep "RawHash Mean (only mapped) # of sequenced bases per read" d2_ecoli_r94_rawhash_sensitive.comparison
+
+echo;
+grep "Sigmap Mean (only mapped) # of sequenced chunks per read" d2_ecoli_r94_rawhash_sensitive.comparison
+grep "RawHash Mean (only mapped) # of sequenced chunks per read" d2_ecoli_r94_rawhash_sensitive.comparison
+
+echo;
+grep "Uncalled Mean (only unmapped) # of sequenced bases per read" d2_ecoli_r94_rawhash_sensitive.comparison
+grep "RawHash Mean (only unmapped) # of sequenced bases per read" d2_ecoli_r94_rawhash_sensitive.comparison
+
+echo;
+grep "Sigmap Mean (only unmapped) # of sequenced chunks per read" d2_ecoli_r94_rawhash_sensitive.comparison
+grep "RawHash Mean (only unmapped) # of sequenced chunks per read" d2_ecoli_r94_rawhash_sensitive.comparison
+
+echo;
 echo '(Indexing) Timing and memory usage results:'
 for i in `echo ../*/*index*.time`; do echo $i; 
 	awk '{

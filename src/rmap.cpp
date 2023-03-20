@@ -7,6 +7,16 @@
 #include "sequence_until.h"
 #include <algorithm> //for sort
 
+#ifdef PROFILERH
+double ri_filereadtime = 0.0;
+double ri_signaltime = 0.0;
+double ri_sketchtime = 0.0;
+double ri_seedtime = 0.0;
+double ri_chaintime = 0.0;
+double ri_maptime = 0.0;
+double ri_maptime_multithread = 0.0;
+#endif
+
 static ri_tbuf_t *ri_tbuf_init(void)
 {
 	ri_tbuf_t *b;
@@ -145,6 +155,10 @@ bool compare(const std::pair<float, size_t> &left, const std::pair<float, size_t
 
 void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l_sig, const uint32_t q_offset, const size_t n_seq, ri_reg1_t* reg, const ri_mapopt_t *opt){
 
+	#ifdef PROFILERH
+	double chain_t = ri_realtime();
+	#endif
+	
 	// Chaining parameters
 	int max_gap_length = opt->max_gap_length;
 	int max_target_gap_length = opt->max_target_gap_length;
@@ -192,12 +206,27 @@ void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l
 		ri_kfree(km, reg->chains); reg->n_chains = 0;
 	}
 
+	#ifdef PROFILERH
+	ri_chaintime += ri_realtime() - chain_t;
+	#endif
+
 	uint32_t i, pi;
 	mm128_v riv = {0,0,0};
 	uint64_t hashVal, keyval;
+
+	#ifdef PROFILERH
+	double sketch_t = ri_realtime();
+	#endif
 	ri_sketch(km, sig, 0, 0, l_sig, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
 	//   ri_seed_mz_flt(0, &riv, 1000, 0.01f);
 
+	#ifdef PROFILERH
+	ri_sketchtime += ri_realtime() - sketch_t;
+	#endif
+
+	#ifdef PROFILERH
+	double seed_t = ri_realtime();
+	#endif
 	for (i = 0; i < riv.n; ++i) {
 		hashVal = riv.a[i].x>>RI_HASH_SHIFT;
 		pi = (uint32_t)riv.a[i].y>>RI_POS_SHIFT;
@@ -218,13 +247,22 @@ void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l
 
 	ri_kfree(km, riv.a);
 
+	#ifdef PROFILERH
+	ri_seedtime += ri_realtime() - seed_t;
+	#endif
+
+	#ifdef PROFILERH
+	chain_t = ri_realtime();
+	#endif
+
 	// Sort the anchors based on their occurrence on target signal
 	for (size_t t_ind = 0; t_ind < n_seq; ++t_ind) {
 		// std::sort(anchors_f[t_ind].a, anchors_f[t_ind].a + anchors_f[t_ind].n);
 		// std::sort(anchors_r[t_ind].a, anchors_r[t_ind].a + anchors_r[t_ind].n);
 		std::sort(anchors_f[t_ind].begin(), anchors_f[t_ind].end());
 		std::sort(anchors_r[t_ind].begin(), anchors_r[t_ind].end());
-	} 
+	}
+
 
 	// Chaining DP done on each individual target signal
 	float max_chaining_score = 0;  // std::numeric_limits<float>::min();
@@ -315,6 +353,10 @@ void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l
 		reg->chains = (ri_chain_t*)ri_kmalloc(km, chains.size()*sizeof(ri_chain_t));
 		std::copy(chains.begin(), chains.end(), reg->chains);
 	}
+
+	#ifdef PROFILERH
+	ri_chaintime += ri_realtime() - chain_t;
+	#endif
 }
 
 //returns n_regs // currently we report one mapping
@@ -324,7 +366,13 @@ void ri_map_frag(const ri_idx_t *ri, const uint32_t s_len, const float *sig, ri_
 	// ri_reg1_t* reg = 0;
 	// uint32_t event_off = 0;
 
+	#ifdef PROFILERH
+	double signal_t = ri_realtime();
+	#endif
 	float* events = detect_events(b->km, s_len, sig, opt, &n_events);
+	#ifdef PROFILERH
+	ri_signaltime += ri_realtime() - signal_t;
+	#endif
 
 	if(n_events < opt->min_events) {
 		if(events)ri_kfree(b->km, events);
@@ -349,7 +397,7 @@ static void map_worker_for(void *_data, long i, int tid) // kt_for() callback
 	uint32_t l_chunk = opt->chunk_size;
 	uint32_t max_chunk =  opt->max_num_chunk;
 	uint32_t qlen = sig->l_sig;
-	uint32_t s_qs, s_qe;
+	uint32_t s_qs, s_qe = l_chunk;
 
 	uint32_t c_count = 0;
 
@@ -373,6 +421,10 @@ static void map_worker_for(void *_data, long i, int tid) // kt_for() callback
 			break;
 		}
 	} double mapping_time = ri_realtime() - t;
+
+	#ifdef PROFILERH
+	ri_maptime += mapping_time;
+	#endif
 
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
@@ -417,7 +469,7 @@ static void map_worker_for(void *_data, long i, int tid) // kt_for() callback
 		reg0->read_id = sig->rid;
 		reg0->ref_id = chains[0].reference_sequence_index;
 		reg0->read_name = sig->name;
-		reg0->read_length = qlen;
+		reg0->read_length = (uint32_t)(read_position_scale * chains[0].anchors[0].query_position);
 		reg0->read_start_position = (uint32_t)(read_position_scale*chains[0].anchors[n_anchors0-1].query_position);
 		reg0->read_end_position = (uint32_t)(read_position_scale * chains[0].anchors[0].query_position);
 		reg0->fragment_start_position = chains[0].strand?(uint32_t)(s->p->ri->seq[chains[0].reference_sequence_index].len+1-chains[0].end_position):chains[0].start_position;
@@ -462,7 +514,7 @@ static void map_worker_for(void *_data, long i, int tid) // kt_for() callback
 		reg0->read_id = sig->rid;
 		reg0->ref_id = 0;
 		reg0->read_name = sig->name;
-		reg0->read_length = qlen;
+		reg0->read_length = (uint32_t)(read_position_scale * reg0->offset);
 		reg0->read_start_position = 0;
 		reg0->read_end_position = 0;
 		reg0->fragment_start_position = 0;
@@ -545,6 +597,9 @@ static void *map_worker_pipeline(void *shared, int step, void *in)
 	int i, k;
     pipeline_mt *p = (pipeline_mt*)shared;
     if (step == 0) { // step 0: read sequences
+		#ifdef PROFILERH
+		double file_t = ri_realtime();
+		#endif
         step_mt *s;
         s = (step_mt*)calloc(1, sizeof(step_mt));
 		s->sig = ri_sig_read_frag(p, p->mini_batch_size, &s->n_sig);
@@ -563,9 +618,18 @@ static void *map_worker_pipeline(void *shared, int step, void *in)
 			if(s->sig) free(s->sig);
 			free(s);
 		}
+		#ifdef PROFILERH
+		ri_filereadtime += ri_realtime() - file_t;
+		#endif
     } else if (step == 1) { // step 1: detect events
 		step_mt *s = (step_mt*)in;
+		#ifdef PROFILERH
+		double map_multit = ri_realtime();
+		#endif
 		if(!p->su_stop) kt_for(p->n_threads, map_worker_for, in, s->n_sig);
+		#ifdef PROFILERH
+		ri_maptime_multithread += ri_realtime() - map_multit;
+		#endif
 
 		if(p->opt->flag & RI_M_SEQUENCEUNTIL && !p->su_stop){
 			const ri_idx_t *ri = p->ri;
@@ -686,6 +750,10 @@ int ri_map_file_frag(const ri_idx_t *idx, int n_segs, const char **fn, const ri_
 
 		if(pl.su_c_estimations)free(pl.su_c_estimations);
 	}
+
+	#ifdef PROFILERH
+	fprintf(stderr, "\n[M::%s] File read: %.6f sec; Signal-to-event: %.6f sec; Sketching: %.6f sec; Seeding: %.6f sec; Chaining: %.6f sec; Mapping: %.6f sec; Mapping (multi-threaded): %.6f sec\n", __func__, ri_filereadtime, ri_signaltime, ri_sketchtime, ri_seedtime, ri_chaintime, ri_maptime, ri_maptime_multithread);
+	#endif
 
 	return 0;
 }

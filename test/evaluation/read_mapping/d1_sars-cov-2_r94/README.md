@@ -12,6 +12,22 @@ The following command will use 32 threads. you can change the maximum threads to
 bash run_rawhash.sh 32
 ```
 
+### Profiling RawHash
+
+We have created a script to profile the main steps of RawHash (i.e., I/O, signal-to-event conversion, sketching, seeding, chaining, and the entire mapping). Before running the following script, RawHash needs to be compiled with the profiling mode. Please modify the corresponding lines of this [Makefile](../../../../src/Makefile) as follows and then recompile RawHash:
+
+```bash
+# For profiling
+CFLAGS+=-DPROFILERH=1
+CPPFLAGS+=-DPROFILERH=1
+```
+
+After compiling with the profiling mode and adding RawHash to your path, you can run the following script to generate the profilied runtimes. The profiling result will be directed to `stderr`.
+
+```bash
+bash profile_rawhash.sh 1
+```
+
 ## UNCALLED
 
 Run UNCALLED to map the raw nanopore signals to the corresponding reference genome. This will create the `uncalled` directory including a `PAF` file that stores the mapping output from UNCALLED.
