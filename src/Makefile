@@ -146,7 +146,7 @@ pod5: check_zstd
 	cd $(WORKDIR) && mkdir -p $(POD5_URLDIR); cd $(POD5_URLDIR); wget -qO- $(POD5_URL) | tar -xzv;
 
 $(PROG): $(OBJS)
-	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS)
+	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -pthread -lstdc++
 
 .SUFFIXES:
 .SUFFIXES:.cpp .o
