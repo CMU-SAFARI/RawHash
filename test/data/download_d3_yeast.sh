@@ -4,7 +4,7 @@ mkdir -p d3_yeast_r94/fast5_files/
 cd d3_yeast_r94
 
 #Download FAST5 from AWS. NCBI SRA Accession: https://trace.ncbi.nlm.nih.gov/Traces/index.html?view=run_browser&acc=SRR8648503&display=metadata
-wget -qO-  https://sra-pub-sars-cov2.s3.amazonaws.com/sra-src/SRR8648503/GLU1II_basecalled_fast5_1.tar.gz.1 | tar -xzv;
+wget -qO- https://sra-pub-src-1.s3.amazonaws.com/SRR8648503/GLU1II_basecalled_fast5_1.tar.gz.1 | tar -xzv;
 
 find ./GLU1II_basecalled_fast5_1 -type f -name '*.fast5' | head -50000 | xargs -i{} mv {} ./fast5_files/; rm -rf GLU1II_basecalled_fast5_1;
 
