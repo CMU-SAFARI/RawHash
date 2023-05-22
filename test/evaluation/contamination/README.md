@@ -36,7 +36,11 @@ bash run_sigmap.sh 32
 
 ## Ground truth mapping (minimap2)
 
-If you have not already done, please follow the `Ground truth mapping (minimap2)` instructions in the [README](../read_mapping/d1_sars-cov-2_r94/README.md) file in [d1_sars-cov-2_r94](../read_mapping/d1_sars-cov-2_r94) to generate the `true_mappings.paf` file that includes the ground truth mapping output from minimap2.
+If you have not already done, please follow the `Ground truth mapping (minimap2)` instructions in the [README](../read_mapping/d1_sars-cov-2_r94/README.md) file in [d1_sars-cov-2_r94](../read_mapping/d1_sars-cov-2_r94) to generate the `true_mappings.paf` file that includes the ground truth mapping output from minimap2. Then, run the following command:
+
+```bash
+ln -s ../read_mapping/d1_sars-cov-2_r94/true_mappings.paf .
+```
 
 ## Comparing RawHash to UNCALLED and Sigmap
 

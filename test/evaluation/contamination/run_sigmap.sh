@@ -5,7 +5,7 @@ THREAD=$1
 #contamination
 OUTDIR="./sigmap/"
 FAST5="../../data/contamination/fast5_files/"
-REF="../../data/contamination/ref.fa"
+REF="../../data/d1_sars-cov-2_r94/ref.fa"
 PORE="../../../extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model"
 PREFIX="contamination"
 mkdir -p ${OUTDIR}
