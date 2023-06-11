@@ -3,6 +3,10 @@
 
 #include "rawindex.h"
 #include "rsig.h"
+#include <tuple>
+#include <vector>
+#include <string>
+#include <cassert>
 
 #ifdef __cplusplus
 extern "C" {

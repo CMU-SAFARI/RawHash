@@ -2,9 +2,15 @@
 #define RSIG_H
 
 #include "rutils.h"
+#ifndef NHDF5RH
 #include "hdf5_tools.hpp"
+#endif
+#ifndef NPOD5RH
 #include "pod5_format/c_api.h"
-// #include <slow5/slow5.h>
+#endif
+#ifndef NSLOW5RH
+#include <slow5/slow5.h>
+#endif
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,16 +34,20 @@ typedef struct ri_sig_file_s {
 	//HDF5-related
 	char** raw_path; //List of paths to raw values
 	char** ch_path; //List of paths to channel
+	#ifndef NHDF5RH
 	hdf5_tools::File* fp; //FAST5 file pointer
+	#endif
 	
 	//POD5-related
 	unsigned long int pod5_batch_count;
 	unsigned long int pod5_batch;
 	unsigned long int pod5_row_count;
 	unsigned long int pod5_row;
+	#ifndef NPOD5RH
 	Pod5ReadRecordBatch_t* batch;
 	
 	Pod5FileReader_t* pp; //POD5 file pointer
+	#endif
 } ri_sig_file_t;
 
 /**

@@ -1,6 +1,9 @@
 #include "rsig.h"
 #include "kvec.h"
 #include <math.h>
+#include <cstring>
+#include <errno.h>
+#include <cassert>
 #include <sys/stat.h>
 #include <dirent.h>
 
@@ -40,6 +43,7 @@ void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k
 	*s_len = j;
 }
 
+#ifndef NHDF5RH
 static inline ri_sig_file_t *ri_sig_open_fast5(const char *fn)
 {
 	ri_sig_file_t *fp;
@@ -51,7 +55,9 @@ static inline ri_sig_file_t *ri_sig_open_fast5(const char *fn)
 	if (!fast5_file->is_open()) return 0;
 
 	fp = (ri_sig_file_t*)calloc(1, sizeof(ri_sig_file_t));
+	#ifndef NPOD5RH
 	fp->pp = NULL;
+	#endif
 	fp->fp = fast5_file;
 
 	bool is_single = false;
@@ -95,7 +101,9 @@ static inline ri_sig_file_t *ri_sig_open_fast5(const char *fn)
 	fp->cur_read = 0;
 	return fp;
 }
+#endif
 
+#ifndef NPOD5RH
 static inline ri_sig_file_t *ri_sig_open_pod5(const char *fn){
 	pod5_init();
 
@@ -117,8 +125,12 @@ static inline ri_sig_file_t *ri_sig_open_pod5(const char *fn){
     }
 
 	fp = (ri_sig_file_t*)calloc(1, sizeof(ri_sig_file_t));
+	#ifndef NPOD5RH
 	fp->pp = pod5_file;
+	#endif
+	#ifndef NHDF5RH
 	fp->fp = NULL;
+	#endif
 
 	fp->num_read = batch_count; //num_read is the number of batches for pod5
 	fp->cur_read = 0; //cur_read is cur_batch for pod5
@@ -148,19 +160,28 @@ static inline ri_sig_file_t *ri_sig_open_pod5(const char *fn){
 
 	return fp;
 }
+#endif
 
+#ifndef NSLOW5RH
 static inline ri_sig_file_t *ri_sig_open_slow5(const char *fn){
 	//TODO: complete here
 	return 0;
 }
+#endif
 
 ri_sig_file_t *ri_sig_open(const char *fn){
 	if (strstr(fn, ".fast5")) {
+		#ifndef NHDF5RH
 		return ri_sig_open_fast5(fn);
+		#endif
 	} else if (strstr(fn, ".pod5")) {
+		#ifndef NPOD5RH
 		return ri_sig_open_pod5(fn);
+		#endif
 	} else if (strstr(fn, ".slow5") || strstr(fn, ".blow5")) {
+		#ifndef NSLOW5RH
 		// TODO: complete here
+		#endif
 	}
 
 	return 0;
@@ -171,15 +192,20 @@ void ri_sig_close(ri_sig_file_t *fp)
 	if(!fp) return;
 	// gzclose(fp->fp);
 
+	#ifndef NHDF5RH
 	if(fp->fp){
 		fp->fp->close();
 		for(int i = 0; i < fp->num_read; ++i){
 			if(fp->ch_path[i])free(fp->ch_path[i]);
 			if(fp->raw_path[i])free(fp->raw_path[i]);
 		}
-	}else if(fp->pp){
+	}
+	#endif
+	#ifndef NPOD5RH
+	if(fp->pp){
 		pod5_close_and_free_reader(fp->pp);
 	}
+	#endif
 	free(fp);
 }
 
@@ -256,6 +282,7 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 	}
 }
 
+#ifndef NHDF5RH
 static inline void ri_read_sig_fast5(ri_sig_file_t* fp, ri_sig_t* s){
 
 	if(fp->cur_read >= fp->num_read) return;
@@ -303,7 +330,9 @@ static inline void ri_read_sig_fast5(ri_sig_file_t* fp, ri_sig_t* s){
 	std::copy(sig.begin(), sig.begin() + l_sig, s->sig);
 	fp->cur_read++;
 }
+#endif
 
+#ifndef NPOD5RH
 static inline void ri_read_sig_pod5(ri_sig_file_t* fp, ri_sig_t* s){
 
 	if(fp->cur_read >= fp->num_read) return;
@@ -410,11 +439,16 @@ static inline void ri_read_sig_pod5(ri_sig_file_t* fp, ri_sig_t* s){
 		}
 	}
 }
+#endif
 
 void ri_read_sig(ri_sig_file_t* fp, ri_sig_t* s){
 
 	assert(fp->cur_read < fp->num_read);
 
+	#ifndef NHDF5RH
 	if(fp->fp) ri_read_sig_fast5(fp, s);
-	else if(fp->pp) ri_read_sig_pod5(fp, s);
+	#endif
+	#ifndef NPOD5RH
+	if(fp->pp) ri_read_sig_pod5(fp, s);
+	#endif
 }

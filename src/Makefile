@@ -1,89 +1,101 @@
-# CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -mavx2 -msse4.1 -I${HDF5_INCLUDE_DIR} -I${SLOW5_INCLUDE_DIR}
-#wo SIMD
-CFLAGS=-Wall -O3 -Wc++-compat -DHAVE_KALLOC
-CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -DHAVE_KALLOC
+#pass DEBUG=1 to make to enable debugging
+ifdef DEBUG
+	CFLAGS=-Wall -O2 -g -pg -Wc++-compat -DHAVE_KALLOC
+	CPPFLAGS=--std=c++11 -Wall -O2 -g -pg -fopenmp -march=native -DHAVE_KALLOC
+else
+	CFLAGS=-Wall -O3 -Wc++-compat -DHAVE_KALLOC
+	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -DHAVE_KALLOC
+endif
 
-# For debugging
-# CPPFLAGS=--std=c++11 -Wall -O2 -g -pg -fopenmp -march=native -DHAVE_KALLOC
-# CFLAGS=-Wall -O2 -g -pg -Wc++-compat -DHAVE_KALLOC
-
-# For profiling
-# CFLAGS+=-DPROFILERH=1
-# CPPFLAGS+=-DPROFILERH=1
+#pass PROFILE=1 to make to enable profiling
+ifdef PROFILE
+	CFLAGS+=-DPROFILERH=1
+	CPPFLAGS+=-DPROFILERH=1
+endif
 
 OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rawindex.o rmap.o main.o
 
-CMAKE_CXX_COMPILER ?= g++
-CMAKE_CXX_COMPILER_VERSION ?= $(shell $(CMAKE_CXX_COMPILER) -dumpversion)
-CMAKE_SYSTEM_PROCESSOR ?= $(shell uname -m)
-CMAKE_SYSTEM_NAME ?= $(shell uname -s)
+CXX_COMPILER_VERSION ?= $(shell $(CXX) -dumpversion)
+SYSTEM_PROCESSOR ?= $(shell uname -m)
+SYSTEM_NAME ?= $(shell uname -s)
 
-# WORKDIR = $(CURDIR)/../extern
 WORKDIR = $(shell pwd)/../extern
-# WORKDIR +=
 
-POD5_VERSION = 0.1.8
-POD5_URLDIR = pod5-$(POD5_VERSION)-$(CMAKE_SYSTEM_NAME)
+POD5_VERSION = 0.2.2
+POD5_URLDIR = pod5-$(POD5_VERSION)-$(SYSTEM_NAME)
 POD5_REPO = https://github.com/nanoporetech/pod5-file-format
-POD5_INCLUDE_DIR = $(WORKDIR)/$(POD5_URLDIR)/include
+ifdef POD5_INCLUDE_DIR
+	POD5_DOWNLOAD = 0
+endif
+POD5_INCLUDE_DIR ?= $(WORKDIR)/$(POD5_URLDIR)/include
 
-ifeq ($(CMAKE_SYSTEM_NAME),Linux)
-    LIB_DIR = lib64
-    ifeq ($(shell echo $(CMAKE_SYSTEM_PROCESSOR) | grep -E '^(aarch64|arm)'),)
+ifeq ($(SYSTEM_NAME),Linux)
+    POD5_LIB ?= lib64
+    ifeq ($(shell echo $(SYSTEM_PROCESSOR) | grep -E '^(aarch64|arm)'),)
         POD5_URL = $(POD5_REPO)/releases/download/$(POD5_VERSION)/lib_pod5-$(POD5_VERSION)-linux-x64.tar.gz
-    else ifeq ($(CMAKE_CXX_COMPILER_ID),GNU)
-        ifeq ($(shell expr $(CMAKE_CXX_COMPILER_VERSION) \< 9.0),1)
-            POD5_VERSION = 0.1.8
-            POD5_URLDIR = pod5-$(POD5_VERSION)-$(CMAKE_SYSTEM_NAME)
-            POD5_INCLUDE_DIR = $(WORKDIR)/$(POD5_URLDIR)/include
-            POD5_URL = $(POD5_REPO)/releases/download/$(POD5_VERSION)/lib_pod5-$(POD5_VERSION)-linux-gcc7-arm64.tar.gz
-            LIB_DIR = lib
-        endif
-    else ifeq ($(shell echo $(CMAKE_CXX_COMPILER) | grep -E 'clang\+\+$'),)
-        ifeq ($(shell expr $(CMAKE_CXX_COMPILER_VERSION) \< 11.0),1)
-            POD5_VERSION = 0.1.8
-            POD5_URLDIR = pod5-$(POD5_VERSION)-$(CMAKE_SYSTEM_NAME)
-            POD5_INCLUDE_DIR = $(WORKDIR)/$(POD5_URLDIR)/include
-            POD5_URL = $(POD5_REPO)/releases/download/$(POD5_VERSION)/lib_pod5-$(POD5_VERSION)-linux-clang11-arm64.tar.gz
-        endif
+    else ifeq ($(shell expr $(CXX_COMPILER_VERSION) \< 9.0),1)
+        POD5_URLDIR = pod5-$(POD5_VERSION)-$(SYSTEM_NAME)
+        POD5_URL = $(POD5_REPO)/releases/download/$(POD5_VERSION)/lib_pod5-$(POD5_VERSION)-linux-gcc7-arm64.tar.gz
+        POD5_LIB ?= lib
+    else
+        POD5_URLDIR = pod5-$(POD5_VERSION)-$(SYSTEM_NAME)
+        POD5_URL = $(POD5_REPO)/releases/download/$(POD5_VERSION)/lib_pod5-$(POD5_VERSION)-linux-arm64.tar.gz
     endif
-    POD5_LIBRARIES = $(WORKDIR)/$(POD5_URLDIR)/$(LIB_DIR)/libpod5_format.a \
-                     $(WORKDIR)/$(POD5_URLDIR)/$(LIB_DIR)/libarrow.a \
-                     $(WORKDIR)/$(POD5_URLDIR)/$(LIB_DIR)/libjemalloc_pic.a
+	POD5_LIB_DIR ?= $(WORKDIR)/$(POD5_URLDIR)/$(POD5_LIB)
+    POD5_LIBRARIES ?= $(POD5_LIB_DIR)/libpod5_format.a \
+                     $(POD5_LIB_DIR)/libarrow.a \
+                     $(POD5_LIB_DIR)/libjemalloc_pic.a
 endif
 
-ifeq ($(CMAKE_SYSTEM_NAME),Darwin)
+ifeq ($(SYSTEM_NAME),Darwin)
     POD5_URL = $(POD5_REPO)/releases/download/$(POD5_VERSION)/lib_pod5-$(POD5_VERSION)-osx-11.0-arm64.tar.gz
-    POD5_LIBRARIES = $(WORKDIR)/$(POD5_URLDIR)/lib/libpod5_format.a \
-                     $(WORKDIR)/$(POD5_URLDIR)/lib/libarrow.a
+	POD5_LIB_DIR ?= $(WORKDIR)/$(POD5_URLDIR)/lib
+    POD5_LIBRARIES ?= $(POD5_LIB_DIR)/libpod5_format.a \
+                     $(POD5_LIB_DIR)/libarrow.a
 endif
 
-ifeq ($(CMAKE_SYSTEM_NAME),Windows_NT)
+ifeq ($(SYSTEM_NAME),Windows_NT)
     POD5_URL = $(POD5_REPO)/releases/download/$(POD5_VERSION)/lib_pod5-$(POD5_VERSION)-win
 endif
 
-# WORKDIR = $(shell pwd)
-HDF5_DIR ?= ${WORKDIR}/hdf5/build
-HDF5_INCLUDE_DIR ?= ${HDF5_DIR}/include
-HDF5_LIB_DIR ?= ${HDF5_DIR}/lib
+HDF5_DIR ?= ${WORKDIR}/hdf5/
+HDF5_BUILD_DIR ?= ${HDF5_DIR}/build
+HDF5_INCLUDE_DIR ?= ${HDF5_BUILD_DIR}/include
+HDF5_LIB_DIR ?= ${HDF5_BUILD_DIR}/lib
 HDF5_LIB ?= hdf5
 
 SLOW5_DIR ?= ${WORKDIR}/slow5lib/
 SLOW5_INCLUDE_DIR ?= ${SLOW5_DIR}/include
 SLOW5_LIB_DIR ?= ${SLOW5_DIR}/lib
 
-# POD5_DIR ?= ${WORKDIR}/pod5/
-# POD5_INCLUDE_DIR ?= ${POD5_DIR}/include
-# POD5_LIB_DIR ?= ${POD5_DIR}/lib64
+#pass NOPOD5=1 to make to disable compiling with POD5
+ifeq ($(NOPOD5),1)
+	CFLAGS+=-DNPOD5RH=1
+	CPPFLAGS+=-DNPOD5RH=1
+else
+	INCLUDES+=-I${POD5_INCLUDE_DIR}
+	LIBS+=-L${WORKDIR}/zstd/lib/ ${POD5_LIBRARIES} -lzstd
+endif
 
-INCLUDES=-I${HDF5_INCLUDE_DIR} -I${SLOW5_INCLUDE_DIR} -I${POD5_INCLUDE_DIR} 
-LIBS=-L${WORKDIR}/zstd/lib/ ${HDF5_LIB_DIR}/lib${HDF5_LIB}.a ${SLOW5_LIB_DIR}/libslow5.a
+#pass NOHDF5=1 to make to disable compiling with HDF5
+ifeq ($(NOHDF5),1)
+	CFLAGS+=-DNHDF5RH=1
+	CPPFLAGS+=-DNHDF5RH=1
+else
+	INCLUDES+=-I${HDF5_INCLUDE_DIR}
+	LIBS+=${HDF5_LIB_DIR}/lib${HDF5_LIB}.a
+endif
 
-# LIBS+=${POD5_LIB_DIR}/libarrow.a ${POD5_LIB_DIR}/libjemalloc_pic.a ${POD5_LIB_DIR}/libpod5_format.a
-# POD5_LIB_DIR = ${POD5_DIR}/lib
-# LIBS+=${POD5_DIR}/lib/libpod5_format.so
-LIBS+=${POD5_LIBRARIES}
-LIBS+=-lm -lz -ldl -lzstd
+#pass NOSLOW5=1 to make to disable compiling with SLOW5
+ifeq ($(NOSLOW5),1)
+	CFLAGS+=-DNSLOW5RH=1
+	CPPFLAGS+=-DNSLOW5RH=1
+else
+	INCLUDES+=-I${SLOW5_INCLUDE_DIR}
+	LIBS+=${SLOW5_LIB_DIR}/libslow5.a
+endif
+
+LIBS+=-lm -lz -ldl 
 
 PROG=rawhash
 
@@ -109,41 +121,68 @@ ifneq ($(tsan),)
 	LIBS+=-fsanitize=thread
 endif
 
-.PHONY: all clean
+.PHONY: all subset clean help
 
-all: zstd hdf5 slow5 pod5 check_hdf5 check_slow5 check_pod5 $(PROG)
-subset: check_zstd check_pod5 check_slow5 check_hdf5 $(PROG)
+all: zstd hdf5 slow5 pod5 check_hdf5 check_slow5 check_pod5 $(PROG) ## Build RawHash with HDF5, SLOW5, and POD5
+subset: check_zstd check_pod5 check_slow5 check_hdf5 $(PROG) ## Build RawHash without recompiling HDF5, SLOW5, and POD5
 
+help: ##Show help
+	@echo "Set PROFILE=1 to enable profiling"
+	@echo "Set DEBUG=1 to enable debugging"
+	@echo
+	@echo "Set NOHDF5=1 to disable compiling with HDF5 (note that at least one of HDF5, SLOW5, and POD5 must be enabled)"
+	@echo "Set NOSLOW5=1 to disable compiling with SLOW5 (note that at least one of HDF5, SLOW5, and POD5 must be enabled)"
+	@echo "Set NOPOD5=1 to disable compiling with POD5 (note that at least one of HDF5, SLOW5, and POD5 must be enabled)"
+	@echo
+	@echo "use \"make subset\" to prevent compiling HDF5, SLOW5, and POD5 libraries from scratch if they are already built"
+	@echo "use \"make clean\" to remove all generated files"
+	
 check_zstd:
-	@[ -f "${WORKDIR}/zstd/lib/libzstd.so" ] || { echo "ZSTD library not found" >&2; exit 1; }
+	@if [ "$(NOPOD5)" != "1" ]; then \
+		[ -f "${WORKDIR}/zstd/lib/libzstd.so" ] || { echo "ZSTD library not found" >&2; exit 1; }; \
+	fi
 
 check_hdf5:
-	@[ -f "${HDF5_INCLUDE_DIR}/H5pubconf.h" ] || { echo "HDF5 headers not found" >&2; exit 1; }
-	@[ -f "${HDF5_LIB_DIR}/lib${HDF5_LIB}.so" ] || [ -f "${HDF5_LIB_DIR}/lib${HDF5_LIB}.a" ] || { echo "HDF5 library not found" >&2; exit 1; }
+	@if [ "$(NOHDF5)" != "1" ]; then \
+		[ -f "${HDF5_INCLUDE_DIR}/H5pubconf.h" ] || { echo "HDF5 headers not found" >&2; exit 1; }; \
+		[ -f "${HDF5_LIB_DIR}/lib${HDF5_LIB}.so" ] || [ -f "${HDF5_LIB_DIR}/lib${HDF5_LIB}.a" ] || { echo "HDF5 library not found" >&2; exit 1; }; \
+	fi
 
 check_slow5:
-	@[ -f "${SLOW5_INCLUDE_DIR}/slow5/slow5.h" ] || { echo "SLOW5 headers not found" >&2; exit 1; }
-	@[ -f "${SLOW5_LIB_DIR}/libslow5.so" ] || [ -f "${SLOW5_LIB_DIR}/libslow5.a" ] || { echo "SLOW5 library not found" >&2; exit 1; }
+	@if [ "$(NOSLOW5)" != "1" ]; then \
+		[ -f "${SLOW5_INCLUDE_DIR}/slow5/slow5.h" ] || { echo "SLOW5 headers not found" >&2; exit 1; }; \
+		[ -f "${SLOW5_LIB_DIR}/libslow5.so" ] || [ -f "${SLOW5_LIB_DIR}/libslow5.a" ] || { echo "SLOW5 library not found" >&2; exit 1; }; \
+	fi
 
 check_pod5:
-	@[ -f "${POD5_INCLUDE_DIR}/pod5_format/c_api.h" ] || { echo "POD5 headers not found" >&2; exit 1; }
-	@[ -f "$(WORKDIR)/$(POD5_URLDIR)/$(LIB_DIR)/libpod5_format.a" ] || { echo "POD5 library not found" >&2; exit 1; }
+	@if [ "$(NOPOD5)" != "1" ]; then \
+		[ -f "${POD5_INCLUDE_DIR}/pod5_format/c_api.h" ] || { echo "POD5 headers not found" >&2; exit 1; }; \
+		[ -f "$(POD5_LIB_DIR)/libpod5_format.a" ] || { echo "POD5 library not found" >&2; exit 1; }; \
+	fi
 
 zstd:
-	cd ${WORKDIR}/zstd && make -j
+	@if [ "$(NOPOD5)" != "1" ]; then \
+		cd ${WORKDIR}/zstd && make -j; \
+	fi
 
 hdf5:
-	cd ${WORKDIR}/hdf5;\
-  	mkdir build;\
-	./configure --enable-threadsafe --disable-hl --prefix="${HDF5_DIR}";\
-	make -j;\
-	make install
+	@if [ "$(NOHDF5)" != "1" ]; then \
+		cd ${HDF5_DIR}; \
+		mkdir -p build; \
+		./configure --enable-threadsafe --disable-hl --prefix="${HDF5_BUILD_DIR}"; \
+		make -j; \
+		make install; \
+	fi
 
 slow5:
-	make -C ${SLOW5_DIR}
+	@if [ "$(NOSLOW5)" != "1" ]; then \
+		make -C ${SLOW5_DIR}; \
+	fi
 
 pod5: check_zstd
-	cd $(WORKDIR) && mkdir -p $(POD5_URLDIR); cd $(POD5_URLDIR); wget -qO- $(POD5_URL) | tar -xzv;
+	@if [ "$(NOPOD5)" != "1" ] && [ "$(POD5_DOWNLOAD)" != "0" ]; then \
+		cd $(WORKDIR) && mkdir -p $(POD5_URLDIR); cd $(POD5_URLDIR); wget -qO- $(POD5_URL) | tar -xzv; \
+	fi
 
 $(PROG): $(OBJS)
 	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -pthread -lstdc++
@@ -160,7 +199,7 @@ $(PROG): $(OBJS)
 %.o: %.c
 	${CC} -c $(CFLAGS) $(INCLUDES) $< -o $@
 
-clean:
+clean: ## Remove all generated files
 	rm -fr *.o $(PROG) *~
 
 rsketch.o: rutils.h kvec.h
