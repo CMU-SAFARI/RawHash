@@ -6,7 +6,7 @@ THREAD=$1
 OUTDIR="./rawhash/"
 FAST5="../../data/relative_abundance/fast5_files/"
 REF="../../data/relative_abundance/ref.fa"
-PORE="../../../extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model"
+PORE="../../../extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model"
 PREFIX="relative_abundance"
 mkdir -p ${OUTDIR}
 

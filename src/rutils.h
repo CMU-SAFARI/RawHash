@@ -24,6 +24,8 @@ double ri_realtime(void);
 double ri_cputime(void);
 long ri_peakrss(void);
 
+void load_pore(const char* fpore, const short k, const short lev_col, float** pore_vals);
+
 #ifdef __cplusplus
 }
 #endif

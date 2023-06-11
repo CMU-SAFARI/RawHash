@@ -3,7 +3,7 @@
 void ri_idxopt_init(ri_idxopt_t *opt)
 {
 	memset(opt, 0, sizeof(ri_idxopt_t));
-	opt->e = 6; opt->w = 0; opt->q = 9; opt->lq = 3; opt->n = 0; opt->k = 6;
+	opt->e = 6; opt->w = 0; opt->q = 9; opt->lq = 3; opt->n = 0; opt->k = 6, opt->lev_col = 1;
 	opt->b = 14;
 	opt->mini_batch_size = 50000000;
 	opt->batch_size = 4000000000ULL;

@@ -8,7 +8,7 @@ THREAD=$1
 OUTDIR="./rawhash/"
 FAST5="../../../data/d1_sars-cov-2_r94/fast5_files/SP1-mapped0.fast5"
 REF="../../../data/d1_sars-cov-2_r94/ref.fa"
-PORE="../../../../extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model"
+PORE="../../../../extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model"
 PREFIX="d1_sars-cov-2_r94_profile_"${THREAD}
 mkdir -p ${OUTDIR}
 

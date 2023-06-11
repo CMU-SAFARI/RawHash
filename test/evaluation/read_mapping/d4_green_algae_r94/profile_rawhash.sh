@@ -8,7 +8,7 @@ THREAD=$1
 OUTDIR="./rawhash/"
 FAST5="../../../data/d4_green_algae_r94/fast5_files/PCT0062_20180831_0004A30B00232394_1_E5_H5_sequencing_run_PBNP18L0092_0831_A1_29025_read_111_ch_177_strand.fast5"
 REF="../../../data/d4_green_algae_r94/ref.fa"
-PORE="../../../../extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model"
+PORE="../../../../extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model"
 PREFIX="d4_green_algae_r94_profile_"${THREAD}
 mkdir -p ${OUTDIR}
 

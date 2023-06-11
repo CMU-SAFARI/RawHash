@@ -6,7 +6,7 @@ THREAD=$1
 OUTDIR="./rawhash/"
 FAST5="../../../data/d5_human_na12878_r94/fast5_files/MinION3_20161013_FNFAB42260_MN20093_sequencing_run_Chip98_Genomic_R9_4_480bps_0.fast5"
 REF="../../../data/d5_human_na12878_r94/ref.fa"
-PORE="../../../../extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model"
+PORE="../../../../extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model"
 PREFIX="d5_human_na12878_r94_profile_"${THREAD}
 mkdir -p ${OUTDIR}
 

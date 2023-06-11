@@ -17,7 +17,7 @@ extern "C" {
 
 // indexing and mapping options
 typedef struct ri_idxopt_s{
-	short b, w, e, n, q, lq, k, flag;
+	short b, w, e, n, q, lq, k, flag, lev_col;
 	int64_t mini_batch_size;
 	uint64_t batch_size;
 } ri_idxopt_t;

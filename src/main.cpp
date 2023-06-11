@@ -5,7 +5,6 @@
 
 #include "rawhash.h"
 #include "ketopt.h"
-#include "pore_model.h" //TODO, remove the CPP dependency
 
 #define RI_VERSION "0.91"
 
@@ -47,6 +46,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"test-frequency",		ko_required_argument, 320 },
 	{ (char*)"min-reads",			ko_required_argument, 321 },
 	{ (char*)"sequence-until",     ko_no_argument,       322 },
+	{ (char*)"level_column",     ko_required_argument,       323 },
 	{ 0, 0, 0 }
 };
 
@@ -174,16 +174,20 @@ int main(int argc, char *argv[])
 		else if (c == 320) opt.ttest_freq = atoi(o.arg);// --test-frequency
 		else if (c == 321) opt.tmin_reads = atoi(o.arg);// --min-reads
 		else if (c == 322) opt.flag |= RI_M_SEQUENCEUNTIL;// --sequence-until
+		else if (c == 323) ipt.lev_col = atoi(o.arg);// --level_column
 		else if (c == 'V') {puts(RI_VERSION); return 0;}
 	}
 
 	if (argc == o.ind || fp_help == stdout) {
 		fprintf(fp_help, "Usage: rawhash [options] <target.fa>|<target.idx> [query.fast5] [...]\n");
 		fprintf(fp_help, "Options:\n");
-		fprintf(fp_help, "  Indexing:\n");
-		fprintf(fp_help, "    -d FILE      [Strongly recommended to create before mapping] dump index to FILE [].\n");
+		fprintf(fp_help, "  K-mer (pore) Model:\n");
 		fprintf(fp_help, "    -p FILE      pore model FILE [].\n");
 		fprintf(fp_help, "    -k INT       size of the k-mers in the pore model [%d]. This is usually 6 for R9.4 and 9 for R10\n", ipt.k);
+		fprintf(fp_help, "    --level_column INT       0-based column index where the mean values are stored in the pore file [%d]. This is usually 1 for both R9.4 and R10\n", ipt.lev_col);
+		fprintf(fp_help, "\n  Indexing:\n");
+		fprintf(fp_help, "    -d FILE      [Strongly recommended to create before mapping] dump index to FILE [].\n");
+		
 		fprintf(fp_help, "    -e INT       number of events concatanated in a single hash (usually no larger than 10). Also applies during mapping [%d]\n", ipt.e);
 		fprintf(fp_help, "    -q INT       most significant bits of signal values to process [%d]. Signal values are assumed to be in the IEEE standard for floating-point arithmetic\n", ipt.q);
 		fprintf(fp_help, "    -l INT       least significant bits of the q bits to quantize along with the most signficant 2 bits of the q bits [%d]\n", ipt.lq);
@@ -205,7 +209,7 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    --map-best-ratio FLOAT     map the read if the ratio between the best and the second-best chain scores is >= FLOAT [%g]\n", opt.min_bestmap_ratio_out);
 		fprintf(fp_help, "    --stop-mean-ratio FLOAT     stop chain enlongation if the ratio between the best chain score and the mean chain score is >= FLOAT [%g]\n", opt.min_bestmap_ratio);
 		fprintf(fp_help, "    --map-mean-ratio FLOAT     map the read if the ratio between the best chain score and the mean chain score is >= FLOAT [%g]\n", opt.min_meanmap_ratio_out);
-		fprintf(fp_help, "\n  ONT Device:\n");
+		fprintf(fp_help, "\n  Nanopore Parameters:\n");
 		fprintf(fp_help, "    --bp-per-sec INT     DNA molecules transiting through the pore (bp per second) [%u]\n", opt.bp_per_sec);
 		fprintf(fp_help, "    --sample-rate INT     current sample rate in Hz [%u]\n", opt.sample_rate);
 		fprintf(fp_help, "    --chunk-size INT     current samples in a single chunk (by default set to the amount of signals sampled in 1 second) [%u]\n", opt.chunk_size);
@@ -254,17 +258,12 @@ int main(int argc, char *argv[])
 		ri_idx_reader_close(idx_rdr);
 		return 1;
 	}else if(!idx_rdr->is_idx && fpore){
-		sigmap::PoreModel pore_model;
-  		pore_model.Load(std::string(fpore));
-
-		if(pore_model.GetKmerSize() <= 4){
+		load_pore(fpore, ipt.k, ipt.lev_col, &pore_vals);
+		if(!pore_vals){
 			fprintf(stderr, "[ERROR] cannot parse the k-mer pore model file. Please see the example k-mer model files provided in the rawhash repository.\n");
 			ri_idx_reader_close(idx_rdr);
 			return 1;
 		}
-		pore_vals = (float*)calloc(1U<<(pore_model.GetKmerSize()*2), sizeof(float));
-		for(uint32_t i = 0; i < 1U<<(pore_model.GetKmerSize()*2); ++i)
-			pore_vals[i] = pore_model.pore_models_[i].level_mean;
 	}
 
 	while ((ri = ri_idx_reader_read(idx_rdr, pore_vals, n_threads)) != 0) {

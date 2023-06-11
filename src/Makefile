@@ -11,7 +11,7 @@ CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -DHAVE_KALLOC
 # CFLAGS+=-DPROFILERH=1
 # CPPFLAGS+=-DPROFILERH=1
 
-OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o pore_model.o rsig.o revent.o rsketch.o rawindex.o rmap.o main.o
+OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rawindex.o rmap.o main.o
 
 CMAKE_CXX_COMPILER ?= g++
 CMAKE_CXX_COMPILER_VERSION ?= $(shell $(CMAKE_CXX_COMPILER) -dumpversion)
@@ -168,4 +168,4 @@ rsig.o: hdf5_tools.hpp kvec.h
 rmap.o: rawindex.h rsig.h kthread.h kvec.h rutils.h rsketch.h revent.h sequence_until.h
 revent.o: roptions.h kalloc.h
 rawindex.o: roptions.h rutils.h rsketch.h rsig.h bseq.h khash.h kvec.h kthread.h
-main:o rawhash.h ketopt.h pore_model.h
+main:o rawhash.h ketopt.h rutils.h
