@@ -60,11 +60,17 @@ endif
 
 HDF5_DIR ?= ${WORKDIR}/hdf5/
 HDF5_BUILD_DIR ?= ${HDF5_DIR}/build
+ifdef HDF5_INCLUDE_DIR
+	HDF5_COMPILE = 0
+endif
 HDF5_INCLUDE_DIR ?= ${HDF5_BUILD_DIR}/include
 HDF5_LIB_DIR ?= ${HDF5_BUILD_DIR}/lib
 HDF5_LIB ?= hdf5
 
 SLOW5_DIR ?= ${WORKDIR}/slow5lib/
+ifdef SLOW5_INCLUDE_DIR
+	SLOW5_COMPILE = 0
+endif
 SLOW5_INCLUDE_DIR ?= ${SLOW5_DIR}/include
 SLOW5_LIB_DIR ?= ${SLOW5_DIR}/lib
 
@@ -166,7 +172,7 @@ zstd:
 	fi
 
 hdf5:
-	@if [ "$(NOHDF5)" != "1" ]; then \
+	@if [ "$(NOHDF5)" != "1" ] && [ "$(HDF5_COMPILE)" != "0" ]; then \
 		cd ${HDF5_DIR}; \
 		mkdir -p build; \
 		./configure --enable-threadsafe --disable-hl --prefix="${HDF5_BUILD_DIR}"; \
@@ -175,7 +181,7 @@ hdf5:
 	fi
 
 slow5:
-	@if [ "$(NOSLOW5)" != "1" ]; then \
+	@if [ "$(NOSLOW5)" != "1" ] && [ "$(SLOW5_COMPILE)" != "0" ]; then \
 		make -C ${SLOW5_DIR}; \
 	fi
 

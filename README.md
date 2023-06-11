@@ -1,4 +1,8 @@
-# RawHash
+<p align="center" width="100%">
+    <img width="70%" src="./gitfigures/rawhash-preview.png">
+</p>
+
+# Overview
 
 RawHash is a hash-based mechanism to map raw nanopore signals to a reference genome in real-time. To achieve this, it 1) generates an index from the reference genome and 2) efficiently and accurately maps the raw signals to the reference genome such that it can match the throughput of nanopore sequencing even when analyzing large genomes (e.g., human genome.
 
@@ -18,6 +22,8 @@ RawHash performs real-time mapping of nanopore raw signals. When the prefix of r
 
 * RawHash now supports **POD5** files. RawHash will automatically detect the POD5 files from the file prefix (i.e., ".pod5"). Note: This feature is tested only on the Linux systems.
 
+* It is now possible to disable compiling HDF5, SLOW5, and POD5. Please check the `Compiling with HDF5, SLOW5, and POD5` section below for details.
+
 # Installation
 
 * Clone the code from its GitHub repository (`--recursive` must be used):
@@ -34,6 +40,31 @@ cd rawhash && make
 
 If the compilation is successful, the binary will be in `bin/rawhash`.
 
+## Compiling with HDF5, SLOW5, and POD5
+
+We are aware that some of the pre-compiled libraries (e.g., POD5) may not work in your system and you may need to compile these libraries from scratch. Additionally, it may be possible that you may not want to compile any of the HDF5, SLOW5, or POD5 libraries if you are not going to use them. RawHash provides a flexible Makefile to enable custom compilation of these libraries.
+
+* It is possible to provide your own include and lib directories for *any* of the HDF5, SLOW5, and POD5 libraries, if you do not want to use the source code or the pre-compiled binaries that come with RawHash. To use your own include and lib directories you should pass them to `make` when compiling as follows:
+
+```bash
+#Provide the path to all of the HDF5/SLOW5/POD5 include and lib directories during compilation
+make HDF5_INCLUDE_DIR=/path/to/hdf5/include HDF5_LIB_DIR=/path/to/hdf5/lib \
+	 SLOW5_INCLUDE_DIR=/path/to/slow5/include SLOW5_LIB_DIR=/path/to/slow5/lib \
+	 POD5_INCLUDE_DIR=/path/to/pod5/include POD5_LIB_DIR=/path/to/pod5/lib
+
+#Provide the path to only POD5 include and lib directories during compilation
+make POD5_INCLUDE_DIR=/path/to/pod5/include POD5_LIB_DIR=/path/to/pod5/lib
+```
+
+* It is possible to disable compiling *any* of the HDF5, SLOW5, and POD5 libraries. To disable them, you can use the following variables
+
+```bash
+#Disables compiling HDF5
+make NOHDF5=1
+
+#Disables compiling SLOW5 and POD5
+make NOSLOW5=1 NOPOD5=1
+```
 
 # Usage
 
