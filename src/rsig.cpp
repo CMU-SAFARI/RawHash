@@ -1,5 +1,5 @@
 #include "rsig.h"
-#include "kvec.h"
+#include "rh_kvec.h"
 #include <math.h>
 #include <cstring>
 #include <errno.h>
@@ -254,7 +254,7 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 		//TODO: Add slow5 here later
 		if (strstr(A, ".fast5") || strstr(A, ".pod5")) {
 			char** cur_fname;
-			kv_pushp(char*, 0, *fnames, &cur_fname);
+			rh_kv_pushp(char*, 0, *fnames, &cur_fname);
 			(*cur_fname) = strdup(A);
 		}
 		return;
@@ -272,7 +272,7 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 			} else {
 				if (strstr(ent->d_name, ".fast5") || strstr(ent->d_name, ".pod5")) {
 					char** cur_fname;
-					kv_pushp(char*, 0, *fnames, &cur_fname);
+					rh_kv_pushp(char*, 0, *fnames, &cur_fname);
 					(*cur_fname) = strdup(tmp);
 				}
 			}

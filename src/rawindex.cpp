@@ -5,7 +5,7 @@
 #include "rsig.h"
 #include "bseq.h"
 #include "khash.h"
-#include "kvec.h"
+#include "rh_kvec.h"
 #include "kthread.h"
 
 #if defined(WIN32) || defined(_WIN32)
@@ -80,7 +80,7 @@ void ri_idx_add(ri_idx_t *ri, int n, const mm128_t *a){
 	int i, mask = (1<<ri->b) - 1;
 	for (i = 0; i < n; ++i) {
 		mm128_v *p = &ri->B[a[i].x>>RI_HASH_SHIFT&mask].a;
-		kv_push(mm128_t, 0, *p, a[i]);
+		rh_kv_push(mm128_t, 0, *p, a[i]);
 	}
 }
 

@@ -35,9 +35,9 @@ static inline float* comp_tstat(void *km, const float *prefix_sum, const float *
   
   	const float eta = FLT_MIN;
 
-	// kvec_t(float) tstat = {0,0,0};
-	// kv_resize(float, 0, tstat, s_len+1);
-	// kv_pushp(float, 0, tstat, &s);
+	// rh_kvec_t(float) tstat = {0,0,0};
+	// rh_kv_resize(float, 0, tstat, s_len+1);
+	// rh_kv_pushp(float, 0, tstat, &s);
 
 	float* tstat = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
 	// Quick return:

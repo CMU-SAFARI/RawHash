@@ -1,6 +1,6 @@
 #include "rsketch.h"
 #include <assert.h>
-#include "kvec.h"
+#include "rh_kvec.h"
 #include <math.h>
 
 static inline uint64_t hash64(uint64_t key, uint64_t mask){
@@ -104,7 +104,7 @@ static inline uint32_t quantize_float_uint32(const float x, const float min, con
 // 	uint32_t signal = 0, tmpQuantSignal = 0;
 // 	uint64_t quantVal = 0, hashVal = 0;
 
-// 	kv_resize(mm128_t, km, *p, p->n + len/step);
+// 	rh_kv_resize(mm128_t, km, *p, p->n + len/step);
 
 // 	mm128_t sigBuf[e];
 // 	memset(sigBuf, 0, e*sizeof(mm128_t));
@@ -136,7 +136,7 @@ static inline uint32_t quantize_float_uint32(const float x, const float min, con
 // 			blendVal = calc_blend_rm_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, hashVal, blndBuf[blend_pos].x, blendmask, 32);
 // 			info.x = blendVal<<RI_HASH_SHIFT | span;
 // 			info.y = blndBuf[blend_pos].y;
-// 			kv_push(mm128_t, km, *p, info);
+// 			rh_kv_push(mm128_t, km, *p, info);
 // 		}else{
 // 			calc_blend_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, hashVal, blendmask, 32);
 // 		}
@@ -153,7 +153,7 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 
 	assert(len > 0 && (w > 0 && w < 256) && (e > 0 && e <= 10));
 	memset(buf, 0xff, w * 16);
-	kv_resize(mm128_t, km, *p, p->n + (len/step)/w);
+	rh_kv_resize(mm128_t, km, *p, p->n + (len/step)/w);
 	
 	const uint32_t quant_bit = lq+2; 
 	const uint32_t shift_r = 32-q;
@@ -193,30 +193,30 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 		buf[buf_pos] = info; // need to do this here as appropriate buf_pos and buf[buf_pos] are needed below
 		if (l == w + e - 1 && min.x != UINT64_MAX) { // special case for the first window - because identical k-mers are not stored yet
 			for (j = buf_pos + 1; j < w; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+				if (min.x == buf[j].x && buf[j].y != min.y) rh_kv_push(mm128_t, km, *p, buf[j]);
 			for (j = 0; j < buf_pos; ++j)
-				if (min.x == buf[j].x && buf[j].y != min.y) kv_push(mm128_t, km, *p, buf[j]);
+				if (min.x == buf[j].x && buf[j].y != min.y) rh_kv_push(mm128_t, km, *p, buf[j]);
 		}
 		if (info.x <= min.x) { // a new minimum; then write the old min
-			if (l >= w + e && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+			if (l >= w + e && min.x != UINT64_MAX) rh_kv_push(mm128_t, km, *p, min);
 			min = info, min_pos = buf_pos;
 		} else if (buf_pos == min_pos) { // old min has moved outside the window
-			if (l >= w + e - 1 && min.x != UINT64_MAX) kv_push(mm128_t, km, *p, min);
+			if (l >= w + e - 1 && min.x != UINT64_MAX) rh_kv_push(mm128_t, km, *p, min);
 			for (j = buf_pos + 1, min.x = UINT64_MAX; j < w; ++j) // the two loops are necessary when there are identical k-mers
 				if (min.x >= buf[j].x) min = buf[j], min_pos = j; // >= is important s.t. min is always the closest e-mer
 			for (j = 0; j <= buf_pos; ++j)
 				if (min.x >= buf[j].x) min = buf[j], min_pos = j;
 			if (l >= w + e - 1 && min.x != UINT64_MAX) { // write identical k-mers
 				for (j = buf_pos + 1; j < w; ++j) // these two loops make sure the output is sorted
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+					if (min.x == buf[j].x && min.y != buf[j].y) rh_kv_push(mm128_t, km, *p, buf[j]);
 				for (j = 0; j <= buf_pos; ++j)
-					if (min.x == buf[j].x && min.y != buf[j].y) kv_push(mm128_t, km, *p, buf[j]);
+					if (min.x == buf[j].x && min.y != buf[j].y) rh_kv_push(mm128_t, km, *p, buf[j]);
 			}
 		}
 		if (++buf_pos == w) buf_pos = 0;
     }
 	if (min.x != UINT64_MAX)
-		kv_push(mm128_t, km, *p, min);
+		rh_kv_push(mm128_t, km, *p, min);
 
 }
 
@@ -234,7 +234,7 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
 	uint32_t signal = 0, tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
-	kv_resize(mm128_t, km, *p, p->n + len/step);
+	rh_kv_resize(mm128_t, km, *p, p->n + len/step);
 
 	mm128_t sigBuf[e];
 	memset(sigBuf, 0, e*sizeof(mm128_t));
@@ -256,15 +256,15 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
 		
 		if(!sigBufFull) continue;
 
-		kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+		rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
 
 		// quantVal = (quantVal>>quant_bit<<quant_bit|(tmpQuantSignal-1))&mask_events;
 		// sigBuf[sigBufPos].x = hash64(quantVal, mask)<<RI_HASH_SHIFT | span;
-		// kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+		// rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
 
 		// quantVal = (quantVal>>quant_bit<<quant_bit|(tmpQuantSignal+1))&mask_events;
 		// sigBuf[sigBufPos].x = hash64(quantVal, mask)<<RI_HASH_SHIFT | span;
-		// kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+		// rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
     }
 }
 

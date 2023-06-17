@@ -4,7 +4,7 @@
 #include <assert.h>
 #define __STDC_LIMIT_MACROS
 #include "bseq.h"
-#include "kvec.h"
+#include "rh_kvec.h"
 #include "kseq.h"
 KSEQ_INIT2(, gzFile, gzread)
 
@@ -81,20 +81,20 @@ mm_bseq1_t *mm_bseq_read3(mm_bseq_file_t *fp, int64_t chunk_size, int with_qual,
 {
 	int64_t size = 0;
 	int ret;
-	kvec_t(mm_bseq1_t) a = {0,0,0};
+	rh_kvec_t(mm_bseq1_t) a = {0,0,0};
 	kseq_t *ks = fp->ks;
 	*n_ = 0;
 	if (fp->s.seq) {
-		kv_resize(mm_bseq1_t, 0, a, 256);
-		kv_push(mm_bseq1_t, 0, a, fp->s);
+		rh_kv_resize(mm_bseq1_t, 0, a, 256);
+		rh_kv_push(mm_bseq1_t, 0, a, fp->s);
 		size = fp->s.l_seq;
 		memset(&fp->s, 0, sizeof(mm_bseq1_t));
 	}
 	while ((ret = kseq_read(ks)) >= 0) {
 		mm_bseq1_t *s;
 		assert(ks->seq.l <= INT32_MAX);
-		if (a.m == 0) kv_resize(mm_bseq1_t, 0, a, 256);
-		kv_pushp(mm_bseq1_t, 0, a, &s);
+		if (a.m == 0) rh_kv_resize(mm_bseq1_t, 0, a, 256);
+		rh_kv_pushp(mm_bseq1_t, 0, a, &s);
 		kseq2bseq(ks, s, with_qual, with_comment);
 		size += s->l_seq;
 		if (size >= chunk_size) {
@@ -102,7 +102,7 @@ mm_bseq1_t *mm_bseq_read3(mm_bseq_file_t *fp, int64_t chunk_size, int with_qual,
 				while ((ret = kseq_read(ks)) >= 0) {
 					kseq2bseq(ks, &fp->s, with_qual, with_comment);
 					if (mm_qname_same(fp->s.name, a.a[a.n-1].name)) {
-						kv_push(mm_bseq1_t, 0, a, fp->s);
+						rh_kv_push(mm_bseq1_t, 0, a, fp->s);
 						memset(&fp->s, 0, sizeof(mm_bseq1_t));
 					} else break;
 				}
@@ -132,7 +132,7 @@ mm_bseq1_t *mm_bseq_read_frag2(int n_fp, mm_bseq_file_t **fp, int64_t chunk_size
 {
 	int i;
 	int64_t size = 0;
-	kvec_t(mm_bseq1_t) a = {0,0,0};
+	rh_kvec_t(mm_bseq1_t) a = {0,0,0};
 	*n_ = 0;
 	if (n_fp < 1) return 0;
 	while (1) {
@@ -145,10 +145,10 @@ mm_bseq1_t *mm_bseq_read_frag2(int n_fp, mm_bseq_file_t **fp, int64_t chunk_size
 				fprintf(stderr, "[W::%s]\033[1;31m query files have different number of records; extra records skipped.\033[0m\n", __func__);
 			break; // some file reaches the end
 		}
-		if (a.m == 0) kv_resize(mm_bseq1_t, 0, a, 256);
+		if (a.m == 0) rh_kv_resize(mm_bseq1_t, 0, a, 256);
 		for (i = 0; i < n_fp; ++i) {
 			mm_bseq1_t *s;
-			kv_pushp(mm_bseq1_t, 0, a, &s);
+			rh_kv_pushp(mm_bseq1_t, 0, a, &s);
 			kseq2bseq(fp[i]->ks, s, with_qual, with_comment);
 			size += s->l_seq;
 		}

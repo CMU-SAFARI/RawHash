@@ -26,14 +26,14 @@
 /*
   An example:
 
-#include "kvec.h"
+#include "rh_kvec.h"
 int main() {
-	kvec_t(int) array;
-	kv_init(array);
-	kv_push(int, array, 10); // append
-	kv_a(int, array, 20) = 5; // dynamic
-	kv_A(array, 20) = 4; // static
-	kv_destroy(array);
+	rh_kvec_t(int) array;
+	rh_kv_init(array);
+	rh_kv_push(int, array, 10); // append
+	rh_kv_a(int, array, 20) = 5; // dynamic
+	rh_kv_A(array, 20) = 4; // static
+	rh_kv_destroy(array);
 	return 0;
 }
 */
@@ -45,37 +45,37 @@ int main() {
 
 */
 
-#ifndef AC_KVEC_H
-#define AC_KVEC_H
+#ifndef AC_RH_KVEC_H
+#define AC_RH_KVEC_H
 
 #include <stdlib.h>
 #include "kalloc.h"
 
-#define kv_roundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
+#define rh_kv_roundup32(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, ++(x))
 
-#define kvec_t(type) struct { size_t n, m; type *a; }
-#define kv_init(v) ((v).n = (v).m = 0, (v).a = 0)
-#define kv_destroy(v) free((v).a)
-#define kv_A(v, i) ((v).a[(i)])
-#define kv_pop(v) ((v).a[--(v).n])
-#define kv_size(v) ((v).n)
-#define kv_max(v) ((v).m)
+#define rh_kvec_t(type) struct { size_t n, m; type *a; }
+#define rh_kv_init(v) ((v).n = (v).m = 0, (v).a = 0)
+#define rh_kv_destroy(v) free((v).a)
+#define rh_kv_A(v, i) ((v).a[(i)])
+#define rh_kv_pop(v) ((v).a[--(v).n])
+#define rh_kv_size(v) ((v).n)
+#define rh_kv_max(v) ((v).m)
 
-#define kv_resize(type, km, v, s) do { \
+#define rh_kv_resize(type, km, v, s) do { \
 		if ((v).m < (s)) { \
 			(v).m = (s); \
-			kv_roundup32((v).m); \
+			rh_kv_roundup32((v).m); \
 			(v).a = (type*)ri_krealloc((km), (v).a, sizeof(type) * (v).m); \
 		} \
 	} while (0)
 
-#define kv_copy(type, km, v1, v0) do { \
-		if ((v1).m < (v0).n) kv_resize(type, (km), (v1), (v0).n); \
+#define rh_kv_copy(type, km, v1, v0) do { \
+		if ((v1).m < (v0).n) rh_kv_resize(type, (km), (v1), (v0).n); \
 		(v1).n = (v0).n; \
 		memcpy((v1).a, (v0).a, sizeof(type) * (v0).n); \
 	} while (0) \
 
-#define kv_push(type, km, v, x) do { \
+#define rh_kv_push(type, km, v, x) do { \
 		if ((v).n == (v).m) { \
 			(v).m = (v).m? (v).m<<1 : 2; \
 			(v).a = (type*)ri_krealloc((km), (v).a, sizeof(type) * (v).m); \
@@ -83,7 +83,7 @@ int main() {
 		(v).a[(v).n++] = (x); \
 	} while (0)
 
-#define kv_pushp(type, km, v, p) do { \
+#define rh_kv_pushp(type, km, v, p) do { \
 		if ((v).n == (v).m) { \
 			(v).m = (v).m? (v).m<<1 : 2; \
 			(v).a = (type*)ri_krealloc((km), (v).a, sizeof(type) * (v).m); \
@@ -91,7 +91,7 @@ int main() {
 		*(p) = &(v).a[(v).n++]; \
 	} while (0)
 
-#define kv_reverse(type, v, start) do { \
+#define rh_kv_reverse(type, v, start) do { \
 		if ((v).m > 0 && (v).n > (start)) { \
 			size_t __i, __end = (v).n - (start); \
 			type *__a = (v).a + (start); \

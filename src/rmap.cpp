@@ -1,6 +1,6 @@
 #include "rmap.h"
 #include "kthread.h"
-#include "kvec.h"
+#include "rh_kvec.h"
 #include "rutils.h"
 #include "rsketch.h"
 #include "revent.h"
@@ -170,14 +170,14 @@ void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l
 
 	uint32_t mask = (1ULL<<31)-1;
 
-	// kvec_t(ri_anchor_t)* anchors_fr[2] = {0};
-	// kvec_t(ri_anchor_t)* anchors_f = anchors_fr;
-	// kvec_t(ri_anchor_t)* anchors_r = anchors_fr+1;
+	// rh_kvec_t(ri_anchor_t)* anchors_fr[2] = {0};
+	// rh_kvec_t(ri_anchor_t)* anchors_f = anchors_fr;
+	// rh_kvec_t(ri_anchor_t)* anchors_r = anchors_fr+1;
 
-	// anchors_f = (kvec_t(ri_anchor_t)*)calloc(n_seq, sizeof(kvec_t(ri_anchor_t)));
-	// anchors_r = (kvec_t(ri_anchor_t)*)calloc(n_seq, sizeof(kvec_t(ri_anchor_t)));
-	// memset(anchors_f, 0, n_seq*sizeof(kvec_t(ri_anchor_t)));
-	// memset(anchors_r, 0, n_seq*sizeof(kvec_t(ri_anchor_t)));
+	// anchors_f = (rh_kvec_t(ri_anchor_t)*)calloc(n_seq, sizeof(rh_kvec_t(ri_anchor_t)));
+	// anchors_r = (rh_kvec_t(ri_anchor_t)*)calloc(n_seq, sizeof(rh_kvec_t(ri_anchor_t)));
+	// memset(anchors_f, 0, n_seq*sizeof(rh_kvec_t(ri_anchor_t)));
+	// memset(anchors_r, 0, n_seq*sizeof(rh_kvec_t(ri_anchor_t)));
 
 	std::vector<std::vector<std::vector<ri_anchor_t> > > anchors_fr(2);
 	anchors_fr[0] = std::vector<std::vector<ri_anchor_t> >(n_seq);
@@ -193,10 +193,10 @@ void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l
 			uint32_t reference_sequence_index = previous_chains[c_ind].reference_sequence_index;
 			// anchors_fr[strand][reference_sequence_index].reserve(previous_chains[c_ind].n_anchors);
 			anchors_fr[strand][reference_sequence_index].reserve(previous_chains[c_ind].n_anchors);
-			// kv_resize(ri_anchor_t, 0, anchors_fr[strand][reference_sequence_index], anchors_fr[strand][reference_sequence_index].n + previous_chains[c_ind].n_anchors)
+			// rh_kv_resize(ri_anchor_t, 0, anchors_fr[strand][reference_sequence_index], anchors_fr[strand][reference_sequence_index].n + previous_chains[c_ind].n_anchors)
 			for (uint32_t a_ind = 0; a_ind < previous_chains[c_ind].n_anchors; ++a_ind) {
 				anchors_fr[strand][reference_sequence_index].emplace_back(previous_chains[c_ind].anchors[a_ind]);
-				// kv_push(ri_anchor_t, 0, anchors_fr[strand][reference_sequence_index], previous_chains[c_ind].anchors[a_ind]);
+				// rh_kv_push(ri_anchor_t, 0, anchors_fr[strand][reference_sequence_index], previous_chains[c_ind].anchors[a_ind]);
 			}
 		}
 	}
@@ -241,7 +241,7 @@ void gen_chains(void *km, const ri_idx_t *ri, const float* sig, const uint32_t l
 			keyval = cr[s];
 			uint32_t t_ind = (uint32_t)(keyval>>RI_ID_SHIFT), target_signal_position = (uint32_t)(keyval>>RI_POS_SHIFT)&mask;
 			anchors_fr[(keyval&1)][t_ind].emplace_back(ri_anchor_t{target_signal_position,  pi + q_offset});
-			// kv_push(ri_anchor_t, 0, anchors_fr[(keyval&1)][t_ind], ri_anchor_t{target_signal_position, pi + q_offset})
+			// rh_kv_push(ri_anchor_t, 0, anchors_fr[(keyval&1)][t_ind], ri_anchor_t{target_signal_position, pi + q_offset})
 		}
 	}
 
@@ -543,11 +543,11 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl, int64_t chunk_size, int *n_){
 
 	int64_t size = 0;
 	// int n_eof = 0; //at least one file with not end of file
-	// kvec_t(ri_sig_t) a = {0,0,0};
+	// rh_kvec_t(ri_sig_t) a = {0,0,0};
 	std::vector<ri_sig_t*> sigvec;
 	*n_ = 0;
 	if (pl->n_fp < 1) return 0;
-	// if (a.m == 0) kv_resize(ri_sig_t, 0, a, 256);
+	// if (a.m == 0) rh_kv_resize(ri_sig_t, 0, a, 256);
 	while (pl->fp) {
 		//Reading data in bulk if the buffer is emptied
 		while(pl->fp && pl->fp->cur_read == pl->fp->num_read){
@@ -562,7 +562,7 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl, int64_t chunk_size, int *n_){
 				pl->n_f = 0; pl->cur_f = 0;
 
 				ri_char_v fnames = {0,0,0};
-				kv_resize(char*, 0, fnames, 256);
+				rh_kv_resize(char*, 0, fnames, 256);
 				find_sfiles(pl->fn[pl->cur_fp++], &fnames);
 				pl->f =  fnames.a;
 				if(!fnames.n || ((pl->fp = open_sig(pl->f[pl->cur_f++])) == 0)) break;
@@ -711,7 +711,7 @@ int ri_map_file_frag(const ri_idx_t *idx, int n_segs, const char **fn, const ri_
 	pl.n_fp = n_segs;
 	pl.n_f = 0; pl.cur_f = 0;
 	ri_char_v fnames = {0,0,0};
-	kv_resize(char*, 0, fnames, 256);
+	rh_kv_resize(char*, 0, fnames, 256);
 	find_sfiles(fn[0], &fnames);
 	pl.f =  fnames.a;
 	if(!fnames.n || ((pl.fp = open_sig(pl.f[0])) == 0)) return -1;

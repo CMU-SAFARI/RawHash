@@ -208,9 +208,9 @@ $(PROG): $(OBJS)
 clean: ## Remove all generated files
 	rm -fr *.o $(PROG) *~
 
-rsketch.o: rutils.h kvec.h
-rsig.o: hdf5_tools.hpp kvec.h
-rmap.o: rawindex.h rsig.h kthread.h kvec.h rutils.h rsketch.h revent.h sequence_until.h
+rsketch.o: rutils.h rh_kvec.h
+rsig.o: hdf5_tools.hpp rh_kvec.h
+rmap.o: rawindex.h rsig.h kthread.h rh_kvec.h rutils.h rsketch.h revent.h sequence_until.h
 revent.o: roptions.h kalloc.h
-rawindex.o: roptions.h rutils.h rsketch.h rsig.h bseq.h khash.h kvec.h kthread.h
+rawindex.o: roptions.h rutils.h rsketch.h rsig.h bseq.h khash.h rh_kvec.h kthread.h
 main:o rawhash.h ketopt.h rutils.h
