@@ -48,6 +48,10 @@ typedef struct ri_sig_file_s {
 	
 	Pod5FileReader_t* pp; //POD5 file pointer
 	#endif
+
+	#ifndef NSLOW5RH
+	slow5_file_t* sp; //SLOW5 file pointer
+	#endif
 } ri_sig_file_t;
 
 /**

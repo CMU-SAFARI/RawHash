@@ -14,7 +14,7 @@ Below figure shows the overview of the steps that RawHash takes to find matching
 
 To efficiently identify similarities between a reference genome and reads, RawHash has two steps, similar to regular read mapping tools, 1) indexing and 2) mapping. The indexing step generates hash values from the expected signal representation of a reference genome and stores them in a hash table. In the mapping step, RawHash generates the hash values from raw signals and queries the hash table generated in the indexing step to find seed matches. To map the raw signal to a reference genome, RawHash performs chaining over the seed matches.
 
-RawHash can be used to map reads from **FAST5 or POD5** files to a reference genome in sequence format. We will provide the support for using SLOW5 files.
+RawHash can be used to map reads from **FAST5, POD5, SLOW5, or BLOW5** files to a reference genome in sequence format.
 
 RawHash performs real-time mapping of nanopore raw signals. When the prefix of reads in FAST5 or POD5 file can be mapped to a reference genome, RawHash will stop mapping and provide the mapping information in PAF format. We follow the similar PAF template used in [UNCALLED](https://github.com/skovaka/UNCALLED) and [Sigmap](https://github.com/haowenz/sigmap) to report the mapping information.
 
@@ -151,8 +151,7 @@ Please follow the instructions in the [README](test/README.md) file in [test](./
 
 # Upcoming Features
 
-* Support for reading SLOW5 Files.
-* Direct integration with the Read Until API.
+* Direct integration with MinKNOW.
 * Ability to specify even/odd channels to eject the reads only from these specified channels.
 * Please create issues if you want to see more features that can make RawHash easily integratable with nanopore sequencers for any use case.
 
@@ -163,11 +162,13 @@ To cite RawHash, you can use the following BibTeX:
 ```bibtex
 @article{firtina_rawhash_2023,
 	title = {{RawHash}: {Enabling} {Fast} and {Accurate} {Real}-{Time} {Analysis} of {Raw} {Nanopore} {Signals} for {Large} {Genomes}},
-	doi = {10.1101/2023.01.22.525080},
-	journal = {bioRxiv},
+	doi = {10.1093/bioinformatics/btad272},
+	journal = {Bioinformatics},
 	author = {Firtina, Can and Ghiasi, Nika Mansouri and Lindegger, Joel and Singh, Gagandeep and Cavlak, Meryem Banu and Mao, Haiyu and Mutlu, Onur},
-	month = jan,
 	year = {2023},
-	pages = {2023.01.22.525080},
 }
 ```
+
+# Acknowledgement
+
+RawHash uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage) and [Sigmap](https://github.com/haowenz/sigmap) (e.g., chaining).
