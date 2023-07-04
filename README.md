@@ -162,13 +162,22 @@ To cite RawHash, you can use the following BibTeX:
 ```bibtex
 @article{firtina_rawhash_2023,
 	title = {{RawHash}: {Enabling} {Fast} and {Accurate} {Real}-{Time} {Analysis} of {Raw} {Nanopore} {Signals} for {Large} {Genomes}},
-	doi = {10.1093/bioinformatics/btad272},
+	author = {Firtina, Can and Mansouri Ghiasi, Nika and Lindegger, Joel and Singh, Gagandeep and Cavlak, Meryem Banu and Mao, Haiyu and Mutlu, Onur},
 	journal = {Bioinformatics},
-	author = {Firtina, Can and Ghiasi, Nika Mansouri and Lindegger, Joel and Singh, Gagandeep and Cavlak, Meryem Banu and Mao, Haiyu and Mutlu, Onur},
+	volume = {39},
+	number = {Supplement_1},
+	pages = {i297-i307},
 	year = {2023},
+	month = jun,
+	year = {2023},
+	doi = {10.1093/bioinformatics/btad272},
+	issn = {1367-4811},
+	url = {https://doi.org/10.1093/bioinformatics/btad272},
 }
 ```
 
 # Acknowledgement
 
 RawHash uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage) and [Sigmap](https://github.com/haowenz/sigmap) (e.g., chaining).
+
+We thank [Melina Soysal](https://github.com/melina2200) and [Marie-Louise Dugua](https://github.com/MarieSarahLouise) for their feedback to improve the RawHash implementation and test scripts.

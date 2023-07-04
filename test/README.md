@@ -35,11 +35,16 @@ mkdir -p rawhash-env/bin && cd rawhash-env
 
 #Optional Step 0 Creating a conda environment (Note we highly recommend using conda for easy installation of dependencies).
 #If not using conda, the packages with the specified versions below (e.g.,  python=3.6.15) must be installed manually in your environment
+conda config --add channels defaults
+conda config --add channels bioconda
+conda config --add channels conda-forge
+conda config --set channel_priority strict
+
 conda create -n rawhash-env python=3.6.15 pip=20.2.3 ont_vbz_hdf_plugin=1.0.1
 conda activate rawhash-env
 
 #Installing SRA Toolkit
-wget -qO- https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/current/sratoolkit.current-ubuntu64.tar.gz | tar xzv; cp -r ./sratoolkit.3.0.1-ubuntu64/bin/* bin/; rm -rf sratoolkit.3.0.1-ubuntu64
+wget -qO- https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/3.0.1/sratoolkit.3.0.1-ubuntu64.tar.gz | tar xzv; cp -r ./sratoolkit.3.0.1-ubuntu64/bin/* bin/; rm -rf sratoolkit.3.0.1-ubuntu64
 
 #Step 1 Compiling the tools
 #Cloning and compiling RawHash
