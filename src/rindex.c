@@ -1,4 +1,4 @@
-#include "rawindex.h"
+#include "rindex.h"
 #include <assert.h>
 #include <fcntl.h>
 #include "rsketch.h"
@@ -139,17 +139,6 @@ static void *worker_pipeline(void *shared, int step, void *in)
 	}
     return 0;
 }
-
-#include "ksort.h"
-
-#define sort_key_128x(a) ((a).x)
-KRADIX_SORT_INIT(128x, mm128_t, sort_key_128x, 8) 
-
-#define sort_key_64(x) (x)
-KRADIX_SORT_INIT(64, uint64_t, sort_key_64, 8)
-
-KSORT_INIT_GENERIC(uint32_t)
-KSORT_INIT_GENERIC(uint64_t)
 
 static void worker_post(void *g, long i, int tid){
 	int n, n_keys;
@@ -414,3 +403,40 @@ int64_t ri_idx_is_idx(const char* fn){
 	return is_idx? off_end : 0;
 }
 
+int32_t ri_idx_cal_max_occ(const ri_idx_t *ri, float f)
+{
+	int i;
+	size_t n = 0;
+	uint32_t thres;
+	khint_t *a, k;
+	if (f <= 0.) return INT32_MAX;
+	for (i = 0; i < 1<<ri->b; ++i)
+		if (ri->B[i].h) n += kh_size((idxhash_t*)ri->B[i].h);
+	a = (uint32_t*)malloc(n * 4);
+	for (i = n = 0; i < 1<<ri->b; ++i) {
+		idxhash_t *h = (idxhash_t*)ri->B[i].h;
+		if (h == 0) continue;
+		for (k = 0; k < kh_end(h); ++k) {
+			if (!kh_exist(h, k)) continue;
+			a[n++] = kh_key(h, k)&1? 1 : (uint32_t)kh_val(h, k);
+		}
+	}
+	thres = ks_ksmall_uint32_t(n, a, (uint32_t)((1. - f) * n)) + 1;
+	free(a);
+	return thres;
+}
+
+void ri_mapopt_update(ri_mapopt_t *opt, const ri_idx_t *ri)
+{
+	if (opt->mid_occ <= 0) {
+		opt->mid_occ = ri_idx_cal_max_occ(ri, opt->mid_occ_frac);
+		if (opt->mid_occ < opt->min_mid_occ)
+			opt->mid_occ = opt->min_mid_occ;
+		if (opt->max_mid_occ > opt->min_mid_occ && opt->mid_occ > opt->max_mid_occ)
+			opt->mid_occ = opt->max_mid_occ;
+
+		fprintf(stderr, "[M::%s::%.6f*%.6f] mid_occ = %d, min_mid_occ = %d, max_mid_occ = %d\n", __func__,
+				opt->mid_occ_frac, opt->q_occ_frac, opt->mid_occ, opt->min_mid_occ, opt->max_mid_occ);
+	}
+	if (opt->bw_long < opt->bw) opt->bw_long = opt->bw;
+}

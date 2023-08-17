@@ -30,6 +30,8 @@ cd ./d1_sars-cov-2_r94
 
 Please read the [README](./d2_ecoli_r94/README.md) file to run and compare the tools for this dataset.
 
+**We provide the scripts for running RawHash with POD5 for this dataset**
+
 To start mapping each tool, enter [d2_ecoli_r94](./d2_ecoli_r94/)
 
 ```bash
@@ -41,6 +43,8 @@ cd ./d2_ecoli_r94
 Please read the [README](./d3_yeast_r94/README.md) file to run and compare the tools for this dataset.
 
 To start mapping each tool, enter [d3_yeast_r94](./d3_yeast_r94/)
+
+**We provide the scripts for running RawHash with POD5 for this dataset**
 
 ```bash
 cd ./d3_yeast_r94
@@ -64,4 +68,16 @@ To start mapping each tool, enter [d5_human_na12878_r94](./d5_human_na12878_r94/
 
 ```bash
 cd ./d5_human_na12878_r94
+```
+
+### d6_ecoli_r104
+
+**This is the R10 dataset we use for experimental purposes** 
+
+Please read the [README](./d6_ecoli_r104/README.md) file to run and compare the tools for this dataset.
+
+To start mapping RawHash, enter [d6_ecoli_r104](./d6_ecoli_r104/)
+
+```bash
+cd ./d6_ecoli_r104
 ```

@@ -1,47 +1,13 @@
 #ifndef RMAP_H
 #define RMAP_H
 
-#include "rawindex.h"
+#include "rindex.h"
 #include "rsig.h"
-#include <tuple>
-#include <vector>
-#include <string>
-#include <cassert>
+#include "chain.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-// typedef struct ri_seed_s{
-// 	uint32_t n;
-// 	uint32_t q_pos;
-// 	uint32_t q_span:31, flt:1;
-// 	uint32_t seg_id:31, is_tandem:1;
-// 	const uint64_t *cr;
-// } ri_seed_t;
-
-typedef struct ri_anchor_s{
-  uint32_t target_position;
-  uint32_t query_position;
-  bool operator<(const ri_anchor_s &a) const {
-    return std::tie(target_position, query_position) < std::tie(a.target_position, a.query_position);
-  }
-} ri_anchor_t;
-
-typedef struct ri_chain_s{
-  float score;
-  uint32_t reference_sequence_index;
-  uint32_t start_position;
-  uint32_t end_position;
-  uint32_t n_anchors;
-  uint8_t mapq;
-  int strand;
-  ri_anchor_t* anchors;
-  bool operator>(const ri_chain_s &b) const {
-    return std::tie(score, n_anchors, strand, reference_sequence_index, start_position, end_position) >
-           std::tie(b.score, b.n_anchors, b.strand, b.reference_sequence_index, b.start_position, b.end_position);
-  }
-}ri_chain_t;
 
 typedef struct ri_reg1_s{
 	uint32_t read_id;
@@ -56,8 +22,11 @@ typedef struct ri_reg1_s{
 	char* tags;
 
 	uint32_t offset;
+	mm128_t *prev_anchors;
+	uint32_t n_prev_anchors;
+	mm_reg1_t* creg; // This is for transition purposes.
+	int n_cregs;
 
-	ri_chain_s* chains;
 	uint32_t n_chains;
 } ri_reg1_t;
 
@@ -75,12 +44,6 @@ typedef struct pipeline_ms{
 	int su_stop;
 } pipeline_mt;
 
-// memory buffer for thread-local storage during mapping
-typedef struct ri_tbuf_s {
-	void *km;
-	int rep_len, frag_gap;
-}ri_tbuf_t;
-
 typedef struct step_ms{
 	const pipeline_mt *p;
     int n_sig;
@@ -93,7 +56,7 @@ typedef struct step_ms{
 /**
  * Map raw nanopore signals of a single read to a reference genome
  *
- * @param idx		rawindex (see rawindex.h)
+ * @param idx		rindex (see rindex.h)
  * @param fn		path to the signal files
  * @param opt		mapping options
  * @param n_threads	number of threads to use in mapping
@@ -105,7 +68,7 @@ int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int
 /**
  * Map raw nanopore signals of many reads to a reference genome
  *
- * @param idx		rawindex (see rawindex.h)
+ * @param idx		rindex (see rindex.h)
  * @param n_segs	number of signal files
  * @param fn		paths to the signal files
  * @param opt		mapping options

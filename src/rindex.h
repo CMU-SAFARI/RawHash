@@ -1,5 +1,5 @@
-#ifndef RAWINDEX_H
-#define RAWINDEX_H
+#ifndef RINDEX_H
+#define RINDEX_H
 
 #include "rutils.h"
 #include "roptions.h"
@@ -77,7 +77,7 @@ ri_idx_reader_t* ri_idx_reader_open(const char *fn, const ri_idxopt_t *ipt, cons
 void ri_idx_reader_close(ri_idx_reader_t* r);
 
 /**
- * Checks whether the file contains a rawindex index
+ * Checks whether the file contains a rindex index
  *
  * @param fn	file name
  *
@@ -97,7 +97,7 @@ int64_t ri_idx_is_idx(const char* fn);
  * 				If you want to use n as described in the RawHash manuscript, calculate lq as follows: $lq = $Q - 2 - n
  * @param k     k-mer size that a single event represents (usually given in the k-mer model file)
  * 
- * @return		rawindex (index)
+ * @return		rindex (index)
  */
 ri_idx_t* ri_idx_init(int b, int w, int e, int n, int q, int lq, int k);
 
@@ -108,7 +108,7 @@ ri_idx_t* ri_idx_init(int b, int w, int e, int n, int q, int lq, int k);
  * @param pore_vals		expected event values of each k-mer based on the nanopore model (usually provided as a k-mer model file)
  * @param n_threads		number of threads to use when constructing the index
  * 
- * @return				rawindex (index)
+ * @return				rindex (index)
  */
 ri_idx_t *ri_idx_reader_read(ri_idx_reader_t *r, float* pore_vals, int n_threads);
 
@@ -136,7 +136,7 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri);
  *
  * @param fp	path to the index file
  * 
- * @return		rawindex
+ * @return		rindex
  */
 ri_idx_t* ri_idx_load(FILE* fp);
 
@@ -159,8 +159,12 @@ void ri_idx_destroy(ri_idx_t* ri);
  */
 const uint64_t *ri_idx_get(const ri_idx_t *ri, uint64_t hashval, int *n);
 
+int32_t ri_idx_cal_max_occ(const ri_idx_t *ri, float f);
+
+void ri_mapopt_update(ri_mapopt_t *opt, const ri_idx_t *ri);
+
 #ifdef __cplusplus
 }
 #endif
 
-#endif // RAWINDEX_H
+#endif // RINDEX_H

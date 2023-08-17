@@ -223,7 +223,9 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int q, int lq, int k, mm128_v *p){
 
 	int step = 1;//TODO: make this an argument
-	uint32_t span = (k+e-1)*step;
+	// uint32_t span = (k+e-1)*step;
+	uint32_t span = e; // TODO: span has a role in chaining calculating and in earlier version we use only e for that score.
+	//try to integrate the earlier (commented out) version of span into score calculation accurately.
 	
 	uint32_t quant_bit = lq+2; 
 	uint32_t shift_r = 32-q;

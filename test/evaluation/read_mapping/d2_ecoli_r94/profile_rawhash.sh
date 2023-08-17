@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#Please make sure that you compile rawhash with the profiling option enabled. In /src/Makefile, you should enable the two lines below the line "# For profiling"
+#Please make sure that you compile rawhash with the profiling option enabled. Please read the main README file for more details.
 
 THREAD=$1
 

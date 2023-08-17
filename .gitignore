@@ -41,6 +41,12 @@ test/evaluation/read_mapping/*/comparison/*.paf
 test/evaluation/read_mapping/*/comparison/*.comparison
 test/evaluation/read_mapping/*/comparison/comparison.out
 test/evaluation/read_mapping/*/comparison/comparison.err
+
+test/evaluation/*/*/slurm_*
+test/evaluation/*/*/test_*
+test/evaluation/*/*/comparison/*/
+test/scripts/run_rawhash_test.sh
+
 test/*.paf
 test/eval/*.paf
 test/eval/*.time

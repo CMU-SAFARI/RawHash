@@ -20,7 +20,7 @@
  * index     *
  *************/
 
-#include "rawindex.h"
+#include "rindex.h"
 
 /*************
  * sketch     *

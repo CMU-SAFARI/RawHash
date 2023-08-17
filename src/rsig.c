@@ -1,9 +1,12 @@
 #include "rsig.h"
 #include "rh_kvec.h"
 #include <math.h>
+#ifndef NHDF5RH
 #include <cstring>
-#include <errno.h>
 #include <cassert>
+#endif
+#include <errno.h>
+#include <assert.h>
 #include <sys/stat.h>
 #include <dirent.h>
 

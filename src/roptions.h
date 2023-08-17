@@ -1,5 +1,6 @@
 #include <stdint.h>
 #include <string.h> //for memset
+// #include "rindex.h"
 
 #ifndef ROPTIONS_H
 #define ROPTIONS_H
@@ -10,6 +11,8 @@
 #define RI_I_SYNCMER	0x8
 
 #define RI_M_SEQUENCEUNTIL	0x1
+#define RI_M_RMQ			0x2
+#define RI_M_HARD_MLEVEL	0x4
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,28 +31,69 @@ typedef struct ri_mapopt_s{
 	uint32_t bp_per_sec;
 	uint32_t sample_rate;
 	uint32_t chunk_size;
+	float sample_per_base;
+
+	//Seeding parameters
+	float mid_occ_frac;
+	int32_t min_mid_occ, max_mid_occ;
+	// int32_t q_mid_occ;
+	float q_occ_frac;
+
+	int32_t mid_occ;     // ignore seeds with occurrences above this threshold
+	int32_t max_occ, max_max_occ, occ_dist;
 
 	//Chaining parameters
-	uint32_t min_events;
-	uint32_t max_gap_length;
-	uint32_t max_target_gap_length;
-	uint32_t chaining_band_length;
-	uint32_t max_num_skips;
-	uint32_t min_num_anchors;
+	int min_events;
+	int bw;
+	int bw_long;
+	int max_target_gap_length;
+	int max_query_gap_length;
+	int max_chain_iter;
+	int rmq_inner_dist;
+	int rmq_size_cap;
+	int max_num_skips;
+	int min_num_anchors;
 	uint32_t num_best_chains;
-	float min_chaining_score;
+	int min_chaining_score;
+	float chain_gap_scale;
+	float chain_skip_scale;
+
+	float mask_level;
+	int mask_len;
+	float pri_ratio;
+	int best_n;      // top best_n chains are subjected to DP alignment
+
+	float alt_drop;
+
+	int a, b;
+	// int q, e, q2, e2; // matching score, mismatch, gap-open and gap-ext penalties
+	// int sc_ambi; // score when one or both bases are "N"
+	// int noncan;      // cost of non-canonical splicing sites
+	// int junc_bonus;
+	// int zdrop, zdrop_inv;   // break alignment if alignment score drops too fast along the diagonal
+	// int end_bonus;
+	// int min_dp_max;  // drop an alignment if the score of the max scoring segment is below this threshold
+	// int min_ksw_len;
+	// int anchor_ext_len, anchor_ext_shift;
+	// float max_clip_ratio; // drop an alignment if BOTH ends are clipped above this ratio
+
+	// int rank_min_len;
+	// float rank_frac;
+
+	// int pe_ori, pe_bonus;
+
+	// int64_t max_sw_mat;
+	// int64_t cap_kalloc;
 
 	//Mapping parameters
 	uint32_t step_size;
 	uint32_t max_num_chunk;
 	uint32_t min_chain_anchor;
-	uint32_t min_chain_anchor_out;
 
-	float min_bestmap_ratio;
-	float min_bestmap_ratio_out;
+	int min_mapq, min_bestmapq;
+	float min_bestmapq_ratio, min_meanmapq_ratio;
 
-	float min_meanmap_ratio;
-	float min_meanmap_ratio_out;
+	float min_bestchain_ratio, min_meanchain_ratio;
 
 	float t_threshold;
 	uint32_t tn_samples;

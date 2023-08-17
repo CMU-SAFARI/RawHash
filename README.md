@@ -9,7 +9,7 @@ RawHash is a hash-based mechanism to map raw nanopore signals to a reference gen
 Below figure shows the overview of the steps that RawHash takes to find matching regions between a reference genome and a raw nanopore signal.
 
 <p align="center" width="100%">
-    <img width="33%" src="./gitfigures/overview.png">
+    <img width="50%" src="./gitfigures/overview.png">
 </p>
 
 To efficiently identify similarities between a reference genome and reads, RawHash has two steps, similar to regular read mapping tools, 1) indexing and 2) mapping. The indexing step generates hash values from the expected signal representation of a reference genome and stores them in a hash table. In the mapping step, RawHash generates the hash values from raw signals and queries the hash table generated in the indexing step to find seed matches. To map the raw signal to a reference genome, RawHash performs chaining over the seed matches.
@@ -161,13 +161,12 @@ To cite RawHash, you can use the following BibTeX:
 
 ```bibtex
 @article{firtina_rawhash_2023,
-	title = {{RawHash}: {Enabling} {Fast} and {Accurate} {Real}-{Time} {Analysis} of {Raw} {Nanopore} {Signals} for {Large} {Genomes}},
+	title = {{RawHash}: enabling fast and accurate real-time analysis of raw nanopore signals for large genomes},
 	author = {Firtina, Can and Mansouri Ghiasi, Nika and Lindegger, Joel and Singh, Gagandeep and Cavlak, Meryem Banu and Mao, Haiyu and Mutlu, Onur},
 	journal = {Bioinformatics},
 	volume = {39},
 	number = {Supplement_1},
 	pages = {i297-i307},
-	year = {2023},
 	month = jun,
 	year = {2023},
 	doi = {10.1093/bioinformatics/btad272},

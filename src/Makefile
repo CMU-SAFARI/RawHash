@@ -1,19 +1,19 @@
 #pass DEBUG=1 to make to enable debugging
 ifdef DEBUG
-	CFLAGS=-Wall -O2 -g -pg -Wc++-compat -DHAVE_KALLOC
-	CPPFLAGS=--std=c++11 -Wall -O2 -g -pg -fopenmp -march=native -DHAVE_KALLOC
+	CFLAGS=-Wall -O2 -fsanitize=address -g -Wc++-compat -DHAVE_KALLOC
+	CPPFLAGS=--std=c++11 -Wall -O2 -fsanitize=address -g -fopenmp -march=native -DHAVE_KALLOC
 else
 	CFLAGS=-Wall -O3 -Wc++-compat -DHAVE_KALLOC
-	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -DHAVE_KALLOC
+	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -pthread -DHAVE_KALLOC
 endif
 
 #pass PROFILE=1 to make to enable profiling
 ifdef PROFILE
-	CFLAGS+=-DPROFILERH=1
-	CPPFLAGS+=-DPROFILERH=1
+	CFLAGS+=-g -fno-omit-frame-pointer -DPROFILERH=1
+	CPPFLAGS+=-g -fno-omit-frame-pointer -DPROFILERH=1
 endif
 
-OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rawindex.o rmap.o main.o
+OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rindex.o lchain.o rseed.o rmap.o hit.o main.o
 
 CXX_COMPILER_VERSION ?= $(shell $(CXX) -dumpversion)
 SYSTEM_PROCESSOR ?= $(shell uname -m)
@@ -89,7 +89,7 @@ ifeq ($(NOHDF5),1)
 	CPPFLAGS+=-DNHDF5RH=1
 else
 	INCLUDES+=-I${HDF5_INCLUDE_DIR}
-	LIBS+=${HDF5_LIB_DIR}/lib${HDF5_LIB}.a
+	LIBS+=${HDF5_LIB_DIR}/lib${HDF5_LIB}.a 
 endif
 
 #pass NOSLOW5=1 to make to disable compiling with SLOW5
@@ -190,8 +190,31 @@ pod5: check_zstd
 		cd $(WORKDIR) && mkdir -p $(POD5_URLDIR); cd $(POD5_URLDIR); wget -qO- $(POD5_URL) | tar -xzv; \
 	fi
 
+ifeq ($(NOHDF5),1)
+FASTDEPCOM=${CC}
+FASTDEPCOM_FLAGS=$(CFLAGS)
+else
+FASTDEPCOM=${CXX}
+FASTDEPCOM_FLAGS=$(CPPFLAGS)
+endif
+
+# $(PROG): $(OBJS)
+# 	${FASTDEPCOM} $(FASTDEPCOM_FLAGS) $(OBJS) -o $(PROG) $(LIBS)
+
 $(PROG): $(OBJS)
-	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -pthread -lstdc++
+	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -lstdc++
+
+rsig.o: rsig.c
+	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+main.o: main.cpp
+	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+rmap.o: rmap.c
+	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+rindex.o: rindex.c
+	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
 .SUFFIXES:
 .SUFFIXES:.cpp .o
@@ -209,8 +232,12 @@ clean: ## Remove all generated files
 	rm -fr *.o $(PROG) *~
 
 rsketch.o: rutils.h rh_kvec.h
+lchain.o: kalloc.h rutils.h rseed.h rsketch.h chain.h krmq.h
+hit.o: chain.h kalloc.h khash.h
 rsig.o: hdf5_tools.hpp rh_kvec.h
-rmap.o: rawindex.h rsig.h kthread.h rh_kvec.h rutils.h rsketch.h revent.h sequence_until.h
+rseed.o: rsketch.h kalloc.h rutils.h rindex.h
+hit.o: rmap.h kalloc.h khash.h
+rmap.o: rindex.h rsig.h kthread.h rh_kvec.h rutils.h rsketch.h revent.h sequence_until.h
 revent.o: roptions.h kalloc.h
-rawindex.o: roptions.h rutils.h rsketch.h rsig.h bseq.h khash.h rh_kvec.h kthread.h
+rindex.o: roptions.h rutils.h rsketch.h rsig.h bseq.h khash.h rh_kvec.h kthread.h
 main:o rawhash.h ketopt.h rutils.h

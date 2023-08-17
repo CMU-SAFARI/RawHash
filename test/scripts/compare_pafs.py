@@ -8,7 +8,7 @@ from statistics import median
 from statistics import mean
 
 if (len(sys.argv) < 4):
-  print("usage: eval_rawhash.py uncalled_ann.paf sigmap_ann.paf rawhash_ann.paf")
+  print("usage: compare_pafs.py uncalled_ann.paf sigmap_ann.paf rawhash_ann.paf")
   sys.exit(1)
 
 fps = []
@@ -141,10 +141,10 @@ rawhash_refgap = []
 rawhash_readgap = []
 for line in fps[2]:
   cols = line.rstrip().split()
-  if (len(cols) == 23):
+  if (len(cols) == 21):
     mt = float(cols[12].split(":")[2])
     lastpos = int(cols[1])
-    if (cols[22].split(":")[2] != 'na'):
+    if (cols[20].split(":")[2] != 'na'):
       rawhash_time_per_read.append(mt)
       if(cols[2] != '*'):
         rawhash_maplast_pos.append(lastpos)
@@ -160,20 +160,21 @@ for line in fps[2]:
     s1 = float(cols[17].split(":")[2])
     s2 = float(cols[18].split(":")[2])
     sm = float(cols[19].split(":")[2])
-    at = float(cols[20].split(":")[2])
-    rawhash_refgap.append(at)
-    aq = float(cols[21].split(":")[2])
-    rawhash_readgap.append(aq)
-    if (cols[22].split(":")[2] == 'tp'):
+    # at = float(cols[20].split(":")[2])
+    # rawhash_refgap.append(at)
+    # aq = float(cols[21].split(":")[2])
+    # rawhash_readgap.append(aq)
+    # print cols[20]
+    if (cols[20].split(":")[2] == 'tp'):
       rawhash_tp += 1
       rawhash_time_per_chunk.append(mt / chunk)
-    if (cols[22].split(":")[2] == 'fp' or cols[22].split(":")[2] == 'na'):
+    if (cols[20].split(":")[2] == 'fp' or cols[20].split(":")[2] == 'na'):
       rawhash_fp += 1
       rawhash_time_per_chunk.append(mt / chunk)
-    if (cols[22].split(":")[2] == 'fn'):
+    if (cols[20].split(":")[2] == 'fn'):
       rawhash_fn += 1
       rawhash_time_per_chunk.append(mt / chunk)
-    if (cols[22].split(":")[2] == 'tn'):
+    if (cols[20].split(":")[2] == 'tn'):
       rawhash_tn += 1
       rawhash_time_per_chunk.append(mt / chunk)
   if (len(cols) == 15):
@@ -208,8 +209,8 @@ print("RawHash Mean (only mapped) # of sequenced chunks per read : " + str(mean(
 print("RawHash Mean (only unmapped) # of sequenced bases per read : " + str(mean(rawhash_umaplast_pos)))
 print("RawHash Mean (only unmapped) # of sequenced chunks per read : " + str(mean(rawhash_umaplast_chunk)))
 
-print("RawHash Mean gap between read anchors in the best chain : " + str(mean(rawhash_readgap)))
-print("RawHash Mean gap between reference anchors in the best chain : " + str(mean(rawhash_refgap)))
+# print("RawHash Mean gap between read anchors in the best chain : " + str(mean(rawhash_readgap)))
+# print("RawHash Mean gap between reference anchors in the best chain : " + str(mean(rawhash_refgap)))
 print("#Done with RawHash\n")
 
 for fp in fps:
