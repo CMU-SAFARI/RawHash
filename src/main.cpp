@@ -304,8 +304,8 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    -x STR     preset (always applied before other options) []\n");
 		fprintf(fp_help, "                 - sensitive     Enables sensitive mapping (for R9.4 model). Suitable when low recall is needed or when working with small genomes < 50M.\n");
 		fprintf(fp_help, "                 - r10sensitive     Enables sensitive mapping for R10. Currently under development and may produce slighlty less accurate results than R9.4.\n");
-		fprintf(fp_help, "                 - fast     Enables fast mapping with slightly reduced accuracy. Suitable when reads are mapped to genomes > 50M\n");
-		fprintf(fp_help, "                 - faster     Enables faster mapping than -x fast and reduced memory space usage for indexing with slightly reduced accuracy. Suitable when many reads are mapped to very large genomes > 3Gb\n");
+		fprintf(fp_help, "                 - fast     Enables fast mapping with slightly reduced accuracy. Suitable when reads are mapped to genomes > 50M and < 5Gb\n");
+		fprintf(fp_help, "                 - faster     Enables faster mapping than '-x fast' and reduced memory space usage for indexing with slightly reduced accuracy. This mechanism uses the minimizer sketching technique and should be used when '-x fast' cannot meet the real-time requirements for a particular genome (e.g., for very large genomes > 5Gb)\n");
 		fprintf(fp_help, "                 - viral     Enables accurate mapping to very small genomes such as viral genomes.\n");;
 		
 		// fprintf(fp_help, "\nSee `man ./rawhash.1' for detailed description of these and other advanced command-line options.\n");

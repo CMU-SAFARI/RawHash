@@ -177,6 +177,6 @@ To cite RawHash, you can use the following BibTeX:
 
 # Acknowledgement
 
-RawHash uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage) and [Sigmap](https://github.com/haowenz/sigmap) (e.g., chaining).
+RawHash uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage, DP and RMQ-based chaining) and [Sigmap](https://github.com/haowenz/sigmap) (e.g., R9.4 segmentation parameters).
 
 We thank [Melina Soysal](https://github.com/melina2200) and [Marie-Louise Dugua](https://github.com/MarieSarahLouise) for their feedback to improve the RawHash implementation and test scripts.
