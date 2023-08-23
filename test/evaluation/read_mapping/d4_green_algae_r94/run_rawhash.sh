@@ -7,7 +7,7 @@ OUTDIR="./rawhash/"
 FAST5="../../../data/d4_green_algae_r94/fast5_files/"
 REF="../../../data/d4_green_algae_r94/ref.fa"
 PORE="../../../../extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model"
-PRESET="fast"
+PRESET="sensitive"
 mkdir -p ${OUTDIR}
 
 #The following is the run using default parameters:

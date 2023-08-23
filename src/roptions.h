@@ -53,7 +53,7 @@ typedef struct ri_mapopt_s{
 	int rmq_size_cap;
 	int max_num_skips;
 	int min_num_anchors;
-	uint32_t num_best_chains;
+	// uint32_t num_best_chains;
 	int min_chaining_score;
 	float chain_gap_scale;
 	float chain_skip_scale;
@@ -88,7 +88,7 @@ typedef struct ri_mapopt_s{
 	//Mapping parameters
 	uint32_t step_size;
 	uint32_t max_num_chunk;
-	uint32_t min_chain_anchor;
+	// uint32_t min_chain_anchor;
 
 	int min_mapq, min_bestmapq;
 	float min_bestmapq_ratio, min_meanmapq_ratio;

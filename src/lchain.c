@@ -289,21 +289,24 @@ static inline int32_t compute_score(const mm128_t *ai,
 
 	//dq = distance query, dr = distance reference, dd = distance diagonal
 	int32_t dq = (int32_t)ai->y - (int32_t)aj->y, dr, dd, dg, q_span, sc;
-	int32_t sidi = (ai->y & RI_SEED_SEG_MASK) >> RI_SEED_SEG_SHIFT;
-	int32_t sidj = (aj->y & RI_SEED_SEG_MASK) >> RI_SEED_SEG_SHIFT;
+	// int32_t sidi = (ai->y & RI_SEED_SEG_MASK) >> RI_SEED_SEG_SHIFT;
+	// int32_t sidj = (aj->y & RI_SEED_SEG_MASK) >> RI_SEED_SEG_SHIFT;
 
 	if(dq <= 0 || dq > max_dist_t) return INT32_MIN;
 
 	//Calculate the distance between two anchors in the reference
 	dr = (int32_t)(ai->x - aj->x);
-	if(sidi == sidj && (dr == 0 || dq > max_dist_q)) return INT32_MIN;
+	// if(sidi == sidj && (dr == 0 || dq > max_dist_q)) return INT32_MIN;
+	if(dr == 0 || dq > max_dist_q) return INT32_MIN;
 
 	//Calculate the distance between two anchors in the diagonal
 	dd = dr > dq? dr - dq : dq - dr;
 
-	if(sidi == sidj && dd > bw) return INT32_MIN;
+	// if(sidi == sidj && dd > bw) return INT32_MIN;
+	if(dd > bw || dr > max_dist_q) return INT32_MIN;
 	// if(n_seg > 1 && !is_cdna && sidi == sidj && dr > max_dist_q) return INT32_MIN;
-    if(sidi == sidj && dr > max_dist_q) return INT32_MIN;
+    // if(sidi == sidj && dr > max_dist_q) return INT32_MIN;
+	// if(dr > max_dist_q) return INT32_MIN;
 
 	// dg is the gap between two adjacent anchors (in query or target, whichever is shorter)
 	dg = dr < dq? dr : dq;
@@ -318,14 +321,16 @@ static inline int32_t compute_score(const mm128_t *ai,
 	if(dd || dg > q_span){
 		float lin_pen, log_pen;
 		lin_pen = chn_pen_gap * (float)dd + chn_pen_skip * (float)dg;
-		log_pen = dd >= 1? mg_log2(dd + 1) : 0.0f; // mg_log2() only works for dd>=2
+		// log_pen = dd >= 1? mg_log2(dd + 1) : 0.0f; // mg_log2() only works for dd>=2
 		// if(is_cdna || sidi != sidj){
-        if(sidi != sidj)
-		{
-			if(sidi != sidj && dr == 0) ++sc; // possibly due to overlapping paired ends; give a minor bonus
-			else if(dr > dq || sidi != sidj) sc -= (int)(lin_pen < log_pen? lin_pen : log_pen); // deletion or jump between paired ends
-			else sc -= (int)(lin_pen + .5f * log_pen);
-		} else sc -= (int)(lin_pen + .5f * log_pen);
+        // if(sidi != sidj)
+		// {
+		// 	if(sidi != sidj && dr == 0) ++sc; // possibly due to overlapping paired ends; give a minor bonus
+		// 	else if(dr > dq || sidi != sidj) sc -= (int)(lin_pen < log_pen? lin_pen : log_pen); // deletion or jump between paired ends
+		// 	else sc -= (int)(lin_pen + .5f * log_pen);
+		// } else
+		// sc -= (int)(lin_pen + .5f * log_pen);
+		sc -= (int)(lin_pen);
 	}
 
 	return sc;
