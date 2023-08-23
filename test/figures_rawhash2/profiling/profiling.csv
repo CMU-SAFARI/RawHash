@@ -1,0 +1,6 @@
+Data,Step,Profiling (sec),idx
+D1 Covid,Seeding and Chaining,77.359557,1
+D2 Ecoli,Seeding and Chaining,98.063294,3
+D3 Yeast,Seeding and Chaining,98.936871,5
+D4 Green Algae,Seeding and Chaining,99.139228,7
+D5 Human,Seeding and Chaining,99.857533,9

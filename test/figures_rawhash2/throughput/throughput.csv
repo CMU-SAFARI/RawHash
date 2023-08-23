@@ -1,0 +1,42 @@
+Data,Tool,Throughput (bp/sec),idx
+D1 Covid,RawHash2,400477.37,1
+D1 Covid,RawHash2-Minimizer,952812.39,2
+D1 Covid,RawHash,625160.12,3
+D1 Covid,UNCALLED,7572.88,4
+D1 Covid,Sigmap,465399.45,5
+
+D2 Ecoli,RawHash2,137531.49,7
+D2 Ecoli,RawHash2-Minimizer,307619.57,8
+D2 Ecoli,RawHash,65995.96,9
+D2 Ecoli,UNCALLED,6154.1,10
+D2 Ecoli,Sigmap,14074.69,11
+
+D3 Yeast,RawHash2,57128.91,13
+D3 Yeast,RawHash2-Minimizer,130665.16,14
+D3 Yeast,RawHash,24677.34,15
+D3 Yeast,UNCALLED,6158.24,16
+D3 Yeast,Sigmap,7699.38,17
+
+D4 Green Algae,RawHash2,23400.75,19
+D4 Green Algae,RawHash2-Minimizer,66039.01,20
+D4 Green Algae,RawHash,8390.05,21
+D4 Green Algae,UNCALLED,7720.78,22
+D4 Green Algae,Sigmap,2379.6,23
+
+D5 Human,RawHash2,1499.49,25
+D5 Human,RawHash2-Minimizer,6168.17,26
+D5 Human,RawHash,1836.75,27
+D5 Human,UNCALLED,6994.76,28
+D5 Human,Sigmap,299,29
+
+Contamination,RawHash2,672596.29,31
+Contamination,RawHash2-Minimizer,672596.29,32
+Contamination,RawHash,672596.29,33
+Contamination,UNCALLED,8248.68,34
+Contamination,Sigmap,411325.09,35
+
+Relative Abund.,RawHash2,938.66,37
+Relative Abund.,RawHash2-Minimizer,938.66,38
+Relative Abund.,RawHash,938.66,39
+Relative Abund.,UNCALLED,8334.58,40
+Relative Abund.,Sigmap,269.82,41
