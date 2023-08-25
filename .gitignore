@@ -42,12 +42,17 @@ test/evaluation/read_mapping/*/comparison/*.comparison
 test/evaluation/read_mapping/*/comparison/comparison.out
 test/evaluation/read_mapping/*/comparison/comparison.err
 
-test/evaluation/*/*/slurm_*
+test/evaluation/*/*/slurm*
+test/evaluation/*/slurm*
 test/evaluation/*/*/test_*
 test/evaluation/*/*/comparison/*/
 test/scripts/run_rawhash_test.sh
 
 test/scripts/run_rawhash_test*.sh
+
+test/evaluation/read_mapping/*/parameters.txt
+test/evaluation/read_mapping/*/results.txt
+test/evaluation/read_mapping/parameters*.txt
 
 test/*.paf
 test/eval/*.paf

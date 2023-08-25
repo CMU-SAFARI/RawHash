@@ -32,11 +32,11 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	//chaining
 	opt->bw = 500; //--bw
 	opt->bw_long = 5000; //--bw-long
-	opt->max_target_gap_length = 1000; //--max-target-gap
-	opt->max_query_gap_length = 1000; //--max-query-gap
+	opt->max_target_gap_length = 2500; //--max-target-gap
+	opt->max_query_gap_length = 2500; //--max-query-gap
 	opt->max_chain_iter = 200; //--max-iterations
-	opt->max_num_skips = 10; //--max-skips
-	opt->min_num_anchors = 3; //--min-anchors
+	opt->max_num_skips = 5; //--max-skips
+	opt->min_num_anchors = 2; //--min-anchors
 	// opt->num_best_chains = 3; //--best-chains
 	opt->min_chaining_score = 15; //--min-score
 	opt->rmq_inner_dist = 1000; //--rmq-inner-dist
@@ -50,7 +50,14 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->pri_ratio = 0.8f;
 	opt->best_n = 5;
 
-	opt->alt_drop = 0.15f;
+	opt->alt_drop = 0.15f; //--alt-drop
+
+	opt->w_bestq=0.1f; //--w-bestq
+	opt->w_best2q=0.01f; //--w-best2q
+	opt->w_best2c=0.4f; //--w-best2c
+	opt->w_bestmq=0.01f; //--w-bestmq
+	opt->w_bestmc=0.48f; //--w-bestmc
+	opt->w_threshold = 0.6f; //--w-threshold
 
 	opt->a = 2, opt->b = 4; //--chain-match-score, 
 	// opt->q = 4, opt->e = 2, opt->q2 = 24, opt->e2 = 1;
@@ -77,11 +84,11 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	// opt->min_chain_anchor = 10;
 
 	opt->min_bestmapq = 5; //--min-bestmapq
-	opt->min_mapq = 3; //--min-mapq
-	opt->min_bestmapq_ratio = 7.0f, opt->min_meanmapq_ratio = 2.5f; //--min-bestmapq-ratio, --min-meanmapq-ratio
+	opt->min_mapq = 2; //--min-mapq
+	opt->min_bestmapq_ratio = 2.0f, opt->min_meanmapq_ratio = 5.0f; //--min-bestmapq-ratio, --min-meanmapq-ratio
 
-	opt->min_bestchain_ratio = 7.0f; //--min-bestchain-ratio
-	opt->min_meanchain_ratio = 7.0f; //--min-meanchain-ratio
+	opt->min_bestchain_ratio = 2.5f; //--min-bestchain-ratio
+	opt->min_meanchain_ratio = 2.5f; //--min-meanchain-ratio
 
 	//Default options for event detection.
 	opt->window_length1 = 3; //--seg-window-length1

@@ -257,29 +257,45 @@ static void map_worker_for(void *_data,
 		
 		//TODO: There should be much better automatic ways to make decisions here.
 		if (reg0->n_cregs >= 2) {
-			if (reg0->creg[0].mapq > opt->min_bestmapq && reg0->creg[1].mapq == 0) {is_mapped = 1; break;}
-			
-			float mean_chain_score = 0;
-			float mean_mapq = 0;
+
+			float bestQ = reg0->creg[0].mapq, best2Q = reg0->creg[1].mapq;
+			float bestC = reg0->creg[0].score, best2C = reg0->creg[1].score;
+
+			if (bestQ > opt->min_bestmapq && best2Q == 0) {is_mapped = 1; break;}
+
+			float meanC = 0;
+			float meanQ = 0;
 			int non_zero_mapq = 0;
 			for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
-				mean_chain_score += reg0->creg[c_ind].score;
-				mean_mapq += reg0->creg[c_ind].mapq;
+				meanC += reg0->creg[c_ind].score;
+				meanQ += reg0->creg[c_ind].mapq;
 				if(reg0->creg[c_ind].mapq > 0) ++non_zero_mapq;
 			}
 
-			mean_chain_score /= reg0->n_cregs;
-			mean_mapq /= reg0->n_cregs;
+			meanC /= reg0->n_cregs;
+			meanQ /= reg0->n_cregs;
 
-			if(non_zero_mapq < 3 && reg0->creg[1].mapq > 0 && 
-			   reg0->creg[0].mapq / reg0->creg[1].mapq >= opt->min_bestmapq_ratio) {is_mapped = 1; break;}
-			if(non_zero_mapq < 3 && reg0->creg[1].score > 0 &&
-			   reg0->creg[0].score / reg0->creg[1].score >= opt->min_bestchain_ratio) {is_mapped = 1; break;}
+			//TODO: Experimental weighted sum technique for the next commits
+			// float r_bestq = bestQ/(1+bestQ);
+			// float r_best2q = (best2Q > 0)?(bestQ/best2Q)/(1+(bestQ/best2Q)):1.0;
+			// float r_best2c = (best2C > 0)?(bestC/best2C)/(1+(bestC/best2C)):1.0;
+			// float r_bestmq = (meanQ > 0)?(bestQ/meanQ)/(1+(bestQ/meanQ)):0.0;
+			// float r_bestmc = (meanC > 0)?(bestC/meanC)/(1+(bestC/meanC)):0.0;
 
-			if (non_zero_mapq > 2 && mean_mapq > 0 && reg0->creg[0].mapq >= opt->min_meanmapq_ratio * mean_mapq) {is_mapped = 1; break;}
-			if (reg0->creg[0].mapq > 0 && mean_chain_score > 0 && reg0->creg[0].score >= opt->min_meanchain_ratio * mean_chain_score) {is_mapped = 1; break;}
+			// // Compute the weighted sum
+			// float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + 
+			// 					 opt->w_best2c*r_best2c + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
 
-			//TODO increase score for those with query ending towards the end (i.e., meaning they benefited from more recent sequencing)
+			// // Compare the weighted sum against a threshold to make the decision
+			// if (weighted_sum >= opt->w_threshold) {is_mapped = 1; break;}
+
+			if(non_zero_mapq < 3 && best2Q > 0 && bestQ/best2Q >= opt->min_bestmapq_ratio) {is_mapped = 1; break;}
+			if(non_zero_mapq < 3 && best2C > 0 && bestC/best2C >= opt->min_bestchain_ratio) {is_mapped = 1; break;}
+
+			if (non_zero_mapq > 2 && meanQ > 0 && bestQ >= opt->min_meanmapq_ratio * meanQ) {is_mapped = 1; break;}
+			if (bestQ > 0 && meanC > 0 && bestC >= opt->min_meanchain_ratio * meanC) {is_mapped = 1; break;}
+
+			//TODO: increase score for those with query ending towards the end (i.e., meaning they benefited from more recent sequencing)
 		} else if (reg0->n_cregs == 1 && reg0->creg[0].mapq >= opt->min_mapq) {is_mapped = 1; break;}
 	} double mapping_time = ri_realtime() - t;
 

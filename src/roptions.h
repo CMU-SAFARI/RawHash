@@ -58,6 +58,8 @@ typedef struct ri_mapopt_s{
 	float chain_gap_scale;
 	float chain_skip_scale;
 
+	float w_bestq, w_best2q, w_best2c, w_bestmq, w_bestmc, w_threshold;
+
 	float mask_level;
 	int mask_len;
 	float pri_ratio;

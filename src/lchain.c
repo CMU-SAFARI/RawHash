@@ -321,7 +321,7 @@ static inline int32_t compute_score(const mm128_t *ai,
 	if(dd || dg > q_span){
 		float lin_pen, log_pen;
 		lin_pen = chn_pen_gap * (float)dd + chn_pen_skip * (float)dg;
-		// log_pen = dd >= 1? mg_log2(dd + 1) : 0.0f; // mg_log2() only works for dd>=2
+		log_pen = dd >= 1? mg_log2(dd + 1) : 0.0f; // mg_log2() only works for dd>=2
 		// if(is_cdna || sidi != sidj){
         // if(sidi != sidj)
 		// {
@@ -329,8 +329,8 @@ static inline int32_t compute_score(const mm128_t *ai,
 		// 	else if(dr > dq || sidi != sidj) sc -= (int)(lin_pen < log_pen? lin_pen : log_pen); // deletion or jump between paired ends
 		// 	else sc -= (int)(lin_pen + .5f * log_pen);
 		// } else
-		// sc -= (int)(lin_pen + .5f * log_pen);
-		sc -= (int)(lin_pen);
+		sc -= (int)(lin_pen + .5f * log_pen);
+		// sc -= (int)(lin_pen);
 	}
 
 	return sc;

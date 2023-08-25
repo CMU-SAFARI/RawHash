@@ -64,7 +64,14 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"test-frequency",		ko_required_argument, 338 },
 	{ (char*)"min-reads",			ko_required_argument, 339 },
 	{ (char*)"mid-occ-frac",		ko_required_argument, 340 },
-	{ (char*)"version",				ko_no_argument, 	  341 },
+	{ (char*)"alt-drop",			ko_required_argument, 341 },
+	{ (char*)"w-bestq",				ko_required_argument, 342 },
+	{ (char*)"w-best2q",			ko_required_argument, 343 },
+	{ (char*)"w-best2c",			ko_required_argument, 344 },
+	{ (char*)"w-bestmq",			ko_required_argument, 345 },
+	{ (char*)"w-bestmc",			ko_required_argument, 346 },
+	{ (char*)"w-threshold",			ko_required_argument, 347 },
+	{ (char*)"version",				ko_no_argument, 	  348 },
 	{ 0, 0, 0 }
 };
 
@@ -106,15 +113,16 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 		mo->peak_height = 0.5f;
 	} else if (strcmp(preset, "fast") == 0) {
 		io->e = 8; io->q = 9; io->lq = 3; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
-		// mo->min_bestchain_ratio = 1.2f; mo->min_meanchain_ratio = 3; mo->min_meanchain_ratio_out = 3;
 		mo->max_num_chunk = 20;
 	} else if (strcmp(preset, "faster") == 0) {
 		io->e = 7; io->q = 9; io->lq = 3; io->w = 5; io->n = 0; mo->mini_batch_size = 1000000000;
-		// mo->min_bestchain_ratio = 1.2f; mo->min_meanchain_ratio = 3; mo->min_meanchain_ratio_out = 3;
 	} else if (strcmp(preset, "viral") == 0) {
 		io->e = 5; io->q = 9; io->lq = 3; io->w = 0; io->n = 0;
-		mo->min_num_anchors = 2; mo->min_chaining_score = 10;
-		// mo->mini_batch_size = 1000000000;
+		mo->max_num_chunk = 5; mo->bw = 100; 
+		mo->min_chaining_score = 20;
+		mo->max_target_gap_length = 500;
+		mo->max_query_gap_length = 500;
+		mo->chain_skip_scale = 0.2f;
 	} else if (strcmp(preset, "sequence-until") == 0) {
 		io->e = 7; io->q = 9; io->lq = 3; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
 	} else return -1;
@@ -222,7 +230,14 @@ int main(int argc, char *argv[])
 		else if (c == 338) opt.ttest_freq = atoi(o.arg);// --test-frequency
 		else if (c == 339) opt.tmin_reads = atoi(o.arg);// --min-reads
 		else if (c == 340) opt.mid_occ_frac = atof(o.arg);// --mid-occ-frac
-		else if (c == 341) {puts(RH_VERSION); return 0;}// --version
+		else if (c == 341) opt.alt_drop = atof(o.arg);// --alt-drop
+		else if (c == 342) opt.w_bestq = atof(o.arg);// --w-bestq
+		else if (c == 343) opt.w_best2q = atof(o.arg);// --w-best2q
+		else if (c == 344) opt.w_best2c = atof(o.arg);// --w-best2c
+		else if (c == 345) opt.w_bestmq = atof(o.arg);// --w-bestmq
+		else if (c == 346) opt.w_bestmc = atof(o.arg);// --w-bestmc
+		else if (c == 347) opt.w_threshold = atof(o.arg);// --w-threshold
+		else if (c == 348) {puts(RH_VERSION); return 0;}// --version
 		else if (c == 'V') {puts(RH_VERSION); return 0;}
 	}
 

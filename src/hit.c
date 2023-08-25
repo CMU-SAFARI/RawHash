@@ -343,24 +343,24 @@ void mm_select_sub(void *km,
 				   int *n_,
 				   mm_reg1_t *r)
 {
-	if (pri_ratio > 0.0f && *n_ > 0) {
-		int i, k, n = *n_, n_2nd = 0;
-		for (i = k = 0; i < n; ++i) {
-			int p = r[i].parent;
-			if (p == i || r[i].inv) { // primary or inversion
-				r[k++] = r[i];
-			// } else if ((r[i].score >= r[p].score * pri_ratio || r[i].score + min_diff >= r[p].score) && n_2nd < best_n) {
-			// 	if (!(r[i].qs == r[p].qs && r[i].qe == r[p].qe && r[i].rid == r[p].rid && r[i].rs == r[p].rs && r[i].re == r[p].re)) // not identical hits
-			// 		r[k++] = r[i], ++n_2nd;
-			// 	else if (r[i].p) free(r[i].p);
-			// } else if (check_strand && n_2nd < best_n && r[i].score > min_strand_sc && r[i].rev != r[p].rev) {
-			// 	r[i].strand_retained = 1;
-			// 	r[k++] = r[i], ++n_2nd;
-			} else if (r[i].p) free(r[i].p);
-		}
-		if (k != n) mm_sync_regs(km, k, r); // removing hits requires sync()
-		*n_ = k;
+	if (pri_ratio <= 0.0f || *n_ <= 0) return;
+	
+	int i, k, n = *n_, n_2nd = 0;
+	for (i = k = 0; i < n; ++i) {
+		int p = r[i].parent;
+		if (p == i || r[i].inv) { // primary or inversion
+			r[k++] = r[i];
+		// } else if ((r[i].score >= r[p].score * pri_ratio || r[i].score + min_diff >= r[p].score) && n_2nd < best_n) {
+		// 	if (!(r[i].qs == r[p].qs && r[i].qe == r[p].qe && r[i].rid == r[p].rid && r[i].rs == r[p].rs && r[i].re == r[p].re)) // not identical hits
+		// 		r[k++] = r[i], ++n_2nd;
+		// 	else if (r[i].p) free(r[i].p);
+		// } else if (check_strand && n_2nd < best_n && r[i].score > min_strand_sc && r[i].rev != r[p].rev) {
+		// 	r[i].strand_retained = 1;
+		// 	r[k++] = r[i], ++n_2nd;
+		} else if (r[i].p) free(r[i].p);
 	}
+	if (k != n) mm_sync_regs(km, k, r); // removing hits requires sync()
+	*n_ = k;
 }
 
 int mm_filter_strand_retained(int n_regs,
