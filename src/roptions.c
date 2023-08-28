@@ -83,12 +83,12 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->max_num_chunk = 15;//--max-chunks
 	// opt->min_chain_anchor = 10;
 
-	opt->min_bestmapq = 5; //--min-bestmapq
 	opt->min_mapq = 2; //--min-mapq
-	opt->min_bestmapq_ratio = 2.0f, opt->min_meanmapq_ratio = 5.0f; //--min-bestmapq-ratio, --min-meanmapq-ratio
+	// opt->min_bestmapq = 5; //--min-bestmapq
+	// opt->min_bestmapq_ratio = 2.0f, opt->min_meanmapq_ratio = 5.0f; //--min-bestmapq-ratio, --min-meanmapq-ratio
 
-	opt->min_bestchain_ratio = 2.5f; //--min-bestchain-ratio
-	opt->min_meanchain_ratio = 2.5f; //--min-meanchain-ratio
+	// opt->min_bestchain_ratio = 2.5f; //--min-bestchain-ratio
+	// opt->min_meanchain_ratio = 2.5f; //--min-meanchain-ratio
 
 	//Default options for event detection.
 	opt->window_length1 = 3; //--seg-window-length1

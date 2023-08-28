@@ -261,7 +261,7 @@ static void map_worker_for(void *_data,
 			float bestQ = reg0->creg[0].mapq, best2Q = reg0->creg[1].mapq;
 			float bestC = reg0->creg[0].score, best2C = reg0->creg[1].score;
 
-			if (bestQ > opt->min_bestmapq && best2Q == 0) {is_mapped = 1; break;}
+			// if (bestQ > opt->min_bestmapq && best2Q == 0) {is_mapped = 1; break;}
 
 			float meanC = 0;
 			float meanQ = 0;
@@ -269,31 +269,31 @@ static void map_worker_for(void *_data,
 			for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
 				meanC += reg0->creg[c_ind].score;
 				meanQ += reg0->creg[c_ind].mapq;
-				if(reg0->creg[c_ind].mapq > 0) ++non_zero_mapq;
+				// if(reg0->creg[c_ind].mapq > 0) ++non_zero_mapq;
 			}
 
 			meanC /= reg0->n_cregs;
 			meanQ /= reg0->n_cregs;
 
 			//TODO: Experimental weighted sum technique for the next commits
-			// float r_bestq = bestQ/(1+bestQ);
-			// float r_best2q = (best2Q > 0)?(bestQ/best2Q)/(1+(bestQ/best2Q)):1.0;
-			// float r_best2c = (best2C > 0)?(bestC/best2C)/(1+(bestC/best2C)):1.0;
-			// float r_bestmq = (meanQ > 0)?(bestQ/meanQ)/(1+(bestQ/meanQ)):0.0;
-			// float r_bestmc = (meanC > 0)?(bestC/meanC)/(1+(bestC/meanC)):0.0;
+			float r_bestq = bestQ/(1+bestQ);
+			float r_best2q = (best2Q > 0)?(bestQ/best2Q)/(1+(bestQ/best2Q)):1.0;
+			float r_best2c = (best2C > 0)?(bestC/best2C)/(1+(bestC/best2C)):1.0;
+			float r_bestmq = (meanQ > 0)?(bestQ/meanQ)/(1+(bestQ/meanQ)):0.0;
+			float r_bestmc = (meanC > 0)?(bestC/meanC)/(1+(bestC/meanC)):0.0;
 
-			// // Compute the weighted sum
-			// float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + 
-			// 					 opt->w_best2c*r_best2c + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+			// Compute the weighted sum
+			float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + opt->w_bestmq*r_bestmq +
+								 opt->w_best2c*r_best2c + opt->w_bestmc*r_bestmc;
 
-			// // Compare the weighted sum against a threshold to make the decision
-			// if (weighted_sum >= opt->w_threshold) {is_mapped = 1; break;}
+			// Compare the weighted sum against a threshold to make the decision
+			if (weighted_sum >= opt->w_threshold) {is_mapped = 1; break;}
 
-			if(non_zero_mapq < 3 && best2Q > 0 && bestQ/best2Q >= opt->min_bestmapq_ratio) {is_mapped = 1; break;}
-			if(non_zero_mapq < 3 && best2C > 0 && bestC/best2C >= opt->min_bestchain_ratio) {is_mapped = 1; break;}
+			// if(non_zero_mapq < 3 && best2Q > 0 && bestQ/best2Q >= opt->min_bestmapq_ratio) {is_mapped = 1; break;}
+			// if(non_zero_mapq < 3 && best2C > 0 && bestC/best2C >= opt->min_bestchain_ratio) {is_mapped = 1; break;}
 
-			if (non_zero_mapq > 2 && meanQ > 0 && bestQ >= opt->min_meanmapq_ratio * meanQ) {is_mapped = 1; break;}
-			if (bestQ > 0 && meanC > 0 && bestC >= opt->min_meanchain_ratio * meanC) {is_mapped = 1; break;}
+			// if (non_zero_mapq > 2 && meanQ > 0 && bestQ >= opt->min_meanmapq_ratio * meanQ) {is_mapped = 1; break;}
+			// if (bestQ > 0 && meanC > 0 && bestC >= opt->min_meanchain_ratio * meanC) {is_mapped = 1; break;}
 
 			//TODO: increase score for those with query ending towards the end (i.e., meaning they benefited from more recent sequencing)
 		} else if (reg0->n_cregs == 1 && reg0->creg[0].mapq >= opt->min_mapq) {is_mapped = 1; break;}

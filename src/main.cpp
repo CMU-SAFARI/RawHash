@@ -211,11 +211,11 @@ int main(int argc, char *argv[])
 		else if (c == 319) opt.bw_long = atoi(o.arg);// --bw-long
 		else if (c == 320) opt.max_num_chunk = atoi(o.arg);// --max-chunks
 		else if (c == 321) opt.min_mapq = atoi(o.arg);// --min-mapq
-		else if (c == 322) opt.min_bestmapq = atoi(o.arg);// --min-bestmapq
-		else if (c == 323) opt.min_bestmapq_ratio = atof(o.arg);// --min-bestmapq-ratio
-		else if (c == 324) opt.min_bestchain_ratio = atof(o.arg);// --min-bestchain-ratio
-		else if (c == 325) opt.min_meanmapq_ratio = atof(o.arg);// --min-meanmapq-ratio
-		else if (c == 326) opt.min_meanchain_ratio = atof(o.arg);// --min-meanchain-ratio
+		// else if (c == 322) opt.min_bestmapq = atoi(o.arg);// --min-bestmapq
+		// else if (c == 323) opt.min_bestmapq_ratio = atof(o.arg);// --min-bestmapq-ratio
+		// else if (c == 324) opt.min_bestchain_ratio = atof(o.arg);// --min-bestchain-ratio
+		// else if (c == 325) opt.min_meanmapq_ratio = atof(o.arg);// --min-meanmapq-ratio
+		// else if (c == 326) opt.min_meanchain_ratio = atof(o.arg);// --min-meanchain-ratio
 		else if (c == 327) {opt.bp_per_sec = atoi(o.arg); opt.sample_per_base = (float)opt.sample_rate / opt.bp_per_sec;}// --bp-per-sec
 		else if (c == 328) {opt.sample_rate = atoi(o.arg); opt.sample_per_base = (float)opt.sample_rate / opt.bp_per_sec;}// --sample-rate
 		else if (c == 329) opt.chunk_size = atoi(o.arg);// --chunk-size
@@ -286,11 +286,11 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "\n  Mapping Decisions (Mapping and sequencing is stopped after taking any of these decisions):\n");
 		fprintf(fp_help, "    --max-chunks INT     stop mapping (read not mapped) after sequencing INT number of chunks [%u]\n", opt.max_num_chunk);
 		fprintf(fp_help, "    --min-mapq INT     map the read if there is only one chain and its MAPQ > INT [%d]\n", opt.min_mapq);
-		fprintf(fp_help, "    --min-bestmapq INT     map the read if the best chain MAPQ > INT and the second-best chain MAPQ == 0 [%d]\n", opt.min_bestmapq);
-		fprintf(fp_help, "    --min-bestmapq-ratio FLOAT     map the read if the MAPQ ratio between the best and the second-best chain is larger than or equal to FLOAT [%g]\n", opt.min_bestmapq_ratio);
-		fprintf(fp_help, "    --min-bestchain-ratio FLOAT     map the read if the chain score ratio between the best and the second-best chain is larger than or equal to FLOAT [%g]\n", opt.min_bestchain_ratio);
-		fprintf(fp_help, "    --min-meanmapq-ratio FLOAT     map the read if the MAPQ ratio between the best and all chains is larger than or equal to FLOAT [%g]\n", opt.min_meanmapq_ratio);
-		fprintf(fp_help, "    --min-meanchain-ratio FLOAT     map the read if the chain score ratio between the best and all chains is larger than or equal to FLOAT [%g]\n", opt.min_meanchain_ratio);
+		// fprintf(fp_help, "    --min-bestmapq INT     map the read if the best chain MAPQ > INT and the second-best chain MAPQ == 0 [%d]\n", opt.min_bestmapq);
+		// fprintf(fp_help, "    --min-bestmapq-ratio FLOAT     map the read if the MAPQ ratio between the best and the second-best chain is larger than or equal to FLOAT [%g]\n", opt.min_bestmapq_ratio);
+		// fprintf(fp_help, "    --min-bestchain-ratio FLOAT     map the read if the chain score ratio between the best and the second-best chain is larger than or equal to FLOAT [%g]\n", opt.min_bestchain_ratio);
+		// fprintf(fp_help, "    --min-meanmapq-ratio FLOAT     map the read if the MAPQ ratio between the best and all chains is larger than or equal to FLOAT [%g]\n", opt.min_meanmapq_ratio);
+		// fprintf(fp_help, "    --min-meanchain-ratio FLOAT     map the read if the chain score ratio between the best and all chains is larger than or equal to FLOAT [%g]\n", opt.min_meanchain_ratio);
 		
 		fprintf(fp_help, "\n  Nanopore Parameters:\n");
 		fprintf(fp_help, "    --bp-per-sec INT     DNA molecules transiting through the pore (bp per second) [%u]\n", opt.bp_per_sec);

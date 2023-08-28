@@ -92,10 +92,10 @@ typedef struct ri_mapopt_s{
 	uint32_t max_num_chunk;
 	// uint32_t min_chain_anchor;
 
-	int min_mapq, min_bestmapq;
-	float min_bestmapq_ratio, min_meanmapq_ratio;
-
-	float min_bestchain_ratio, min_meanchain_ratio;
+	int min_mapq;
+	// int min_bestmapq;
+	// float min_bestmapq_ratio, min_meanmapq_ratio;
+	// float min_bestchain_ratio, min_meanchain_ratio;
 
 	float t_threshold;
 	uint32_t tn_samples;

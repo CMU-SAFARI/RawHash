@@ -3,10 +3,12 @@
 uncalled pafstats -r ../true_mappings.paf --annotate ../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_ann.paf 2> relative_abundance_uncalled.throughput
 uncalled pafstats -r ../true_mappings.paf --annotate ../sigmap/relative_abundance_sigmap.paf > relative_abundance_sigmap_ann.paf 2> relative_abundance_sigmap.throughput
 uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_ann.paf 2> relative_abundance_rawhash_fast.throughput
+uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash/relative_abundance_w3_rawhash_fast.paf > relative_abundance_w3_rawhash_fast_ann.paf 2> relative_abundance_w3_rawhash_fast.throughput
 
 python ../../../scripts/compare_pafs.py relative_abundance_uncalled_ann.paf relative_abundance_sigmap_ann.paf relative_abundance_rawhash_fast_ann.paf > relative_abundance_rawhash_fast.comparison
+python ../../../scripts/compare_pafs.py relative_abundance_uncalled_ann.paf relative_abundance_sigmap_ann.paf relative_abundance_w3_rawhash_fast_ann.paf > relative_abundance_w3_rawhash_fast.comparison
 
-for i in '../true_mappings.paf' '../uncalled/relative_abundance_uncalled.paf' '../sigmap/relative_abundance_sigmap.paf' '../rawhash/relative_abundance_rawhash_fast.paf' ; do
+for i in '../true_mappings.paf' '../uncalled/relative_abundance_uncalled.paf' '../sigmap/relative_abundance_sigmap.paf' '../rawhash/relative_abundance_rawhash_fast.paf' '../rawhash/relative_abundance_w3_rawhash_fast.paf' ; do
 if test -f $i; then
 fname=`basename $i | sed 's/.paf/.abundance/g'`;
 awk 'BEGIN{tot=0; covid=0; human=0; ecoli=0; yeast=0; algae=0; totsum=0; covidsum=0; humansum=0; ecolisum=0; yeastsum=0; algaesum=0;}{
