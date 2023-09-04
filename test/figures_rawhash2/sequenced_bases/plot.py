@@ -39,7 +39,7 @@ with open(f, 'r') as csvfile:
 			toolmean_seqbase[tools[i]].append(sequenced_bases[i]/rawhashmean_seqbase)
 
 # UNCALLED CPU and memory results for latex
-print("\\newcommand\\avgmtU{$%.1f\\times$\\xspace}\n\\newcommand\\maxmtU{$%.1f\\times$\\xspace}\n\\newcommand\\minmtU{$%.1f\\times$\\xspace}\n" % (sum(toolmean_seqbase["UNCALLED"])/len(toolmean_seqbase["UNCALLED"]), max(toolmean_seqbase["UNCALLED"]), min(toolmean_seqbase["UNCALLED"])))
+print("\\newcommand\\avgseqU{$%.1f\\times$\\xspace}\n\\newcommand\\maxseqU{$%.1f\\times$\\xspace}\n\\newcommand\\minseqU{$%.1f\\times$\\xspace}\n" % (sum(toolmean_seqbase["UNCALLED"])/len(toolmean_seqbase["UNCALLED"]), max(toolmean_seqbase["UNCALLED"]), min(toolmean_seqbase["UNCALLED"])))
 
 fig, ax = plt.subplots(1, 1, figsize=(9,3))
 

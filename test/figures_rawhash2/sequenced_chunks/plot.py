@@ -37,7 +37,7 @@ with open(f, 'r') as csvfile:
 			toolmean_seqbase[tools[i]].append(sequenced_chunks[i]/rawhashmean_seqbase)
 
 # Sigmap CPU and memory results for latex
-print("\\newcommand\\avgmtU{$%.1f\\times$\\xspace}\n\\newcommand\\maxmtU{$%.1f\\times$\\xspace}\n\\newcommand\\minmtU{$%.1f\\times$\\xspace}\n" % (sum(toolmean_seqbase["Sigmap"])/len(toolmean_seqbase["Sigmap"]), max(toolmean_seqbase["Sigmap"]), min(toolmean_seqbase["Sigmap"])))
+print("\\newcommand\\avgseqS{$%.1f\\times$\\xspace}\n\\newcommand\\maxseqS{$%.1f\\times$\\xspace}\n\\newcommand\\minseqS{$%.1f\\times$\\xspace}\n" % (sum(toolmean_seqbase["Sigmap"])/len(toolmean_seqbase["Sigmap"]), max(toolmean_seqbase["Sigmap"]), min(toolmean_seqbase["Sigmap"])))
 
 fig, ax = plt.subplots(1, 1, figsize=(9,3))
 

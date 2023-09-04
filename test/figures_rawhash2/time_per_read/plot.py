@@ -11,7 +11,7 @@ import pathlib
 matplotlib.rc("figure", facecolor="white")
 width = 0.5
 palette=sns.color_palette('tab10')
-colors = ["#6799ce", "#aa4499", "#db8043", "#f0c041", "#4b71bb", "#a3a3a3", "#5FA137"]
+colors = ["#5FA137", "#f0c041", "#6799ce", "#aa4499", "#db8043", "#a3a3a3", "#4b71bb"]
 f="mean_time.csv"
 
 with open(f, 'r') as csvfile:
@@ -60,7 +60,7 @@ ax.set_yscale("log")
 cidx=0
 bidx=0
 for c in ax.containers:
-	ax.bar_label(c, labels=mean_timeX[bidx:bidx+len(c.datavalues)], fmt='%gs', color='white', fontsize=12, weight='bold', rotation='vertical', label_type='center', padding=-24)
+	ax.bar_label(c, labels=mean_timeX[bidx:bidx+len(c.datavalues)], fmt='%gs', color='white', fontsize=12, weight='bold', rotation='vertical', label_type='center', padding=-20)
 	bidx += len(c.datavalues)
 
 left,right = ax.get_ylim()
