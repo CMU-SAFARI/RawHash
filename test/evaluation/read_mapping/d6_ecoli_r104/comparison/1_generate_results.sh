@@ -11,11 +11,8 @@ ln -s ../../d2_ecoli_r94/comparison/d2_ecoli_r94_sigmap.throughput d6_ecoli_r104
 ln -s ../../d2_ecoli_r94/comparison/d2_ecoli_r94_uncalled.throughput d6_ecoli_r104_uncalled.throughput 
 ln -s ../../d2_ecoli_r94/comparison/d2_ecoli_r94_uncalled_ann.paf d6_ecoli_r104_uncalled_ann.paf 
 
-uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash/d6_ecoli_r104_rawhash_sensitive.paf > d6_ecoli_r104_rawhash_sensitive_ann.paf 2> d6_ecoli_r104_rawhash_sensitive.throughput
-uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash/d6_ecoli_r104_w3_rawhash_sensitive.paf > d6_ecoli_r104_w3_rawhash_sensitive_ann.paf 2> d6_ecoli_r104_w3_rawhash_sensitive.throughput
-# uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash/d6_ecoli_r104_w5_rawhash_sensitive.paf > d6_ecoli_r104_w5_rawhash_sensitive_ann.paf 2> d6_ecoli_r104_w5_rawhash_sensitive.throughput
+uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash2/d6_ecoli_r104_rawhash2_r10sensitive.paf > d6_ecoli_r104_rawhash2_r10sensitive_ann.paf 2> d6_ecoli_r104_rawhash2_r10sensitive.throughput
+uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash2/d6_ecoli_r104_w3_rawhash2_r10sensitive.paf > d6_ecoli_r104_w3_rawhash2_r10sensitive_ann.paf 2> d6_ecoli_r104_w3_rawhash2_r10sensitive.throughput
 
-
-python ../../../../scripts/compare_pafs.py d6_ecoli_r104_uncalled_ann.paf d6_ecoli_r104_sigmap_ann.paf d6_ecoli_r104_rawhash_sensitive_ann.paf > d6_ecoli_r104_rawhash_sensitive.comparison
-python ../../../../scripts/compare_pafs.py d6_ecoli_r104_uncalled_ann.paf d6_ecoli_r104_sigmap_ann.paf d6_ecoli_r104_w3_rawhash_sensitive_ann.paf > d6_ecoli_r104_w3_rawhash_sensitive.comparison
-# python ../../../../scripts/compare_pafs.py d6_ecoli_r104_uncalled_ann.paf d6_ecoli_r104_sigmap_ann.paf d6_ecoli_r104_w5_rawhash_sensitive_ann.paf > d6_ecoli_r104_w5_rawhash_sensitive.comparison
+python ../../../../scripts/compare_pafs.py d6_ecoli_r104_uncalled_ann.paf d6_ecoli_r104_sigmap_ann.paf d6_ecoli_r104_rawhash2_r10sensitive_ann.paf > d6_ecoli_r104_rawhash2_r10sensitive.comparison
+python ../../../../scripts/compare_pafs.py d6_ecoli_r104_uncalled_ann.paf d6_ecoli_r104_sigmap_ann.paf d6_ecoli_r104_w3_rawhash2_r10sensitive_ann.paf > d6_ecoli_r104_w3_rawhash2_r10sensitive.comparison

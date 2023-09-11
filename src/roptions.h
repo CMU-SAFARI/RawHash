@@ -13,6 +13,7 @@
 #define RI_M_SEQUENCEUNTIL	0x1
 #define RI_M_RMQ			0x2
 #define RI_M_HARD_MLEVEL	0x4
+#define RI_M_NO_SPAN		0x8
 
 #ifdef __cplusplus
 extern "C" {
@@ -58,7 +59,8 @@ typedef struct ri_mapopt_s{
 	float chain_gap_scale;
 	float chain_skip_scale;
 
-	float w_bestq, w_best2q, w_best2c, w_bestmq, w_bestmc, w_threshold;
+	float w_bestq, w_bestmq, w_bestmc, w_threshold;
+	// float w_best2q, w_best2c;
 
 	float mask_level;
 	int mask_len;

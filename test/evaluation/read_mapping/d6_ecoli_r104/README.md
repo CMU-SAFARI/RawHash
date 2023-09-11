@@ -2,31 +2,15 @@
 
 We assume your current directory points to this directory ([`d6_ecoli_r104`](./)).
 
-## RawHash
+## RawHash2
 
-Run RawHash to map the raw nanopore signals to the corresponding reference genome. This will create the `rawhash` directory including a `PAF` file that stores the mapping output from RawHash.
+Run RawHash2 to map the raw nanopore signals to the corresponding reference genome. This will create the `rawhash2` directory including a `PAF` file that stores the mapping output from RawHash2.
 
 The following command will use 32 threads. you can change the maximum threads to use by providing a different value than 32 below.
 
 ```bash
-bash run_rawhash.sh 32
+bash run_rawhash2.sh 32
 ```
-
-<!-- ### Profiling RawHash
-
-We have created a script to profile the main steps of RawHash (i.e., I/O, signal-to-event conversion, sketching, seeding, chaining, and the entire mapping). Before running the following script, RawHash needs to be compiled with the profiling mode. Please modify the corresponding lines of this [Makefile](../../../../src/Makefile) as follows and then recompile RawHash:
-
-```bash
-# For profiling
-CFLAGS+=-DPROFILERH=1
-CPPFLAGS+=-DPROFILERH=1
-```
-
-After compiling with the profiling mode and adding RawHash to your path, you can run the following script to generate the profilied runtimes. The profiling result will be directed to `stderr`.
-
-```bash
-bash profile_rawhash.sh 1
-``` -->
 
 ## UNCALLED
 
@@ -46,11 +30,11 @@ The following command will use 32 threads. you can change the maximum threads to
 bash run_minimap2.sh 32
 ```
 
-## Comparing RawHash to UNCALLED and Sigmap
+## Comparing RawHash2 to UNCALLED and Sigmap
 
-Comparison is not possible. However, in order to generate the RawHash results with the existing scripts, we generate the symbolic links of UNCALLED an Sigmap results in the `comparison` directory.
+Comparison is not possible. However, in order to generate the RawHash2 results with the existing scripts, we generate the symbolic links of UNCALLED an Sigmap results in the `comparison` directory.
 
-After generating the `PAF` files by following each step above, run the following command. This will 1) generate the files to evaluate the mapping output of RawHash and 2) output the results (i.e., throughput, mean time per read, indexing time, mapping time, precision, recall, and F1 values).
+After generating the `PAF` files by following each step above, run the following command. This will 1) generate the files to evaluate the mapping output of RawHash2 and 2) output the results (i.e., throughput, mean time per read, indexing time, mapping time, precision, recall, and F1 values).
 
 ```bash
 cd comparison

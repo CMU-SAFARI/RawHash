@@ -1,10 +1,10 @@
 #!/bin/bash
 
-shuf -n521211 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_25.paf
-shuf -n208484 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_10.paf
-shuf -n20848 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_1.paf
-shuf -n2085 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_01.paf
-shuf -n209 ../../rawhash/relative_abundance_rawhash_fast.paf > relative_abundance_rawhash_fast_01.paf
+shuf -n521211 ../../rawhash2/relative_abundance_rawhash2_fast.paf > relative_abundance_rawhash2_fast_25.paf
+shuf -n208484 ../../rawhash2/relative_abundance_rawhash2_fast.paf > relative_abundance_rawhash2_fast_10.paf
+shuf -n20848 ../../rawhash2/relative_abundance_rawhash2_fast.paf > relative_abundance_rawhash2_fast_1.paf
+shuf -n2085 ../../rawhash2/relative_abundance_rawhash2_fast.paf > relative_abundance_rawhash2_fast_01.paf
+shuf -n209 ../../rawhash2/relative_abundance_rawhash2_fast.paf > relative_abundance_rawhash2_fast_01.paf
 
 shuf -n521211 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_25.paf
 shuf -n208484 ../../uncalled/relative_abundance_uncalled.paf > relative_abundance_uncalled_10.paf

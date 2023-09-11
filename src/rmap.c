@@ -144,9 +144,6 @@ void ri_map_frag(const ri_idx_t *ri,
 		return;
 	}
 
-	// double new_chain_st = ri_realtime();
-	// gen_chains(b->km, ri, events, n_events, reg, opt);
-
 	#ifdef PROFILERH
 	double sketch_t = ri_realtime();
 	#endif
@@ -188,15 +185,22 @@ void ri_map_frag(const ri_idx_t *ri,
 	#endif
 
 	//Chaining (DP or RMQ)
-	float chn_pen_gap = opt->chain_gap_scale * 0.01 * ri->e, chn_pen_skip = opt->chain_skip_scale * 0.01 * ri->e;
+	int max_gap = (opt->max_target_gap_length > opt->max_query_gap_length)?opt->max_target_gap_length:opt->max_query_gap_length;
+	float chn_pen_gap = opt->chain_gap_scale * 0.01 * (ri->e + ri->k - 1), chn_pen_skip = opt->chain_skip_scale * 0.01 * (ri->e + ri->k - 1);
 	if(!(opt->flag & RI_M_RMQ))
 		seed_hits = mg_lchain_dp(opt->max_target_gap_length, opt->max_query_gap_length, opt->bw, opt->max_num_skips, opt->max_chain_iter,
 							 	opt->min_num_anchors,opt->min_chaining_score,chn_pen_gap,chn_pen_skip,&n_seed_pos,seed_hits, 
 							 	&(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
 	else
-		seed_hits = mg_lchain_rmq(opt->max_target_gap_length, opt->rmq_inner_dist, opt->bw, opt->max_num_skips, opt->rmq_size_cap,
+		seed_hits = mg_lchain_rmq(max_gap, opt->rmq_inner_dist, opt->bw, opt->max_num_skips, opt->rmq_size_cap,
 							 	  opt->min_num_anchors,opt->min_chaining_score,chn_pen_gap,chn_pen_skip,&n_seed_pos,seed_hits, 
 							 	  &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
+
+	if(opt->bw_long > opt->bw){
+		seed_hits = mg_lchain_rmq(max_gap, opt->rmq_inner_dist, opt->bw_long, opt->max_num_skips, opt->rmq_size_cap,
+							 	  opt->min_num_anchors,opt->min_chaining_score,chn_pen_gap,chn_pen_skip,&n_seed_pos,seed_hits, 
+							 	  &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
+	}
 
 	reg->n_prev_anchors = 0;
 	if(n_seed_pos>0)reg->n_prev_anchors = n_seed_pos;
@@ -243,7 +247,7 @@ static void map_worker_for(void *_data,
 
 	uint32_t c_count = 0;
 	int is_mapped = 0;
-	
+
 	double t = ri_realtime();
 	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
@@ -255,45 +259,42 @@ static void map_worker_for(void *_data,
 
 		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name);
 		
-		//TODO: There should be much better automatic ways to make decisions here.
-		if (reg0->n_cregs >= 2) {
+		if (reg0->n_cregs > 1) {
 
-			float bestQ = reg0->creg[0].mapq, best2Q = reg0->creg[1].mapq;
-			float bestC = reg0->creg[0].score, best2C = reg0->creg[1].score;
+			float bestQ = reg0->creg[0].mapq;
+			// float best2Q = reg0->creg[1].mapq;
+			float bestC = reg0->creg[0].score;
+			// best2C = reg0->creg[1].score;
 
-			// if (bestQ > opt->min_bestmapq && best2Q == 0) {is_mapped = 1; break;}
+			if (bestQ >= 50) {is_mapped = 1; break;}
 
 			float meanC = 0;
 			float meanQ = 0;
-			int non_zero_mapq = 0;
 			for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
 				meanC += reg0->creg[c_ind].score;
 				meanQ += reg0->creg[c_ind].mapq;
-				// if(reg0->creg[c_ind].mapq > 0) ++non_zero_mapq;
 			}
 
 			meanC /= reg0->n_cregs;
 			meanQ /= reg0->n_cregs;
 
 			//TODO: Experimental weighted sum technique for the next commits
-			float r_bestq = bestQ/(1+bestQ);
-			float r_best2q = (best2Q > 0)?(bestQ/best2Q)/(1+(bestQ/best2Q)):1.0;
-			float r_best2c = (best2C > 0)?(bestC/best2C)/(1+(bestC/best2C)):1.0;
-			float r_bestmq = (meanQ > 0)?(bestQ/meanQ)/(1+(bestQ/meanQ)):0.0;
-			float r_bestmc = (meanC > 0)?(bestC/meanC)/(1+(bestC/meanC)):0.0;
+			float r_bestq = (bestQ > 60)?1.0f:bestQ/60.0f;
+			// float r_best2q = (bestQ > 0 && bestQ >best2Q)?(1.0f - (best2Q/bestQ)):0.0f;
+			// float r_best2c = (bestC > 0)?(1.0f - (best2C/bestC)):0.0f;
+			float r_bestmq = (bestQ > meanQ)?(1.0f - (meanQ/bestQ)):((meanQ > 0)?-1.0:0.0); //introducing penalty with -1
+			float r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f;
 
 			// Compute the weighted sum
-			float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + opt->w_bestmq*r_bestmq +
-								 opt->w_best2c*r_best2c + opt->w_bestmc*r_bestmc;
+			// float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + opt->w_bestmq*r_bestmq +
+			// 					 opt->w_best2c*r_best2c + opt->w_bestmc*r_bestmc;
+			
+			// float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + opt->w_best2c*r_best2c;
 
+			float weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+			
 			// Compare the weighted sum against a threshold to make the decision
 			if (weighted_sum >= opt->w_threshold) {is_mapped = 1; break;}
-
-			// if(non_zero_mapq < 3 && best2Q > 0 && bestQ/best2Q >= opt->min_bestmapq_ratio) {is_mapped = 1; break;}
-			// if(non_zero_mapq < 3 && best2C > 0 && bestC/best2C >= opt->min_bestchain_ratio) {is_mapped = 1; break;}
-
-			// if (non_zero_mapq > 2 && meanQ > 0 && bestQ >= opt->min_meanmapq_ratio * meanQ) {is_mapped = 1; break;}
-			// if (bestQ > 0 && meanC > 0 && bestC >= opt->min_meanchain_ratio * meanC) {is_mapped = 1; break;}
 
 			//TODO: increase score for those with query ending towards the end (i.e., meaning they benefited from more recent sequencing)
 		} else if (reg0->n_cregs == 1 && reg0->creg[0].mapq >= opt->min_mapq) {is_mapped = 1; break;}
@@ -458,9 +459,15 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 {
 	int64_t size = 0;
 	rhsig_v rsigv = {0,0,0};
-	rh_kv_resize(ri_sig_t*, 0, rsigv, 4000);
+	
 	*n_ = 0;
 	if (pl->n_fp < 1) return 0;
+
+	//Debugging for sweeping purposes
+	// if(pl->su_nreads >= 2000) return 0;
+
+	rh_kv_resize(ri_sig_t*, 0, rsigv, 4000);
+
 	while (pl->fp) {
 		//Reading data in bulk if the buffer is emptied
 		while(pl->fp && pl->fp->cur_read == pl->fp->num_read){
@@ -492,6 +499,10 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 		size += s->l_sig;
 
 		if(size >= chunk_size) break;
+		
+		//Debugging for sweeping purposes
+		// pl->su_nreads++;
+		// if(pl->su_nreads >= 2000) break;
 	}
 
 	ri_sig_t** a = 0;
@@ -513,6 +524,7 @@ static void *map_worker_pipeline(void *shared,
 		#endif
         step_mt *s;
         s = (step_mt*)calloc(1, sizeof(step_mt));
+
 		s->sig = ri_sig_read_frag(p, p->mini_batch_size, &s->n_sig);
 		if (s->n_sig && !p->su_stop) {
 			s->p = p;
@@ -541,6 +553,9 @@ static void *map_worker_pipeline(void *shared,
 		#ifdef PROFILERH
 		ri_maptime_multithread += ri_realtime() - map_multit;
 		#endif
+
+		//Debugging for sweeping purposes
+		// if(p->su_nreads >= 2000) p->su_stop = p->su_nreads;
 
 		if(p->opt->flag & RI_M_SEQUENCEUNTIL && !p->su_stop){
 			const ri_idx_t *ri = p->ri;

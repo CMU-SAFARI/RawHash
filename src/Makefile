@@ -103,7 +103,7 @@ endif
 
 LIBS+=-lm -lz -ldl 
 
-PROG=rawhash
+PROG=rawhash2
 
 ifneq ($(aarch64),)
 	arm_neon=1

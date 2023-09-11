@@ -2,12 +2,13 @@
 
 ## Prerequisites
 
-We compare RawHash with [UNCALLED](https://github.com/skovaka/UNCALLED) and [Sigmap](https://github.com/haowenz/sigmap). We specify the versions we use for each tool below.
+We compare RawHash2 with [UNCALLED](https://github.com/skovaka/UNCALLED), [Sigmap](https://github.com/haowenz/sigmap), and [RawHash](https://github.com/CMU-SAFARI/RawHash). We specify the versions we use for each tool below.
 
 We list the links to download and compile each tool for comparison below:
 
 * [UNCALLED](https://github.com/skovaka/UNCALLED/tree/74a5d4e5b5d02fb31d6e88926e8a0896dc3475cb)
 * [Sigmap](https://github.com/haowenz/sigmap/commit/c9a40483264c9514587a36555b5af48d3f054f6f)
+* [RawHash v1](https://github.com/CMU-SAFARI/RawHash/releases/tag/v1.0)
 
 We use minimap2 to generate the ground truth mapping information by mapping basecalled seqeunces to their corresponding reference genomes. We use the following minimap2 version:
 
@@ -27,8 +28,8 @@ Please make sure that all of these tools are in your `PATH`
 You can generate the virtual environment using conda to make sure all the prerequisities are met. Here is an example usage that replicates our virtual environment we use in our evaluations.
 
 ```bash
-#We will use rawhash-env directory to download and compile the tools from their repositories
-mkdir -p rawhash-env/bin && cd rawhash-env
+#We will use rawhash2-env directory to download and compile the tools from their repositories
+mkdir -p rawhash2-env/bin && cd rawhash2-env
 
 #Important: If you already completed the Step 0 and Step 1 as described, you can skip these steps and add the binaries to your PATH again
 #Re-adding the binary to your path is necessary after you start a new shell session.
@@ -40,15 +41,18 @@ conda config --add channels bioconda
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
-conda create -n rawhash-env python=3.6.15 pip=20.2.3 ont_vbz_hdf_plugin=1.0.1
-conda activate rawhash-env
+conda create -n rawhash2-env python=3.6.15 pip=20.2.3 ont_vbz_hdf_plugin=1.0.1
+conda activate rawhash2-env
 
 #Installing SRA Toolkit
 wget -qO- https://ftp-trace.ncbi.nlm.nih.gov/sra/sdk/3.0.1/sratoolkit.3.0.1-ubuntu64.tar.gz | tar xzv; cp -r ./sratoolkit.3.0.1-ubuntu64/bin/* bin/; rm -rf sratoolkit.3.0.1-ubuntu64
 
 #Step 1 Compiling the tools
+#Cloning and compiling RawHash2
+git clone --recursive https://github.com/CMU-SAFARI/RawHash.git rawhash2 && cd rawhash2 && make && cp ./bin/rawhash2 ../bin/ && cd ..
+
 #Cloning and compiling RawHash
-git clone --recursive https://github.com/CMU-SAFARI/RawHash.git rawhash && cd rawhash && make && cp ./bin/rawhash ../bin/ && cd ..
+wget -qO- https://github.com/CMU-SAFARI/RawHash/releases/download/v1.0/RawHash-1.0.tar.gz | tar -xzv && cd rawhash && make && cp ./bin/rawhash ../bin/ && cd ..
 
 #Cloning and compiling Sigmap
 git clone --recursive https://github.com/haowenz/sigmap.git sigmap && cd sigmap && make && cp sigmap ../bin/ && cd ..
@@ -61,9 +65,9 @@ wget https://github.com/lh3/minimap2/releases/download/v2.24/minimap2-2.24.tar.b
 
 #Step 2 Adding binaries to PATH
 #If you are skipping Step 0 and Step 1, uncomment the following line and execute:
-# conda activate rawhash-env
+# conda activate rawhash2-env
 export PATH=$PWD/bin:$PATH
-cd rawhash/test/
+cd rawhash2/test/
 ```
 
 # Datasets
@@ -82,7 +86,7 @@ cd ./data
 
 ## Read Mapping
 
-The scripts and a [README](./evaluation/read_mapping/README.md) can be found in the [read mapping directory](./evaluation/read_mapping/) to perform read mapping using UNCALLED, Sigmap and RawHash.
+The scripts and a [README](./evaluation/read_mapping/README.md) can be found in the [read mapping directory](./evaluation/read_mapping/) to perform read mapping using UNCALLED, Sigmap, RawHash, and RawHash2.
 
 To start performing the read mapping evaluations, enter [./evaluation/read_mapping](./evaluation/read_mapping/)
 
@@ -92,7 +96,7 @@ cd ./evaluation/read_mapping
 
 ## Relative Abundance Estimation
 
-The scripts and a [README](./evaluation/relative_abundance/README.md) can be found in the [relative abundance directory](./evaluation/relative_abundance/) to perform the relative abundance estimation using UNCALLED, Sigmap and RawHash.
+The scripts and a [README](./evaluation/relative_abundance/README.md) can be found in the [relative abundance directory](./evaluation/relative_abundance/) to perform the relative abundance estimation using UNCALLED, Sigmap, RawHash, and RawHash2.
 
 To start performing the relative abundance estimation evaluations, enter [./evaluation/relative_abundance](./evaluation/relative_abundance/)
 
@@ -102,7 +106,7 @@ cd ./evaluation/relative_abundance
 
 ## Contamination Analysis
 
-The scripts and a [README](./evaluation/contamination/README.md) can be found in the [contamination directory](./evaluation/contamination/) to perform the contamination analysis using UNCALLED, Sigmap and RawHash.
+The scripts and a [README](./evaluation/contamination/README.md) can be found in the [contamination directory](./evaluation/contamination/) to perform the contamination analysis using UNCALLED, Sigmap, RawHash, and RawHash2.
 
 To start performing the contamination analysis evaluations, enter [./evaluation/contamination](./evaluation/contamination/)
 
@@ -112,20 +116,10 @@ cd ./evaluation/contamination/
 
 ## Sequence Until
 
-The scripts and a [README](./evaluation/relative_abundance/sequenceuntil/README.md) can be found in the [sequence until directory](./evaluation/relative_abundance/sequenceuntil/) to evaluate the benefits of the Sequence Until mechanism using UNCALLED and RawHash.
+The scripts and a [README](./evaluation/relative_abundance/sequenceuntil/README.md) can be found in the [sequence until directory](./evaluation/relative_abundance/sequenceuntil/) to evaluate the benefits of the Sequence Until mechanism using UNCALLED and RawHash2.
 
 To start evaluating Sequence Until, enter [./evaluation/relative_abundance/sequenceuntil](./evaluation/relative_abundance/sequenceuntil/)
 
 ```bash
 cd ./evaluation/relative_abundance/sequenceuntil
 ```
-
-# Reproducing the Manuscript
-
-## Generating the Figures
-
-We will provide the scripts to generate the figures we show in the preprint.
-
-## Generating the Manuscript
-
-We will provide the tex source to generate preprint PDF from its TeX source based on the results and figures you generate.

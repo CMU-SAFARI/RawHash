@@ -4,7 +4,7 @@
 
 # Overview
 
-RawHash is a hash-based mechanism to map raw nanopore signals to a reference genome in real-time. To achieve this, it 1) generates an index from the reference genome and 2) efficiently and accurately maps the raw signals to the reference genome such that it can match the throughput of nanopore sequencing even when analyzing large genomes (e.g., human genome.
+RawHash (and RawHash2) is a hash-based mechanism to map raw nanopore signals to a reference genome in real-time. To achieve this, it 1) generates an index from the reference genome and 2) efficiently and accurately maps the raw signals to the reference genome such that it can match the throughput of nanopore sequencing even when analyzing large genomes (e.g., human genome.
 
 Below figure shows the overview of the steps that RawHash takes to find matching regions between a reference genome and a raw nanopore signal.
 
@@ -16,11 +16,11 @@ To efficiently identify similarities between a reference genome and reads, RawHa
 
 RawHash can be used to map reads from **FAST5, POD5, SLOW5, or BLOW5** files to a reference genome in sequence format.
 
-RawHash performs real-time mapping of nanopore raw signals. When the prefix of reads in FAST5 or POD5 file can be mapped to a reference genome, RawHash will stop mapping and provide the mapping information in PAF format. We follow the similar PAF template used in [UNCALLED](https://github.com/skovaka/UNCALLED) and [Sigmap](https://github.com/haowenz/sigmap) to report the mapping information.
+RawHash performs real-time mapping of nanopore raw signals. When the prefix of reads can be mapped to a reference genome, RawHash will stop mapping and provide the mapping information in PAF format. We follow the similar PAF template used in [UNCALLED](https://github.com/skovaka/UNCALLED) and [Sigmap](https://github.com/haowenz/sigmap) to report the mapping information.
 
 # Recent changes
 
-* RawHash now supports **POD5** files. RawHash will automatically detect the POD5 files from the file prefix (i.e., ".pod5"). Note: This feature is tested only on the Linux systems.
+* We have released RawHash2, a more sensitive and faster raw signal mapping mechanism with substantial improvements over RawHash. RawHash2 is available within this repository. You can still use the earlier version, RawHash v1, from [this release](https://github.com/CMU-SAFARI/RawHash/releases/tag/v1.0).
 
 * It is now possible to disable compiling HDF5, SLOW5, and POD5. Please check the `Compiling with HDF5, SLOW5, and POD5` section below for details.
 
@@ -29,22 +29,22 @@ RawHash performs real-time mapping of nanopore raw signals. When the prefix of r
 * Clone the code from its GitHub repository (`--recursive` must be used):
 
 ```bash
-git clone --recursive https://github.com/CMU-SAFARI/RawHash.git rawhash
+git clone --recursive https://github.com/CMU-SAFARI/RawHash.git rawhash2
 ```
 
 * Compile (Make sure you have a C++ compiler and GNU make):
 
 ```bash
-cd rawhash && make
+cd rawhash2 && make
 ```
 
-If the compilation is successful, the binary will be in `bin/rawhash`.
+If the compilation is successful, the path to the binary will be `bin/rawhash2`.
 
 ## Compiling with HDF5, SLOW5, and POD5
 
-We are aware that some of the pre-compiled libraries (e.g., POD5) may not work in your system and you may need to compile these libraries from scratch. Additionally, it may be possible that you may not want to compile any of the HDF5, SLOW5, or POD5 libraries if you are not going to use them. RawHash provides a flexible Makefile to enable custom compilation of these libraries.
+We are aware that some of the pre-compiled libraries (e.g., POD5) may not work in your system and you may need to compile these libraries from scratch. Additionally, it may be possible that you may not want to compile any of the HDF5, SLOW5, or POD5 libraries if you are not going to use them. RawHash2 provides a flexible Makefile to enable custom compilation of these libraries.
 
-* It is possible to provide your own include and lib directories for *any* of the HDF5, SLOW5, and POD5 libraries, if you do not want to use the source code or the pre-compiled binaries that come with RawHash. To use your own include and lib directories you should pass them to `make` when compiling as follows:
+* It is possible to provide your own include and lib directories for *any* of the HDF5, SLOW5, and POD5 libraries, if you do not want to use the source code or the pre-compiled binaries that come with RawHash2. To use your own include and lib directories you should pass them to `make` when compiling as follows:
 
 ```bash
 #Provide the path to all of the HDF5/SLOW5/POD5 include and lib directories during compilation
@@ -70,10 +70,10 @@ make NOSLOW5=1 NOPOD5=1
 
 ## Getting help
 
-You can print the help message to learn how to use `rawhash`:
+You can print the help message to learn how to use `rawhash2`:
 
 ```bash
-rawhash
+rawhash2
 ```
 
 ## Indexing
@@ -82,53 +82,53 @@ Indexing is similar to minimap2's usage. We additionally include the pore models
 Below is an example that generates an index file `ref.ind` for the reference genome `ref.fasta` using a certain k-mer model located under `extern` and `32` threads.
 
 ```bash
-rawhash -d ref.ind -p extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model -t 32 ref.fasta
+rawhash2 -d ref.ind -p extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model -t 32 ref.fasta
 ```
 
-Note that you can directly jump to mapping without creating the index because RawHash is able to generate the index relatively quickly on-the-fly within the mapping step. However, a real-time genome analysis application may still prefer generating the indexing before the mapping step. Thus, we suggest creating the index before the mapping step.
+Note that you can directly jump to mapping without creating the index because RawHash2 is able to generate the index relatively quickly on-the-fly within the mapping step. However, a real-time genome analysis application may still prefer generating the indexing before the mapping step. Thus, we suggest creating the index before the mapping step.
 
 ## Mapping
 
 It is possible to provide inputs as FAST5 files from multiple directories. It is also possible to provide a list of files matching a certain pattern such as `test/data/contamination/fast5_files/Min*.fast5`
 
-* Example usage where multiple files matching a certain the pattern `test/data/contamination/fast5_files/Min*.fast5` and fast5 files inside the `test/data/d1_sars-cov-2_r94/fast5_files` directory are inputted to rawhash using `32` threads and the previously generated `ref.ind` index:
+* Example usage where multiple files matching a certain the pattern `test/data/contamination/fast5_files/Min*.fast5` and fast5 files inside the `test/data/d1_sars-cov-2_r94/fast5_files` directory are inputted to rawhash2 using `32` threads and the previously generated `ref.ind` index:
 
 ```bash
-rawhash -t 32 ref.ind test/data/contamination/fast5_files/Min*.fast5 test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
+rawhash2 -t 32 ref.ind test/data/contamination/fast5_files/Min*.fast5 test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
 ```
 
 * Another example usage where 1) we only input a directory including FAST5 files as set of raw signals and 2) the output is directly saved in a file.
 
 ```bash
-rawhash -t 32 -o mapping.paf ref.ind test/data/d1_sars-cov-2_r94/fast5_files
+rawhash2 -t 32 -o mapping.paf ref.ind test/data/d1_sars-cov-2_r94/fast5_files
 ```
 
-**IMPORTANT** if there are many fast5 files that rawhash needs to process (e.g., thousands of them), we suggest that you specify **only** the directories that contain these fast5 files
+**IMPORTANT** if there are many fast5 files that rawhash2 needs to process (e.g., thousands of them), we suggest that you specify **only** the directories that contain these fast5 files
 
-RawHash also provides a set of default parameters that can be preset automatically.
+RawHash2 also provides a set of default parameters that can be preset automatically.
 
-* Mapping reads to a viral reference genome using its corresponding preset:
-
-```
-rawhash -t 32 -x viral ref.ind test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
-```
-
-* Mapping reads to small reference genomes (<50M bases) using its corresponding preset:
+* Mapping reads to a viral reference genome using its corresponding preset with the high precision goal (as set by --depletion):
 
 ```
-rawhash -t 32 -x sensitive ref.ind test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
+rawhash2 -t 32 -x viral --depletion ref.ind test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
 ```
 
-* Mapping reads to large reference genomes (>50M bases) using its corresponding preset:
+* Mapping reads to small reference genomes (<500M bases) using its corresponding preset:
 
 ```
-rawhash -t 32 -x fast ref.ind test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
+rawhash2 -t 32 -x sensitive ref.ind test/data/d4_green_algae_r94/fast5_files > mapping.paf
 ```
 
-* Although we have not thoroguhly evaluated, RawHash also provides another set of default parameters that can be used for very large metagenomic samples (>10G). To achieve efficient search, it uses the minimizer seeding in this parameter setting. This setting is not evaluated in our manuscript.
+* Mapping reads to large reference genomes (>500M bases) using its corresponding preset:
 
 ```
-rawhash -t 32 -x faster ref.ind test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
+rawhash2 -t 32 -x fast ref.ind test/data/d5_human_na12878_r94/fast5_files > mapping.paf
+```
+
+RawHash2 provides another set of default parameters that can be used for very large metagenomic samples (>10G). To achieve efficient search, it uses the minimizer seeding in this parameter setting, which is slightly less accurate than the non-minimizer mode but much faster (around 3X).
+
+```
+rawhash2 -t 32 -x faster ref.ind test/data/d5_human_na12878_r94/fast5_files > mapping.paf
 ```
 
 The output will be saved to `mapping.paf` in a modified PAF format used by [Uncalled](https://github.com/skovaka/UNCALLED).
@@ -136,11 +136,12 @@ The output will be saved to `mapping.paf` in a modified PAF format used by [Unca
 ## Potential issues you may encounter during mapping
 
 It is possible that your reads in fast5 files are compressed with the [VBZ compression](https://github.com/nanoporetech/vbz_compression) from Nanopore. Then you have to download the proper HDF5 plugin from [here](https://github.com/nanoporetech/vbz_compression/releases) and make sure it can be found by your HDF5 library:
+
 ```bash
 export HDF5_PLUGIN_PATH=/path/to/hdf5/plugins/lib
 ```
 
-If you have conda you can simply install the following package (`ont_vbz_hdf_plugin`) in your environment and use rawhash while the environment is active:
+If you have conda you can simply install the following package (`ont_vbz_hdf_plugin`) in your environment and use rawhash2 while the environment is active:
 
 ```bash
 conda install ont_vbz_hdf_plugin
@@ -153,11 +154,11 @@ Please follow the instructions in the [README](test/README.md) file in [test](./
 
 * Direct integration with MinKNOW.
 * Ability to specify even/odd channels to eject the reads only from these specified channels.
-* Please create issues if you want to see more features that can make RawHash easily integratable with nanopore sequencers for any use case.
+* Please create issues if you want to see more features that can make RawHash2 easily integratable with nanopore sequencers for any use case.
 
-# Citing RawHash
+# Citing RawHash and RawHash2
 
-To cite RawHash, you can use the following BibTeX:
+To cite RawHash and RawHash2, you can use the following BibTeX:
 
 ```bibtex
 @article{firtina_rawhash_2023,
@@ -177,6 +178,6 @@ To cite RawHash, you can use the following BibTeX:
 
 # Acknowledgement
 
-RawHash uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage, DP and RMQ-based chaining) and [Sigmap](https://github.com/haowenz/sigmap) (e.g., R9.4 segmentation parameters).
+RawHash2 uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage, DP and RMQ-based chaining) and the R9.4 segmentation parameters from [Sigmap](https://github.com/haowenz/sigmap).
 
 We thank [Melina Soysal](https://github.com/melina2200) and [Marie-Louise Dugua](https://github.com/MarieSarahLouise) for their feedback to improve the RawHash implementation and test scripts.

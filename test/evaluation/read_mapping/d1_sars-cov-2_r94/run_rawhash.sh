@@ -13,12 +13,3 @@ mkdir -p ${OUTDIR}
 #Viral preset (default for viral genomes)
 PREFIX="d1_sars-cov-2_r94"
 bash ../../../scripts/run_rawhash.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} > "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.err"
-
-#Minimizers
-PREFIX="d1_sars-cov-2_r94_w3"
-PARAMS="-w 3"
-bash ../../../scripts/run_rawhash.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} ${PARAMS} > "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.err"
-
-# PREFIX="d1_sars-cov-2_r94_w5"
-# PARAMS="-w 5"
-# bash ../../../scripts/run_rawhash.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} ${PARAMS} > "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash_${PRESET}.err"

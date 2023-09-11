@@ -45,11 +45,11 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"bw-long",				ko_required_argument, 319 },
 	{ (char*)"max-chunks",			ko_required_argument, 320 },
 	{ (char*)"min-mapq",			ko_required_argument, 321 },
-	{ (char*)"min-bestmapq",		ko_required_argument, 322 },
-	{ (char*)"min-bestmapq-ratio",	ko_required_argument, 323 },
-	{ (char*)"min-bestchain-ratio",	ko_required_argument, 324 },
-	{ (char*)"min-meanmapq-ratio",	ko_required_argument, 325 },
-	{ (char*)"min-meanchain-ratio",	ko_required_argument, 326 },
+	{ (char*)"alt-drop",			ko_required_argument, 322 },
+	{ (char*)"w-bestq",				ko_required_argument, 323 },
+	{ (char*)"w-bestmq",			ko_required_argument, 324 },
+	{ (char*)"w-bestmc",			ko_required_argument, 325 },
+	{ (char*)"w-threshold",			ko_required_argument, 326 },
 	{ (char*)"bp-per-sec",			ko_required_argument, 327 },
 	{ (char*)"sample-rate",			ko_required_argument, 328 },
 	{ (char*)"chunk-size",			ko_required_argument, 329 },
@@ -64,14 +64,8 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"test-frequency",		ko_required_argument, 338 },
 	{ (char*)"min-reads",			ko_required_argument, 339 },
 	{ (char*)"mid-occ-frac",		ko_required_argument, 340 },
-	{ (char*)"alt-drop",			ko_required_argument, 341 },
-	{ (char*)"w-bestq",				ko_required_argument, 342 },
-	{ (char*)"w-best2q",			ko_required_argument, 343 },
-	{ (char*)"w-best2c",			ko_required_argument, 344 },
-	{ (char*)"w-bestmq",			ko_required_argument, 345 },
-	{ (char*)"w-bestmc",			ko_required_argument, 346 },
-	{ (char*)"w-threshold",			ko_required_argument, 347 },
-	{ (char*)"version",				ko_no_argument, 	  348 },
+	{ (char*)"depletion",			ko_no_argument, 	  341 },
+	{ (char*)"version",				ko_no_argument, 	  342 },
 	{ 0, 0, 0 }
 };
 
@@ -106,25 +100,38 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 		ri_mapopt_init(mo);
 	} else if (strcmp(preset, "sensitive") == 0) {
 		io->e = 6; io->q = 9; io->lq = 3; io->w = 0; io->n = 0;
+
+		mo->w_bestq=0.6f, mo->w_bestmq=0.0f, mo->w_bestmc=0.4f, mo->w_threshold = 0.25f;
 	} else if (strcmp(preset, "r10sensitive") == 0) {
-		io->e = 8; io->q = 8; io->lq = 2; io->w = 0; io->n = 0;
+		io->k = 9; io->e = 8; io->q = 8; io->lq = 2; io->w = 0; io->n = 0;
 		mo->window_length1 = 5; mo->window_length2 = 12;
 		mo->threshold1 = 4.20265f; mo->threshold2 = 3.67058f;  
-		mo->peak_height = 0.5f;
+		mo->peak_height = 0.2f;
+		mo->bp_per_sec = 400;
+		mo->sample_per_base = (float)mo->sample_rate / mo->bp_per_sec;
+
+		mo->w_bestq=0.75f, mo->w_bestmq=0.2f, mo->w_bestmc=0.05f, mo->w_threshold = 0.4f;
 	} else if (strcmp(preset, "fast") == 0) {
 		io->e = 8; io->q = 9; io->lq = 3; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
 		mo->max_num_chunk = 20;
+
+		mo->w_bestq=0.65f, mo->w_bestmq=0.0f, mo->w_bestmc=0.35f, mo->w_threshold = 0.35f;
 	} else if (strcmp(preset, "faster") == 0) {
 		io->e = 7; io->q = 9; io->lq = 3; io->w = 5; io->n = 0; mo->mini_batch_size = 1000000000;
+
+		mo->w_bestq=0.65f, mo->w_bestmq=0.0f, mo->w_bestmc=0.35f, mo->w_threshold = 0.35f;
 	} else if (strcmp(preset, "viral") == 0) {
 		io->e = 5; io->q = 9; io->lq = 3; io->w = 0; io->n = 0;
 		mo->max_num_chunk = 5; mo->bw = 100; 
-		mo->min_chaining_score = 20;
 		mo->max_target_gap_length = 500;
 		mo->max_query_gap_length = 500;
-		mo->chain_skip_scale = 0.2f;
+
+		mo->w_bestq=0.65f, mo->w_bestmq=0.0f, mo->w_bestmc=0.35f, mo->w_threshold = 0.15f;
 	} else if (strcmp(preset, "sequence-until") == 0) {
 		io->e = 7; io->q = 9; io->lq = 3; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
+
+		mo->w_bestq=0.65f, mo->w_bestmq=0.0f, mo->w_bestmc=0.35f, mo->w_threshold = 0.35f;
+		mo->min_chaining_score += 15;
 	} else return -1;
 	return 0;
 }
@@ -198,7 +205,7 @@ int main(int argc, char *argv[])
 		else if (c == 306) opt.max_query_gap_length = atoi(o.arg);// --max-query-gap
 		else if (c == 307) opt.min_num_anchors = atoi(o.arg);// --min-anchors
 		else if (c == 308) opt.min_chaining_score = atoi(o.arg);// --min-score
-		else if (c == 308) opt.chain_gap_scale = atof(o.arg);// --chain-gap-scale
+		else if (c == 309) opt.chain_gap_scale = atof(o.arg);// --chain-gap-scale
 		else if (c == 310) opt.chain_skip_scale = atof(o.arg);// --chain-skip-scale
 		else if (c == 311) opt.a = atoi(o.arg);// --chain-match-score
 		else if (c == 312) opt.mask_level = atof(o.arg);// --primary-ratio
@@ -211,11 +218,11 @@ int main(int argc, char *argv[])
 		else if (c == 319) opt.bw_long = atoi(o.arg);// --bw-long
 		else if (c == 320) opt.max_num_chunk = atoi(o.arg);// --max-chunks
 		else if (c == 321) opt.min_mapq = atoi(o.arg);// --min-mapq
-		// else if (c == 322) opt.min_bestmapq = atoi(o.arg);// --min-bestmapq
-		// else if (c == 323) opt.min_bestmapq_ratio = atof(o.arg);// --min-bestmapq-ratio
-		// else if (c == 324) opt.min_bestchain_ratio = atof(o.arg);// --min-bestchain-ratio
-		// else if (c == 325) opt.min_meanmapq_ratio = atof(o.arg);// --min-meanmapq-ratio
-		// else if (c == 326) opt.min_meanchain_ratio = atof(o.arg);// --min-meanchain-ratio
+		else if (c == 322) opt.alt_drop = atof(o.arg);// --alt-drop
+		else if (c == 323) opt.w_bestq = atof(o.arg);// --w-bestq
+		else if (c == 324) opt.w_bestmq = atof(o.arg);// --w-bestmq
+		else if (c == 325) opt.w_bestmc = atof(o.arg);// --w-bestmc
+		else if (c == 326) opt.w_threshold = atof(o.arg);// --w-threshold
 		else if (c == 327) {opt.bp_per_sec = atoi(o.arg); opt.sample_per_base = (float)opt.sample_rate / opt.bp_per_sec;}// --bp-per-sec
 		else if (c == 328) {opt.sample_rate = atoi(o.arg); opt.sample_per_base = (float)opt.sample_rate / opt.bp_per_sec;}// --sample-rate
 		else if (c == 329) opt.chunk_size = atoi(o.arg);// --chunk-size
@@ -230,14 +237,8 @@ int main(int argc, char *argv[])
 		else if (c == 338) opt.ttest_freq = atoi(o.arg);// --test-frequency
 		else if (c == 339) opt.tmin_reads = atoi(o.arg);// --min-reads
 		else if (c == 340) opt.mid_occ_frac = atof(o.arg);// --mid-occ-frac
-		else if (c == 341) opt.alt_drop = atof(o.arg);// --alt-drop
-		else if (c == 342) opt.w_bestq = atof(o.arg);// --w-bestq
-		else if (c == 343) opt.w_best2q = atof(o.arg);// --w-best2q
-		else if (c == 344) opt.w_best2c = atof(o.arg);// --w-best2c
-		else if (c == 345) opt.w_bestmq = atof(o.arg);// --w-bestmq
-		else if (c == 346) opt.w_bestmc = atof(o.arg);// --w-bestmc
-		else if (c == 347) opt.w_threshold = atof(o.arg);// --w-threshold
-		else if (c == 348) {puts(RH_VERSION); return 0;}// --version
+		else if (c == 341) {opt.min_mapq = 5; opt.chain_gap_scale = 1.5f; opt.chain_skip_scale = 0.6f; opt.min_chaining_score = 30;}// --depletion
+		else if (c == 342) {puts(RH_VERSION); return 0;}// --version
 		else if (c == 'V') {puts(RH_VERSION); return 0;}
 	}
 
@@ -257,7 +258,7 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    -q INT     most significant bits of signal values to process [%d]. Signal values are assumed to be in the IEEE standard for floating-point arithmetic\n", ipt.q);
 		fprintf(fp_help, "    -l INT     least significant bits of the q bits to quantize along with the most signficant 2 bits of the q bits [%d]\n", ipt.lq);
 		fprintf(fp_help, "    -w INT     minimizer window size [%d]. Enables minimizer-based seeding in indexing and mapping (may reduce accuracy but improves the performance and memory space efficiency)\n", ipt.w);
-		fprintf(fp_help, "    -n NUM     number of consecutive seeds to use for BLEND-based seeding [%d]. Enables the BLEND mechanism (may improve accuracy but reduces the performance at the moment)\n", ipt.n);
+		// fprintf(fp_help, "    -n NUM     number of consecutive seeds to use for BLEND-based seeding [%d]. Enables the BLEND mechanism (may improve accuracy but reduces the performance at the moment)\n", ipt.n);
 		
 		fprintf(fp_help, "\n  Seeding:\n");
 		fprintf(fp_help, "    --q-mid-occ INT1[,INT2]     Lower and upper bounds of k-mer occurrences [%d, %d]. The final k-mer occurrence threshold is max{INT1, min{INT2, --q-occ-frac}}. This option prevents excessively small or large -f estimated from the input reference.\n", opt.min_mid_occ, opt.max_mid_occ);
@@ -281,16 +282,11 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    --rmq     [Advanced] Uses RMQ-based chaining. Faster but less accurate than default (DP)\n");
 		fprintf(fp_help, "    --rmq-inner-dist INT     [Advanced] RMQ inner distance [%d]\n", opt.rmq_inner_dist);
 		fprintf(fp_help, "    --rmq-size-cap INT     [Advanced] RMQ cap size [%d]\n", opt.rmq_size_cap);
-		fprintf(fp_help, "    --bw-long INT     [Advanced] maximum long INT gap length in a chain [Used in RMQ] [%d]\n", opt.bw_long);
+		fprintf(fp_help, "    --bw-long INT     [Advanced] maximum long INT gap length to re-chain the chains. Disabled by default. To enable, set it to larger than --bw [%d]\n", opt.bw_long);
 		
 		fprintf(fp_help, "\n  Mapping Decisions (Mapping and sequencing is stopped after taking any of these decisions):\n");
 		fprintf(fp_help, "    --max-chunks INT     stop mapping (read not mapped) after sequencing INT number of chunks [%u]\n", opt.max_num_chunk);
 		fprintf(fp_help, "    --min-mapq INT     map the read if there is only one chain and its MAPQ > INT [%d]\n", opt.min_mapq);
-		// fprintf(fp_help, "    --min-bestmapq INT     map the read if the best chain MAPQ > INT and the second-best chain MAPQ == 0 [%d]\n", opt.min_bestmapq);
-		// fprintf(fp_help, "    --min-bestmapq-ratio FLOAT     map the read if the MAPQ ratio between the best and the second-best chain is larger than or equal to FLOAT [%g]\n", opt.min_bestmapq_ratio);
-		// fprintf(fp_help, "    --min-bestchain-ratio FLOAT     map the read if the chain score ratio between the best and the second-best chain is larger than or equal to FLOAT [%g]\n", opt.min_bestchain_ratio);
-		// fprintf(fp_help, "    --min-meanmapq-ratio FLOAT     map the read if the MAPQ ratio between the best and all chains is larger than or equal to FLOAT [%g]\n", opt.min_meanmapq_ratio);
-		// fprintf(fp_help, "    --min-meanchain-ratio FLOAT     map the read if the chain score ratio between the best and all chains is larger than or equal to FLOAT [%g]\n", opt.min_meanchain_ratio);
 		
 		fprintf(fp_help, "\n  Nanopore Parameters:\n");
 		fprintf(fp_help, "    --bp-per-sec INT     DNA molecules transiting through the pore (bp per second) [%u]\n", opt.bp_per_sec);
@@ -317,7 +313,8 @@ int main(int argc, char *argv[])
 //		fprintf(fp_help, "    -v INT     verbose level [%d]\n", ri_verbose);
 		fprintf(fp_help, "    --version     show version number\n");
 		
-		fprintf(fp_help, "\n  Preset:\n");
+		fprintf(fp_help, "\n  Presets:\n");
+		fprintf(fp_help, "    --depletion     Should be used if higher precision is needed (e.g., for contamination analysis or relative abundance estimation). Can be used with or without -x preset\n");
 		fprintf(fp_help, "    -x STR     preset (always applied before other options) []\n");
 		fprintf(fp_help, "                 - sensitive     Enables sensitive mapping (for R9.4 model). Suitable when low recall is needed or when working with small genomes < 500M.\n");
 		fprintf(fp_help, "                 - r10sensitive     Enables sensitive mapping for R10. Currently under development and may produce slighlty less accurate results than R9.4.\n");

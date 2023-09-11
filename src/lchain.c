@@ -110,6 +110,7 @@ uint64_t *mg_chain_backtrack(void *km,
 	// n_z = # of anchors with acceptable scores.
 	for (i = 0, n_z = 0; i < n; ++i) // precompute n_z
 		if(f[i] >= min_sc) ++n_z;
+
 	if(n_z == 0) return 0;
 
 	KMALLOC(km, z, n_z);
@@ -314,9 +315,9 @@ static inline int32_t compute_score(const mm128_t *ai,
 	// TODO: currently the span is only determined by "e" (number of events concatanated in a seed)
 	q_span = (aj->y>>RI_ID_SHIFT)&span_mask;
 
-	// Calculate the chaining score. Consider the the gap (dg) if it is larger than the span (q_span).
+	// Matching bases. Consider the the gap (dg) if it is smaller than the span (q_span).
 	sc = q_span < dg? q_span : dg;
-
+	
 	// Integrating penalties to the score
 	if(dd || dg > q_span){
 		float lin_pen, log_pen;
@@ -542,7 +543,7 @@ static inline int32_t comput_sc_simple(const mm128_t *ai,
 		float lin_pen, log_pen;
 		lin_pen = chn_pen_gap * (float)dd + chn_pen_skip * (float)dg;
 		log_pen = dd >= 1? mg_log2(dd + 1) : 0.0f; // mg_log2() only works for dd>=2
-		// sc -= (int)(lin_pen + .5f * log_pen);
+		sc -= (int)(lin_pen + .5f * log_pen);
 	}
 	return sc;
 }
@@ -692,7 +693,7 @@ mm128_t *mg_lchain_rmq(int max_dist,
 			}
 		}
 		// set max
-		assert(max_j < 0 || (a[max_j].x < a[i].x && (int32_t)a[max_j].y < (int32_t)a[i].y));
+		// assert(max_j < 0 || (a[max_j].x <= a[i].x && (int32_t)a[max_j].y <= (int32_t)a[i].y));
 
 		// Update the score and the predecessor of anchor i based on the found best predecessor max_j
 		f[i] = max_f, p[i] = max_j;

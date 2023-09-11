@@ -10,22 +10,22 @@
 static inline void mm_cal_fuzzy_len(mm_reg1_t *r,
 									const mm128_t *a)
 {
-	// uint32_t span_mask = (1U<<RI_HASH_SHIFT)-1;
+	uint32_t span_mask = (1U<<RI_HASH_SHIFT)-1;
 
 	int i;
 	r->mlen = r->blen = 0;
 	if (r->cnt <= 0) return;
-	// r->mlen = r->blen = (a[r->as].y>>RI_ID_SHIFT)&span_mask;
+	r->mlen = r->blen = (a[r->as].y>>RI_ID_SHIFT)&span_mask;
 	for (i = r->as + 1; i < r->as + r->cnt; ++i) {
-		// int span = (a[i].y>>RI_ID_SHIFT)&span_mask;
+		int span = (a[i].y>>RI_ID_SHIFT)&span_mask;
 		int tl = (int32_t)a[i].x - (int32_t)a[i-1].x;
 		int ql = (int32_t)a[i].y - (int32_t)a[i-1].y;
 		r->blen += tl > ql? tl : ql;
-		// r->mlen += tl > span && ql > span? span : tl < ql? tl : ql;
-		// r->mlen += tl < ql? tl : ql;
+		r->mlen += tl > span && ql > span? span : tl < ql? tl : ql;
+		r->mlen += tl < ql? tl : ql;
 	}
 
-	r->mlen = r->blen;
+	// r->mlen = r->blen;
 }
 
 /*
