@@ -208,7 +208,7 @@ ri_sig_file_t *ri_sig_open(const char *fn){
 		#ifndef NHDF5RH
 		return ri_sig_open_fast5(fn);
 		#endif
-	} else if (strstr(fn, ".pod5")) {
+	} else if (strstr(fn, ".pod5") || strstr(fn, ".pod")) {
 		#ifndef NPOD5RH
 		return ri_sig_open_pod5(fn);
 		#endif

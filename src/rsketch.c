@@ -242,7 +242,7 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
 	memset(sigBuf, 0, e*sizeof(mm128_t));
 
     for (i = 0; i < len; i += step) {
-        if((i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF) || s_values[i] == RI_MASK_SIGNAL) continue;
+        if((i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF)) continue;
 
 		l_sigpos = i;
 		signal = *((uint32_t*)&s_values[i]);

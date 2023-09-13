@@ -12,7 +12,7 @@ if (len(sys.argv) < 5):
   sys.exit(1)
 
 fps = []
-for tool in [1, 2, 3]:
+for tool in [1, 2, 3, 4]:
   fps.append(open(sys.argv[tool]))
 
 uncalled_tp = 0
@@ -57,6 +57,8 @@ print("Uncalled Mean # of sequenced bases per read : " + str(mean(uncalled_mapla
 print("Uncalled Mean (only mapped) # of sequenced bases per read : " + str(mean(uncalled_maplast_pos)))
 print("Uncalled Mean (only unmapped) # of sequenced bases per read : " + str(mean(uncalled_umaplast_pos)))
 print("#Done with uncalled\n")
+
+fps[0].close()
 
 sigmap_tp = 0
 sigmap_fp = 0
@@ -126,6 +128,8 @@ print("Sigmap Mean (only mapped) # of sequenced chunks per read : " + str(mean(s
 print("Sigmap Mean (only unmapped) # of sequenced chunks per read : " + str(mean(sigmap_umaplast_chunk)))
 print("#Done with sigmap\n")
 
+fps[1].close()
+
 rawhash_tp = 0
 rawhash_fp = 0
 rawhash_fn = 0
@@ -141,6 +145,8 @@ rawhash_refgap = []
 rawhash_readgap = []
 for line in fps[2]:
   cols = line.rstrip().split()
+  print(cols)
+  print(len(cols))
   if (len(cols) == 23):
     mt = float(cols[12].split(":")[2])
     lastpos = int(cols[1])
@@ -164,6 +170,7 @@ for line in fps[2]:
     rawhash_refgap.append(at)
     aq = float(cols[21].split(":")[2])
     rawhash_readgap.append(aq)
+    print(cols[22].split(":")[2])
     if (cols[22].split(":")[2] == 'tp'):
       rawhash_tp += 1
       rawhash_time_per_chunk.append(mt / chunk)
@@ -210,6 +217,8 @@ print("RawHash Mean (only unmapped) # of sequenced chunks per read : " + str(mea
 
 print("#Done with RawHash\n")
 
+fps[2].close()
+
 rawhash2_tp = 0
 rawhash2_fp = 0
 rawhash2_fn = 0
@@ -223,7 +232,7 @@ rawhash2_umaplast_pos = []
 rawhash2_umaplast_chunk = []
 rawhash2_refgap = []
 rawhash2_readgap = []
-for line in fps[2]:
+for line in fps[3]:
   cols = line.rstrip().split()
   if (len(cols) == 21):
     mt = float(cols[12].split(":")[2])
@@ -244,11 +253,6 @@ for line in fps[2]:
     s1 = float(cols[17].split(":")[2])
     s2 = float(cols[18].split(":")[2])
     sm = float(cols[19].split(":")[2])
-    # at = float(cols[20].split(":")[2])
-    # rawhash2_refgap.append(at)
-    # aq = float(cols[21].split(":")[2])
-    # rawhash2_readgap.append(aq)
-    # print cols[20]
     if (cols[20].split(":")[2] == 'tp'):
       rawhash2_tp += 1
       rawhash2_time_per_chunk.append(mt / chunk)
@@ -295,5 +299,4 @@ print("RawHash2 Mean (only unmapped) # of sequenced chunks per read : " + str(me
 
 print("#Done with RawHash2\n")
 
-for fp in fps:
-  fp.close()
+fps[3].close()

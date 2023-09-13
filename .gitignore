@@ -18,11 +18,13 @@ test/data/*/slurm-*
 test/evaluation/*/*/slurm*.out
 test/evaluation/*/*/*.paf
 test/evaluation/*/*/rawhash
+test/evaluation/*/*/rawhash2
 test/evaluation/*/*/uncalled
 test/evaluation/*/*/*.abundance
 test/evaluation/*/*/*/slurm*.out
 test/evaluation/*/*/*/*.paf
 test/evaluation/*/*/*/rawhash
+test/evaluation/*/*/*/rawhash2
 test/evaluation/*/*/*/uncalled
 test/evaluation/*/*/*/*.abundance
 test/evaluation/*/comparison/*.throughput
@@ -34,6 +36,7 @@ test/evaluation/*/*/sigmap
 test/evaluation/*/slurm*.out
 test/evaluation/*/*.paf
 test/evaluation/*/rawhash
+test/evaluation/*/rawhash2
 test/evaluation/*/uncalled
 test/evaluation/*/sigmap
 test/evaluation/read_mapping/*/comparison/*.throughput
@@ -46,10 +49,8 @@ test/evaluation/*/*/slurm*
 test/evaluation/*/*slurm*
 test/evaluation/*/*/test_*
 test/evaluation/*/*/comparison/*/
-test/scripts/run_rawhash_test.sh
 
-test/scripts/run_rawhash_test*.sh
-
+test/scripts/run_rawhash*_test*.sh
 test/evaluation/read_mapping/*/parameters.txt
 test/evaluation/read_mapping/*/results.txt
 test/evaluation/read_mapping/*parameters*.txt

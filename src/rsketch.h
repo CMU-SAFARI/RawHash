@@ -5,7 +5,7 @@
 #include "rutils.h"
 
 //A large float value can be used for masking if needed
-#define RI_MASK_SIGNAL 3.402823466e+32F
+// #define RI_MASK_SIGNAL 3.402823466e+32F
 
 #define LAST_SIG_DIFF 0.3F
 
