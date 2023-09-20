@@ -187,21 +187,21 @@ static inline float* gen_events(void *km, const uint32_t *peaks, uint32_t peak_s
 	return events;
 }
 
-float* detect_events(void *km, uint32_t s_len, const float* sig, const ri_mapopt_t *opt, uint32_t *n) // kt_for() callback
+float* detect_events(void *km, uint32_t s_len, const float* sig, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, uint32_t *n) // kt_for() callback
 {
 	float* prefix_sum = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
 	float* prefix_sum_square = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
 
 	comp_prefix_prefixsq(sig, s_len, prefix_sum, prefix_sum_square);
-	float* tstat1 = comp_tstat(km, prefix_sum, prefix_sum_square, s_len, opt->window_length1);
-	float* tstat2 = comp_tstat(km, prefix_sum, prefix_sum_square, s_len, opt->window_length2);
-	ri_detect_t short_detector = {.DEF_PEAK_POS = -1, .DEF_PEAK_VAL = FLT_MAX, .sig = tstat1, .s_len = s_len, .threshold = opt->threshold1,
-								  .window_length = opt->window_length1, .masked_to = 0, .peak_pos = -1, .peak_value = FLT_MAX, .valid_peak = 0};
+	float* tstat1 = comp_tstat(km, prefix_sum, prefix_sum_square, s_len, window_length1);
+	float* tstat2 = comp_tstat(km, prefix_sum, prefix_sum_square, s_len, window_length2);
+	ri_detect_t short_detector = {.DEF_PEAK_POS = -1, .DEF_PEAK_VAL = FLT_MAX, .sig = tstat1, .s_len = s_len, .threshold = threshold1,
+								  .window_length = window_length1, .masked_to = 0, .peak_pos = -1, .peak_value = FLT_MAX, .valid_peak = 0};
 
-	ri_detect_t long_detector = {.DEF_PEAK_POS = -1, .DEF_PEAK_VAL = FLT_MAX, .sig = tstat2, .s_len = s_len, .threshold = opt->threshold2,
-								 .window_length = opt->window_length2, .masked_to = 0, .peak_pos = -1, .peak_value = FLT_MAX, .valid_peak = 0};
+	ri_detect_t long_detector = {.DEF_PEAK_POS = -1, .DEF_PEAK_VAL = FLT_MAX, .sig = tstat2, .s_len = s_len, .threshold = threshold2,
+								 .window_length = window_length2, .masked_to = 0, .peak_pos = -1, .peak_value = FLT_MAX, .valid_peak = 0};
 	uint32_t* peaks = (uint32_t*)ri_kmalloc(km, s_len * sizeof(uint32_t));
-	uint32_t n_peaks = gen_peaks(&short_detector, &long_detector, opt->peak_height, peaks);
+	uint32_t n_peaks = gen_peaks(&short_detector, &long_detector, peak_height, peaks);
 	float* events = 0;
 	if(n_peaks > 0) events = gen_events(km, peaks, n_peaks, prefix_sum, prefix_sum_square, s_len, n);
 	ri_kfree(km, tstat1); ri_kfree(km, tstat2); ri_kfree(km, prefix_sum); ri_kfree(km, prefix_sum_square); ri_kfree(km, peaks);

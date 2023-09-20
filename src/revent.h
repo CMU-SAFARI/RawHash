@@ -19,7 +19,7 @@ extern "C" {
  * 
  * @return		list of event values of length $n
  */
-float* detect_events(void *km, uint32_t s_len, const float* sig, const ri_mapopt_t *opt, uint32_t *n);
+float* detect_events(void *km, uint32_t s_len, const float* sig, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, uint32_t *n);
 
 #ifdef __cplusplus
 }

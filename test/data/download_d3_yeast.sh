@@ -14,7 +14,7 @@ git clone https://github.com/rrwick/Fast5-to-Fastq
 Fast5-to-Fastq/fast5_to_fastq.py fast5_files/ | awk 'BEGIN{line = 0}{line++; if(line %4 == 1){print ">"substr($1,2,36)}else if(line % 4 == 2){print $0}}' > reads.fasta
 
 # Optional: Single to multi conversion. Requires the following tool: https://github.com/nanoporetech/ont_fast5_api
-# single_to_multi_fast5 --input_path ./fast5_files/ --save_path ./multi_fast5_files/ -t 32
+# single_to_multi_fast5 -i ./fast5_files/ -s ./multi_fast5_files_test/ -n 4000 -t 32 -c vbz
 # rm -rf ./fast5_files; mv ./multi_fast5_files/ ./fast5_files;
 
 # Optional: fast5 -> pod5 conversion. Requires the pod5 tool: https://github.com/nanoporetech/pod5-file-format 

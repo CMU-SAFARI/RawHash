@@ -3,6 +3,7 @@
 
 #include "rutils.h"
 #include "roptions.h"
+#include "rsig.h"
 
 #define RI_IDX_MAGIC   "RI"
 #define RI_IDX_MAGIC_BYTE 2
@@ -32,9 +33,24 @@ typedef struct ri_idx_s{
 
 	void *km, *h;
 
+	uint32_t window_length1;
+	uint32_t window_length2;
+	float threshold1;
+	float threshold2;
+	float peak_height;
+	float sample_per_base;
+	uint32_t bp_per_sec;
+	uint32_t sample_rate;
+
 	uint32_t n_seq;
 	ri_idx_seq_t *seq;
+	ri_sig_t *sig;
+
 	// uint32_t *S;
+	float **F; //forward
+	uint32_t *f_l_sig; //length of the signals (forward)
+	float **R; //reverse
+	uint32_t *r_l_sig; //length of the signals (reverse)
 
 } ri_idx_t;
 
@@ -48,6 +64,10 @@ typedef struct ri_idx_reader_s{
 		struct mm_bseq_file_s *seq;
 		FILE *idx;
 	} fp;
+
+	int n_f, cur_f;
+	ri_sig_file_t *sfp;
+	char **sf;
 } ri_idx_reader_t;
 
 /**
@@ -99,7 +119,7 @@ int64_t ri_idx_is_idx(const char* fn);
  * 
  * @return		rindex (index)
  */
-ri_idx_t* ri_idx_init(int b, int w, int e, int n, int q, int lq, int k);
+ri_idx_t* ri_idx_init(int b, int w, int e, int n, int q, int lq, int k, int flag);
 
 /**
  * Reads or constructs the index from file. If the file is not index, it should be a file containing sequences to generate the index for.

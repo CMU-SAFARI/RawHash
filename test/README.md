@@ -19,6 +19,7 @@ We use various tools to process and analyze the data we generate using each tool
 * [Python v3.6.15](https://www.python.org/downloads/release/python-3615/)
 * [pip v20.2.3 -- via conda](https://anaconda.org/conda-forge/pip/20.2.3/download/noarch/pip-20.2.3-py_0.tar.bz2)
 * [ont_vbz_hdf_plugin v1.0.1 -- via conda](https://anaconda.org/bioconda/ont_vbz_hdf_plugin/files?version=1.0.1)
+* [seqkit v2.5.1 -- via conda](https://anaconda.org/bioconda/seqkit/files?version=2.5.1)
 * [SRA Toolkit](https://github.com/ncbi/sra-tools/wiki/02.-Installing-SRA-Toolkit)
 
 Please make sure that all of these tools are in your `PATH`
@@ -41,7 +42,7 @@ conda config --add channels bioconda
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
-conda create -n rawhash2-env python=3.6.15 pip=20.2.3 ont_vbz_hdf_plugin=1.0.1
+conda create -n rawhash2-env python=3.6.15 pip=20.2.3 ont_vbz_hdf_plugin=1.0.1 seqkit=2.5.1
 conda activate rawhash2-env
 
 #Installing SRA Toolkit

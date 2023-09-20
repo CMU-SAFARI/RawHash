@@ -204,17 +204,26 @@ endif
 $(PROG): $(OBJS)
 	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -lstdc++
 
-rsig.o: rsig.c
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# rsig.o: rsig.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
-main.o: main.cpp
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# rindex.o: rindex.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
-rmap.o: rmap.c
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# main.o: main.cpp
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
-rindex.o: rindex.c
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# rmap.o: rmap.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+# lchain.o: lchain.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+# rseed.o: rseed.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+# hit.o: hit.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
 .SUFFIXES:
 .SUFFIXES:.cpp .o
@@ -225,8 +234,11 @@ rindex.o: rindex.c
 .SUFFIXES:
 .SUFFIXES:.c .o
 
+# %.o: %.c
+# 	${CC} -c $(CFLAGS) $(INCLUDES) $< -o $@
+
 %.o: %.c
-	${CC} -c $(CFLAGS) $(INCLUDES) $< -o $@
+	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
 clean: ## Remove all generated files
 	rm -fr *.o $(PROG) *~

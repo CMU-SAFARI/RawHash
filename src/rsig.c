@@ -292,7 +292,7 @@ int is_dir(const char *A)
 void find_sfiles(const char *A, ri_char_v *fnames)
 {
 	if (!is_dir(A)) {
-		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
+		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".pod") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
 			char** cur_fname;
 			rh_kv_pushp(char*, 0, *fnames, &cur_fname);
 			(*cur_fname) = strdup(A);
@@ -310,7 +310,7 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 				if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, ".."))
 					find_sfiles(tmp, fnames);
 			} else {
-				if (strstr(ent->d_name, ".fast5") || strstr(ent->d_name, ".pod5") || strstr(ent->d_name, ".slow5") || strstr(ent->d_name, ".blow5")) {
+				if (strstr(ent->d_name, ".fast5") || strstr(ent->d_name, ".pod5") || strstr(ent->d_name, ".pod") || strstr(ent->d_name, ".slow5") || strstr(ent->d_name, ".blow5")) {
 					char** cur_fname;
 					rh_kv_pushp(char*, 0, *fnames, &cur_fname);
 					(*cur_fname) = strdup(tmp);

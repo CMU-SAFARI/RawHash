@@ -24,15 +24,6 @@ static inline uint64_t hash64(uint64_t key, uint64_t mask){
 //   return key&mask;
 // }
 
-//Quantize float in range [min,max] to 10-bit unsigned integer
-static inline uint32_t quantize_float_uint32(const float x, const float min, const float max) {
-	uint32_t a = (uint32_t)(((x-min)/(max-min))*127.0f);
-	if(a>127) return 127;
-	if(a<0) return 0;
-
-	return a;
-}
-
 // #include <x86intrin.h> //TODO: insert ifdef here to include simd headers
 
 //https://stackoverflow.com/a/21673221
@@ -148,16 +139,18 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 	int j, buf_pos, min_pos;
 	mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
 
-	int step = 1;//TODO: make this an argument
-	uint32_t span = 6+e-1; //for now single event is considered to span 6 bases.
-
-	assert(len > 0 && (w > 0 && w < 256) && (e > 0 && e <= 10));
-	memset(buf, 0xff, w * 16);
-	rh_kv_resize(mm128_t, km, *p, p->n + (len/step)/w);
-	
-	const uint32_t quant_bit = lq+2; 
+	// int step = 1;//TODO: make this an argument
+	// uint32_t span = (k+e-1)*step;
+	uint32_t span = k+e-1;
+	const uint32_t quant_bit = lq+2;
 	const uint32_t shift_r = 32-q;
 	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_l_quant = (1UL<<lq)-1; //for least sig. 5 bits
+
+	assert(len > 0 && (w > 0 && w < 256) && e*quant_bit <= 64);
+
+	memset(buf, 0xff, w * 16);
+	// rh_kv_resize(mm128_t, km, *p, p->n + (len/step)/w);
+	rh_kv_resize(mm128_t, km, *p, p->n + len/w);
 
 	int sigBufFull = 0;
 	uint32_t i, l, sigBufPos = 0;
@@ -168,7 +161,8 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 	mm128_t sigBuf[e];
 	memset(sigBuf, 0, e*sizeof(mm128_t));
 
-    for (i = l = buf_pos = min_pos = 0; i < len; i += step) {
+	// for (i = l = buf_pos = min_pos = 0; i < len; i += step) {
+    for (i = l = buf_pos = min_pos = 0; i < len; ++i) {
         if(i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF) continue;
 
 		l++;
@@ -176,8 +170,6 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 		l_sigpos = i;
 		signal = *((uint32_t*)&s_values[i]);
 		tmpQuantSignal = signal>>30<<lq | ((signal>>shift_r)&mask_l_quant);
-		// signal = quantize_float_uint32(s_values[i], -2.75f, 2.75f);
-		// tmpQuantSignal = signal&mask_quant;
 
 		quantVal = (quantVal<<quant_bit|tmpQuantSignal)&mask_events;
 
@@ -222,10 +214,9 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 
 void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int q, int lq, int k, mm128_v *p){
 
-	int step = 1;//TODO: make this an argument
-	uint32_t span = (k+e-1)*step;
-	// uint32_t span = e; // TODO: span has a role in chaining calculating and in earlier version we use only e for that score.
-	//try to integrate the earlier (commented out) version of span into score calculation accurately.
+	// int step = 1;//TODO: make this an argument
+	// uint32_t span = (k+e-1)*step;
+	uint32_t span = k+e-1;
 	
 	uint32_t quant_bit = lq+2; 
 	uint32_t shift_r = 32-q;
@@ -236,19 +227,21 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
 	uint32_t signal = 0, tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
-	rh_kv_resize(mm128_t, km, *p, p->n + len/step);
+	assert(len > 0 && e*quant_bit <= 64);
+
+	// rh_kv_resize(mm128_t, km, *p, p->n + len/step);
+	rh_kv_resize(mm128_t, km, *p, p->n + len);
 
 	mm128_t sigBuf[e];
 	memset(sigBuf, 0, e*sizeof(mm128_t));
 
-    for (i = 0; i < len; i += step) {
+	// for (i = 0; i < len; i += step) {
+    for (i = 0; i < len; ++i) {
         if((i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF)) continue;
 
 		l_sigpos = i;
 		signal = *((uint32_t*)&s_values[i]);
 		tmpQuantSignal = signal>>30<<lq | ((signal>>shift_r)&mask_l_quant);
-		// signal = quantize_float_uint32(s_values[i], -2.75f, 2.75f);
-		// tmpQuantSignal = signal&mask_quant;
 
 		sigBuf[sigBufPos].y = id_shift | (uint32_t)i<<RI_POS_SHIFT | strand;
 		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}

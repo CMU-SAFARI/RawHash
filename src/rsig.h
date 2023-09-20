@@ -20,9 +20,13 @@ typedef struct ri_sig_s{
 	uint32_t rid, l_sig; //read id and length of the signal values
 	char *name; //name of the read
 
+	uint64_t offset; // offset in ri_idx_t::S
+
 	// float dig, ran, offset; //digitalisation, range, offset
 	float* sig; //signal values of a read
 } ri_sig_t;
+
+typedef struct { size_t n, m; ri_sig_t **a; } rhsig_v;
 
 typedef struct ri_sig_file_s {
 	// gzFile fp;

@@ -196,7 +196,7 @@ void mm_set_parent(void *km,
 				   int mask_len,
 				   int n,
 				   mm_reg1_t *r,
-				   int sub_diff,
+				//    int sub_diff,
 				   int hard_mask_level,
 				   float alt_diff_frac) // and compute mm_reg1_t::subsc
 {
@@ -244,12 +244,12 @@ skip_uncov:
 				if (!rp->is_alt && ri->is_alt) sci = mm_alt_score(sci, alt_diff_frac);
 				rp->subsc = rp->subsc > sci? rp->subsc : sci;
 				if (ri->cnt >= rp->cnt) cnt_sub = 1;
-				if (rp->p && ri->p && (rp->rid != ri->rid || rp->rs != ri->rs || rp->re != ri->re || ol != min)) { // the last condition excludes identical hits after DP
-					sci = ri->p->dp_max;
-					if (!rp->is_alt && ri->is_alt) sci = mm_alt_score(sci, alt_diff_frac);
-					rp->p->dp_max2 = rp->p->dp_max2 > sci? rp->p->dp_max2 : sci;
-					if (rp->p->dp_max - ri->p->dp_max <= sub_diff) cnt_sub = 1;
-				}
+				// if (rp->p && ri->p && (rp->rid != ri->rid || rp->rs != ri->rs || rp->re != ri->re || ol != min)) { // the last condition excludes identical hits after DP
+				// 	sci = ri->p->dp_max;
+				// 	if (!rp->is_alt && ri->is_alt) sci = mm_alt_score(sci, alt_diff_frac);
+				// 	rp->p->dp_max2 = rp->p->dp_max2 > sci? rp->p->dp_max2 : sci;
+				// 	if (rp->p->dp_max - ri->p->dp_max <= sub_diff) cnt_sub = 1;
+				// }
 				if (cnt_sub) ++rp->n_sub;
 				break;
 			}
@@ -336,7 +336,7 @@ void mm_sync_regs(void *km,
 
 void mm_select_sub(void *km,
 				   float pri_ratio,
-				   int min_diff,
+				//    int min_diff,
 				   int best_n,
 				   int check_strand,
 				   int min_strand_sc,
@@ -350,14 +350,16 @@ void mm_select_sub(void *km,
 		int p = r[i].parent;
 		if (p == i || r[i].inv) { // primary or inversion
 			r[k++] = r[i];
-		// } else if ((r[i].score >= r[p].score * pri_ratio || r[i].score + min_diff >= r[p].score) && n_2nd < best_n) {
-		// 	if (!(r[i].qs == r[p].qs && r[i].qe == r[p].qe && r[i].rid == r[p].rid && r[i].rs == r[p].rs && r[i].re == r[p].re)) // not identical hits
-		// 		r[k++] = r[i], ++n_2nd;
-		// 	else if (r[i].p) free(r[i].p);
-		// } else if (check_strand && n_2nd < best_n && r[i].score > min_strand_sc && r[i].rev != r[p].rev) {
-		// 	r[i].strand_retained = 1;
-		// 	r[k++] = r[i], ++n_2nd;
-		} else if (r[i].p) free(r[i].p);
+		}
+		else if ((r[i].score >= r[p].score * pri_ratio) && n_2nd < best_n) {
+			if (!(r[i].qs == r[p].qs && r[i].qe == r[p].qe && r[i].rid == r[p].rid && r[i].rs == r[p].rs && r[i].re == r[p].re)) // not identical hits
+				r[k++] = r[i], ++n_2nd;
+			else if (r[i].p) free(r[i].p);
+		} else if (check_strand && n_2nd < best_n && r[i].score > min_strand_sc && r[i].rev != r[p].rev) {
+			r[i].strand_retained = 1;
+			r[k++] = r[i], ++n_2nd;
+		}
+		else if (r[i].p) free(r[i].p);
 	}
 	if (k != n) mm_sync_regs(km, k, r); // removing hits requires sync()
 	*n_ = k;
@@ -496,39 +498,11 @@ void mm_seg_free(void *km,
 	ri_kfree(km, segs);
 }
 
-static void mm_set_inv_mapq(void *km,
-							int n_regs,
-							mm_reg1_t *regs)
-{
-	int i, n_aux;
-	mm128_t *aux;
-	if (n_regs < 3) return;
-	for (i = 0; i < n_regs; ++i)
-		if (regs[i].inv) break;
-	if (i == n_regs) return; // no inversion hits
-
-	aux = (mm128_t*)ri_kmalloc(km, n_regs * 16);
-	for (i = n_aux = 0; i < n_regs; ++i)
-		if (regs[i].parent == i || regs[i].parent < 0)
-			aux[n_aux].y = i, aux[n_aux++].x = (uint64_t)regs[i].rid << 32 | regs[i].rs;
-	radix_sort_128x(aux, aux + n_aux);
-
-	for (i = 1; i < n_aux - 1; ++i) {
-		mm_reg1_t *inv = &regs[aux[i].y];
-		if (inv->inv) {
-			mm_reg1_t *l = &regs[aux[i-1].y];
-			mm_reg1_t *r = &regs[aux[i+1].y];
-			inv->mapq = l->mapq < r->mapq? l->mapq : r->mapq;
-		}
-	}
-	ri_kfree(km, aux);
-}
-
 void mm_set_mapq(void *km,
 				 int n_regs,
 				 mm_reg1_t *regs,
 				 int min_chain_sc,
-				 int match_sc,
+				//  int match_sc,
 				 int rep_len)
 				//  int is_sr)
 {
@@ -543,36 +517,15 @@ void mm_set_mapq(void *km,
 	uniq_ratio = (float)sum_sc / (sum_sc + rep_len);
 	for (i = 0; i < n_regs; ++i) {
 		mm_reg1_t *r = &regs[i];
-		if (r->inv) {
-			r->mapq = 0;
-		} else if (r->parent == r->id) {
-			int mapq, subsc;
-			float pen_s1 = (r->score > 100? 1.0f : 0.01f * r->score) * uniq_ratio;
-			float pen_cm = r->cnt > 10? 1.0f : 0.1f * r->cnt;
-			pen_cm = pen_s1 < pen_cm? pen_s1 : pen_cm;
-			subsc = r->subsc > min_chain_sc? r->subsc : min_chain_sc;
-			if (r->p && r->p->dp_max2 > 0 && r->p->dp_max > 0) {
-				float identity = (float)r->mlen / r->blen;
-				float x = (float)r->p->dp_max2 * subsc / r->p->dp_max / r->score0;
-				mapq = (int)(identity * pen_cm * q_coef * (1.0f - x * x) * logf((float)r->p->dp_max / match_sc));
-				// if (!is_sr) {
-				int mapq_alt = (int)(6.02f * identity * identity * (r->p->dp_max - r->p->dp_max2) / match_sc + .499f); // BWA-MEM like mapQ, mostly for short reads
-				mapq = mapq < mapq_alt? mapq : mapq_alt; // in case the long-read heuristic fails
-				// }
-			} else {
-				float x = (float)subsc / r->score0;
-				if (r->p) {
-					float identity = (float)r->mlen / r->blen;
-					mapq = (int)(identity * pen_cm * q_coef * (1.0f - x) * logf((float)r->p->dp_max / match_sc));
-				} else {
-					mapq = (int)(pen_cm * q_coef * (1.0f - x) * logf(r->score));
-				}
-			}
-			mapq -= (int)(4.343f * logf(r->n_sub + 1) + .499f);
-			mapq = mapq > 0? mapq : 0;
-			r->mapq = mapq < 60? mapq : 60;
-			if (r->p && r->p->dp_max > r->p->dp_max2 && r->mapq == 0) r->mapq = 1;
-		} else r->mapq = 0;
+		int mapq, subsc;
+		float pen_s1 = (r->score > 200? 1.0f : 0.005 * r->score) * uniq_ratio;
+		float pen_cm = r->cnt > 10? 1.0f : 0.1f * r->cnt;
+		pen_cm = pen_s1 < pen_cm? pen_s1 : pen_cm;
+		subsc = r->subsc > min_chain_sc? r->subsc : min_chain_sc;
+		float x = (float)subsc / r->score0;
+		mapq = (int)(pen_cm * q_coef * (1.0f - x) * logf(r->score));
+		mapq -= (int)(4.343f * logf(r->n_sub + 1) + .499f);
+		mapq = mapq > 0? mapq : 0;
+		r->mapq = mapq < 60? mapq : 60;
 	}
-	mm_set_inv_mapq(km, n_regs, regs);
 }

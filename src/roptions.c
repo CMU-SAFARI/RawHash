@@ -8,6 +8,16 @@ void ri_idxopt_init(ri_idxopt_t *opt)
 	opt->b = 14;
 	opt->mini_batch_size = 50000000;
 	opt->batch_size = 4000000000ULL;
+
+	opt->window_length1 = 3; //--seg-window-length1
+    opt->window_length2 = 6; //--seg-window-length2
+    opt->threshold1 = 4.30265f; //--seg-threshold1
+    opt->threshold2 = 2.57058f; //--seg-threshold2
+    opt->peak_height = 1.0f; //--seg-peak_height
+
+	opt->bp_per_sec = 450; //--bp-per-sec
+	opt->sample_rate = 4000; //--sample-rate
+	opt->sample_per_base = (float)opt->sample_rate / opt->bp_per_sec;
 }
 
 void ri_mapopt_init(ri_mapopt_t *opt)
@@ -41,25 +51,25 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->min_chaining_score = 15; //--min-score
 	opt->rmq_inner_dist = 1000; //--rmq-inner-dist
 	opt->rmq_size_cap = 100000; //--rmq-size-cap
-	opt->chain_gap_scale = 0.8f; //--chain-gap-scale
+	opt->chain_gap_scale = 0.6f; //--chain-gap-scale
 	opt->chain_skip_scale = 0.0f; //--chain-skip-scale
 
 	opt->mask_level = 0.5f; //--primary-ratio
 	opt->mask_len = INT_MAX; //--primary-length
 	
-	opt->pri_ratio = 0.8f;
-	opt->best_n = 5;
+	opt->pri_ratio = 0.3f;
+	opt->best_n = 0;
 
 	opt->alt_drop = 0.15f; //--alt-drop
 
-	opt->w_bestq=0.65f; //--w-bestq
-	opt->w_bestmq=0.05f; //--w-bestmq
-	opt->w_bestmc=0.3f; //--w-bestmc
+	opt->w_bestma=0.20f; //--w-bestq
+	opt->w_bestmq=0.80f; //--w-bestmq
+	opt->w_bestmc=0.00f; //--w-bestmc
 	// opt->w_best2q=0.15f; //--w-best2q
 	// opt->w_best2c=0.2f; //--w-best2c
-	opt->w_threshold = 0.3f; //--w-threshold
+	opt->w_threshold = 0.15f; //--w-threshold
 
-	opt->a = 2, opt->b = 4; //--chain-match-score, 
+	// opt->a = 2, opt->b = 4; //--chain-match-score, 
 	// opt->q = 4, opt->e = 2, opt->q2 = 24, opt->e2 = 1;
 	// opt->sc_ambi = 1;
 	// opt->zdrop = 400, opt->zdrop_inv = 200;
