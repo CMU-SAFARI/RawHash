@@ -76,72 +76,127 @@ static inline uint32_t quantize_float_uint32(const float x, const float min, con
 // void ri_sketch_blend_min(void *km, const float* s_values, uint32_t id, int strand, int len, int w, int e, int n, int q, int lq, int k, mm128_v *p){	
 // }
 
-// void ri_sketch_blend(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int n, int q, int lq, int k, mm128_v *p){
+void ri_sketch_blend_quant(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int q, int lq, int k, mm128_v *p) {
 
-// 	uint64_t blendVal = 0;
-//     int blend_pos = 0;
-// 	bool buffull = false;
-// 	const uint64_t blendmask =  (1ULL<<28)-1;
-
-// 	mm128_t blndBuf[n];
-// 	memset(blndBuf, 0, n*sizeof(mm128_t));
+	uint64_t blendVal = 0;
+	const uint64_t blendmask =  (1ULL<<28)-1;
     
-//     //SIMD-related variables
-//     __m256i ma = _mm256_set1_epi8(1);
-//     __m256i mb = _mm256_set1_epi8(-1);
-//     __m256i blndcnt_lsb = _mm256_set1_epi8(0);
-//     __m256i blndcnt_msb = _mm256_set1_epi8(0);
+    //SIMD-related variables
+    __m256i ma = _mm256_set1_epi8(1);
+    __m256i mb = _mm256_set1_epi8(-1);
+    __m256i blndcnt_lsb = _mm256_set1_epi8(0);
+    __m256i blndcnt_msb = _mm256_set1_epi8(0);
 
-// 	int step = 1;//TODO: make this an argument
-// 	uint32_t span = (k+e-1)*step; //for now single event is considered to span 6 bases.
+	int step = 1;//TODO: make this an argument
+	uint32_t span = (k+e-1)*step; //for now single event is considered to span 6 bases.
 
-// 	const uint32_t quant_bit = lq+2; 
-// 	const uint32_t shift_r = 32-q;
-// 	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_l_quant = (1UL<<lq)-1; //for least sig. 5 bits
+	const uint32_t quant_bit = lq+2; 
+	const uint32_t shift_r = 32-q;
+	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_l_quant = (1UL<<lq)-1; //for least sig. 5 bits
 	
-// 	int sigBufFull = 0;
-// 	uint32_t i, sigBufPos = 0, l_sigpos = 0; //last signal position
-// 	uint32_t signal = 0, tmpQuantSignal = 0;
-// 	uint64_t quantVal = 0, hashVal = 0;
+	int sigBufFull = 0;
+	uint32_t i, sigBufPos = 0, l_sigpos = 0; //last signal position
+	uint32_t signal = 0, tmpQuantSignal = 0;
+	uint64_t quantVal = 0, hashVal = 0;
 
-// 	rh_kv_resize(mm128_t, km, *p, p->n + len/step);
+	rh_kv_resize(mm128_t, km, *p, p->n + len/step);
 
-// 	mm128_t sigBuf[e];
-// 	memset(sigBuf, 0, e*sizeof(mm128_t));
+	mm128_t sigBuf[e];
+	memset(sigBuf, 0, e*sizeof(mm128_t));
 
-//     for (i = 0; i < len; i += step) {
-//         if(i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF) continue;
+    for (i = 0; i < len; i += step) {
+        if(i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF) continue;
 
-// 		l_sigpos = i;
-// 		signal = *((uint32_t*)&s_values[i]);
-// 		tmpQuantSignal = signal>>30<<lq | ((signal>>shift_r)&mask_l_quant);
+		l_sigpos = i;
+		signal = *((uint32_t*)&s_values[i]);
+		tmpQuantSignal = signal>>30<<lq | ((signal>>shift_r)&mask_l_quant);
 
-// 		mm128_t info = { UINT64_MAX, UINT64_MAX };
+		mm128_t info = { UINT64_MAX, UINT64_MAX };
 
-// 		quantVal = (quantVal<<quant_bit|tmpQuantSignal)&mask_events;
-// 		hashVal = hash64(quantVal, mask);
+		quantVal = (quantVal<<quant_bit|tmpQuantSignal)&mask_events;
 
-// 		sigBuf[sigBufPos].y = id_shift | (uint32_t)i<<RI_POS_SHIFT | strand;
-// 		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
-// 		// sigBuf[sigBufPos].x = hashVal<<RI_HASH_SHIFT | span;
+		sigBuf[sigBufPos].y = id_shift | (uint32_t)i<<RI_POS_SHIFT | strand;
+		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;} // shouldn't we set sigBuffFull back to 0 at some point? 
 
-// 		if(!sigBufFull) continue;
+		if(!sigBufFull) continue;
+		
+		if(sigBufFull){
+			blendVal = calc_blend_rm_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, quantVal, quantVal, blendmask, 32); // do we need the same argument twice? 
+			info.x = blendVal<<RI_HASH_SHIFT | span;
+			info.y = sigBuf[sigBufPos].y;
+			rh_kv_push(mm128_t, km, *p, info);
+		}else{
+			calc_blend_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, quantVal, blendmask, 32);
+		}
+    }
+}
 
-// 		blndBuf[blend_pos].x = hash64(quantVal, mask);
-// 		blndBuf[blend_pos].y = sigBuf[sigBufPos].y;
+void ri_sketch_blend(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int n, int q, int lq, int k, mm128_v *p){
 
-// 		if(++blend_pos == n) {buffull = true; blend_pos = 0;}
+	uint64_t blendVal = 0;
+    int blend_pos = 0;
+	bool buffull = false;
+	const uint64_t blendmask =  (1ULL<<28)-1;
 
-// 		if(buffull){
-// 			blendVal = calc_blend_rm_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, hashVal, blndBuf[blend_pos].x, blendmask, 32);
-// 			info.x = blendVal<<RI_HASH_SHIFT | span;
-// 			info.y = blndBuf[blend_pos].y;
-// 			rh_kv_push(mm128_t, km, *p, info);
-// 		}else{
-// 			calc_blend_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, hashVal, blendmask, 32);
-// 		}
-//     }
-// }
+	mm128_t blndBuf[n];
+	memset(blndBuf, 0, n*sizeof(mm128_t));
+    
+    //SIMD-related variables
+    __m256i ma = _mm256_set1_epi8(1);
+    __m256i mb = _mm256_set1_epi8(-1);
+    __m256i blndcnt_lsb = _mm256_set1_epi8(0);
+    __m256i blndcnt_msb = _mm256_set1_epi8(0);
+
+	int step = 1;//TODO: make this an argument
+	uint32_t span = (k+e-1)*step; //for now single event is considered to span 6 bases.
+
+	const uint32_t quant_bit = lq+2; 
+	const uint32_t shift_r = 32-q;
+	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_l_quant = (1UL<<lq)-1; //for least sig. 5 bits
+	
+	int sigBufFull = 0;
+	uint32_t i, sigBufPos = 0, l_sigpos = 0; //last signal position
+	uint32_t signal = 0, tmpQuantSignal = 0;
+	uint64_t quantVal = 0, hashVal = 0;
+
+	rh_kv_resize(mm128_t, km, *p, p->n + len/step);
+
+	mm128_t sigBuf[e];
+	memset(sigBuf, 0, e*sizeof(mm128_t));
+
+    for (i = 0; i < len; i += step) {
+        if(i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF) continue;
+
+		l_sigpos = i;
+		signal = *((uint32_t*)&s_values[i]);
+		tmpQuantSignal = signal>>30<<lq | ((signal>>shift_r)&mask_l_quant);
+
+		mm128_t info = { UINT64_MAX, UINT64_MAX };
+
+		quantVal = (quantVal<<quant_bit|tmpQuantSignal)&mask_events;
+		hashVal = hash64(quantVal, mask); 
+
+		sigBuf[sigBufPos].y = id_shift | (uint32_t)i<<RI_POS_SHIFT | strand;
+		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
+		// sigBuf[sigBufPos].x = hashVal<<RI_HASH_SHIFT | span;
+
+		if(!sigBufFull) continue;
+
+		blndBuf[blend_pos].x = hash64(quantVal, mask);
+		blndBuf[blend_pos].y = sigBuf[sigBufPos].y;
+
+		if(++blend_pos == n) {buffull = true; blend_pos = 0;}
+
+		if(buffull){
+			blendVal = calc_blend_rm_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, hashVal, blndBuf[blend_pos].x, blendmask, 32);
+			info.x = blendVal<<RI_HASH_SHIFT | span;
+			info.y = blndBuf[blend_pos].y;
+			rh_kv_push(mm128_t, km, *p, info);
+		}else{
+			calc_blend_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, hashVal, blendmask, 32);
+		}
+    }
+}
 
 void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int len, int w, int e, int q, int lq, int k, mm128_v *p){
 	
@@ -276,6 +331,10 @@ void ri_sketch(void *km, const float* s_values, uint32_t id, int strand, int len
 
 	// if(w & n) ri_sketch_blend_min(km, s_values, id, strand, len, w, e, n, q, lq, k, p);
 	// else if(n) ri_sketch_blend(km, s_values, id, strand, len, e, n, q, lq, k, p);
-	if(w) ri_sketch_min(km, s_values, id, strand, len, w, e, q, lq, k, p);
-	else ri_sketch_reg(km, s_values, id, strand, len, e, q, lq, k, p);
+	
+	//if(w) ri_sketch_min(km, s_values, id, strand, len, w, e, q, lq, k, p);
+	int n = 6; 
+	ri_sketch_blend(km, s_values, id, strand, len, e, n, q, lq, k, p);
+	//ri_sketch_blend_quant(km, s_values, id, strand, len, w, e, q, lq, k, p);
+	//else ri_sketch_reg(km, s_values, id, strand, len, e, q, lq, k, p);
 }
