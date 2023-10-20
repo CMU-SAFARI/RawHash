@@ -45,6 +45,8 @@ print("\\newcommand\\avgthrU{$%.1f\\times$\\xspace}\n\\newcommand\\maxthrU{$%.1f
 # Sigmap CPU and memory results for latex
 print("\\newcommand\\avgthrS{$%.1f\\times$\\xspace}\n\\newcommand\\maxthrS{$%.1f\\times$\\xspace}\n\\newcommand\\minthrS{$%.1f\\times$\\xspace}\n" % (sum(toolThroughput["Sigmap"])/len(toolThroughput["Sigmap"]), max(toolThroughput["Sigmap"]), min(toolThroughput["Sigmap"])))
 
+print("\\newcommand\\avgthrR{$%.1f\\times$\\xspace}\n\\newcommand\\maxthrR{$%.1f\\times$\\xspace}\n\\newcommand\\minthrR{$%.1f\\times$\\xspace}\n" % (sum(toolThroughput["RawHash"])/len(toolThroughput["RawHash"]), max(toolThroughput["RawHash"]), min(toolThroughput["RawHash"])))
+
 fig, ax = plt.subplots(1, 1, figsize=(9,3))
 
 ####################################################################################################
@@ -58,7 +60,7 @@ ax.bar(idx[10:15]+2, throughput[10:15], color=colors, width=0.99, align="center"
 ax.bar(idx[15:20]+2, throughput[15:20], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
 ax.bar(idx[20:25]+2, throughput[20:25], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
 ax.bar(idx[25:30]+2, throughput[25:30], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
-ax.bar(idx[30:35]+2, throughput[30:35], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
+# ax.bar(idx[30:35]+2, throughput[30:35], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
 ax.set_yscale("log")
 
 cidx=0

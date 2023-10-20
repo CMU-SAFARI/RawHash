@@ -1,25 +1,25 @@
 Data,Tool,Sequenced chunks (#),idx
-D1 Covid,RawHash2,1.1846,1
-D1 Covid,RawHash2-Minimizer,1.31194,2
+D1 Covid,RawHash2,1.15732,1
+D1 Covid,RawHash2-Minimizer,1.30498,2
 D1 Covid,RawHash,1.2378,3
 D1 Covid,Sigmap,1.0053,4
 
-D2 Ecoli,RawHash2,3.21018,6
-D2 Ecoli,RawHash2-Minimizer,3.5826,7
+D2 Ecoli,RawHash2,3.1470,6
+D2 Ecoli,RawHash2-Minimizer,4.8065,7
 D2 Ecoli,RawHash,3.2003,8
 D2 Ecoli,Sigmap,2.1112,9
 
-D3 Yeast,RawHash2,4.2875,11
-D3 Yeast,RawHash2-Minimizer,4.7690,12
+D3 Yeast,RawHash2,4.84224,11
+D3 Yeast,RawHash2-Minimizer,6.66436,12
 D3 Yeast,RawHash,5.8263,13
 D3 Yeast,Sigmap,4.1393,14
 
-D4 Green Algae,RawHash2,5.3259,16
-D4 Green Algae,RawHash2-Minimizer,6.2264,17
+D4 Green Algae,RawHash2,5.16594,16
+D4 Green Algae,RawHash2-Minimizer,7.83312,17
 D4 Green Algae,RawHash,10.7183,18
 D4 Green Algae,Sigmap,5.7581,19
 
-D5 Human,RawHash2,8.7494,21
-D5 Human,RawHash2-Minimizer,9.5443,22
+D5 Human,RawHash2,9.393778,21
+D5 Human,RawHash2-Minimizer,11.109485,22
 D5 Human,RawHash,10.6955,23
 D5 Human,Sigmap,10.4011,24

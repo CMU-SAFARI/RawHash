@@ -1,42 +1,42 @@
 Data,Tool,Mean time spent per read (ms),idx
-D1 Covid,RawHash2,0.400415305365132,1
-D1 Covid,RawHash2-Minimizer,0.274574347670986,2
+D1 Covid,RawHash2,0.545826878274194,1
+D1 Covid,RawHash2-Minimizer,0.311693477702641,2
 D1 Covid,RawHash,0.7435836043,3
 D1 Covid,UNCALLED,26.01070454,4
 D1 Covid,Sigmap,0.8428431104,5
 
-D2 Ecoli,RawHash2,3.761545,7
-D2 Ecoli,RawHash2-Minimizer,1.8953,8
+D2 Ecoli,RawHash2,5.4899520754961,7
+D2 Ecoli,RawHash2-Minimizer,2.26140604538651,8
 D2 Ecoli,RawHash,14.77883999,9
 D2 Ecoli,UNCALLED,100.1708235,10
 D2 Ecoli,Sigmap,50.73894845,11
 
-D3 Yeast,RawHash2,9.5698,13
-D3 Yeast,RawHash2-Minimizer,4.9706,14
+D3 Yeast,RawHash2,17.6363883110091,13
+D3 Yeast,RawHash2-Minimizer,5.81374212567669,14
 D3 Yeast,RawHash,56.8216278,15
 D3 Yeast,UNCALLED,173.2376205,16
 D3 Yeast,Sigmap,138.5456454,17
 
-D4 Green Algae,RawHash2,73.8126,19
-D4 Green Algae,RawHash2-Minimizer,38.8836,20
+D4 Green Algae,RawHash2,155.62280634363,19
+D4 Green Algae,RawHash2-Minimizer,40.403810891915,20
 D4 Green Algae,RawHash,456.7042876,21
 D4 Green Algae,UNCALLED,553.9290395,22
 D4 Green Algae,Sigmap,623.3386466,23
 
-D5 Human,RawHash2,436.8572,25
-D5 Human,RawHash2-Minimizer,186.8951,26
+D5 Human,RawHash2,931.008290246836,25
+D5 Human,RawHash2-Minimizer,183.27077521224,26
 D5 Human,RawHash,4014.243067,27
 D5 Human,UNCALLED,877.3959191,28
 D5 Human,Sigmap,9925.055455,29
 
-Contamination,RawHash2,0.45439885289703,31
-Contamination,RawHash2-Minimizer,0.293907810147386,32
+Contamination,RawHash2,0.542922097218093,31
+Contamination,RawHash2-Minimizer,0.321290371013922,32
 Contamination,RawHash,0.8862503033,33
 Contamination,UNCALLED,157.7402623,34
 Contamination,Sigmap,1.174430672,35
 
-Relative Abund.,RawHash2,167.321288,37
-Relative Abund.,RawHash2-Minimizer,64.32123,38
+Relative Abund.,RawHash2,167.321288482575,37
+Relative Abund.,RawHash2-Minimizer,64.32122692941,38
 Relative Abund.,RawHash,1404.052806,39
 Relative Abund.,UNCALLED,257.8997392,40
 Relative Abund.,Sigmap,3676.31793,41

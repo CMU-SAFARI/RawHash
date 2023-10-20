@@ -1,25 +1,25 @@
 Data,Tool,Sequenced bases (#),idx
-D1 Covid,RawHash2,492.8437,1
+D1 Covid,RawHash2,479.914,1
 D1 Covid,RawHash,513.9491,3
 D1 Covid,UNCALLED,184.5084,4
-D1 Covid,RawHash2-Minimizer,538.5622,2
+D1 Covid,RawHash2-Minimizer,537.5817,2
 
-D2 Ecoli,RawHash2,1349.3489,6
+D2 Ecoli,RawHash2,1329.009,6
 D2 Ecoli,RawHash,1376.1354,8
 D2 Ecoli,UNCALLED,580.5194,9
-D2 Ecoli,RawHash2-Minimizer,1502.4648,7
+D2 Ecoli,RawHash2-Minimizer,2034.6956,7
 
-D3 Yeast,RawHash2,1793.5513,11
+D3 Yeast,RawHash2,2057.438,11
 D3 Yeast,RawHash,2565.0867,13
 D3 Yeast,UNCALLED,1233.1967,14
-D3 Yeast,RawHash2-Minimizer,1976.9036,12
+D3 Yeast,RawHash2-Minimizer,2833.7549,12
 
-D4 Green Algae,RawHash2,2264.9479,16
+D4 Green Algae,RawHash2,2184.8139,16
 D4 Green Algae,RawHash,4760.5932,18
 D4 Green Algae,UNCALLED,5300.1519,19
-D4 Green Algae,RawHash2-Minimizer,2642.4978,17
+D4 Green Algae,RawHash2-Minimizer,3372.59399,17
 
-D5 Human,RawHash2,3866.0289,21
+D5 Human,RawHash2,4103.7653,21
 D5 Human,RawHash,4773.5825,23
 D5 Human,UNCALLED,6060.2334,24
-D5 Human,RawHash2-Minimizer,4245.7466,22
+D5 Human,RawHash2-Minimizer,4805.5835,22

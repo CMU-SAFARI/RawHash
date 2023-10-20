@@ -54,7 +54,7 @@ ax.bar(idx[10:15], mean_time[10:15], color=colors, width=0.99, align="center", e
 ax.bar(idx[15:20], mean_time[15:20], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
 ax.bar(idx[20:25], mean_time[20:25], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
 ax.bar(idx[25:30], mean_time[25:30], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
-ax.bar(idx[30:35], mean_time[30:35], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
+# ax.bar(idx[30:35], mean_time[30:35], color=colors, width=0.99, align="center", edgecolor="black", linewidth=1.2)
 ax.set_yscale("log")
 
 cidx=0
