@@ -22,6 +22,7 @@ typedef struct ri_reg1_s{
 	char* tags;
 
 	uint32_t offset;
+	float* events;
 	mm128_t *prev_anchors;
 	uint32_t n_prev_anchors;
 	mm_reg1_t* creg; // This is for transition purposes.

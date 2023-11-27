@@ -9,11 +9,15 @@
 #define RI_I_MIN		0x2
 #define RI_I_BLEND		0x4
 #define RI_I_SYNCMER	0x8
+#define RI_I_STORE_SIG	0x10
+#define RI_I_SIG_TARGET	0x20
 
 #define RI_M_SEQUENCEUNTIL	0x1
 #define RI_M_RMQ			0x2
 #define RI_M_HARD_MLEVEL	0x4
 #define RI_M_NO_SPAN		0x8
+#define RI_M_ALIGN			0x10
+#define RI_M_NO_ADAPTIVE	0x20
 
 #ifdef __cplusplus
 extern "C" {
@@ -24,6 +28,16 @@ typedef struct ri_idxopt_s{
 	short b, w, e, n, q, lq, k, flag, lev_col;
 	int64_t mini_batch_size;
 	uint64_t batch_size;
+
+	uint32_t window_length1;
+	uint32_t window_length2;
+	float threshold1;
+	float threshold2;
+	float peak_height;
+	float sample_per_base;
+	uint32_t bp_per_sec;
+	uint32_t sample_rate;
+
 } ri_idxopt_t;
 
 typedef struct ri_mapopt_s{
@@ -59,7 +73,7 @@ typedef struct ri_mapopt_s{
 	float chain_gap_scale;
 	float chain_skip_scale;
 
-	float w_bestq, w_bestmq, w_bestmc, w_threshold;
+	float w_bestma, w_bestmq, w_bestmc, w_threshold;
 	// float w_best2q, w_best2c;
 
 	float mask_level;
@@ -69,7 +83,7 @@ typedef struct ri_mapopt_s{
 
 	float alt_drop;
 
-	int a, b;
+	// int a, b;
 	// int q, e, q2, e2; // matching score, mismatch, gap-open and gap-ext penalties
 	// int sc_ambi; // score when one or both bases are "N"
 	// int noncan;      // cost of non-canonical splicing sites

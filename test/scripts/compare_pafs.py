@@ -46,11 +46,20 @@ print("Uncalled TP: " + str(uncalled_tp))
 print("Uncalled FP: " + str(uncalled_fp))
 print("Uncalled FN: " + str(uncalled_fn))
 print("Uncalled TN: " + str(uncalled_tn))
-uncalled_precision = uncalled_tp / (uncalled_tp + uncalled_fp)
+if (uncalled_tp + uncalled_fp == 0):
+   uncalled_precision = 0
+else:
+  uncalled_precision = uncalled_tp / (uncalled_tp + uncalled_fp)
 print("Uncalled precision: " + str(uncalled_precision))
-uncalled_recall = uncalled_tp / (uncalled_tp + uncalled_fn)
+if (uncalled_tp + uncalled_fn == 0):
+  uncalled_recall = 0
+else:
+   uncalled_recall = uncalled_tp / (uncalled_tp + uncalled_fn)
 print("Uncalled recall: " + str(uncalled_recall))
-print("Uncalled F-1 score: " + str(2 * uncalled_precision * uncalled_recall / (uncalled_precision + uncalled_recall)))
+if (uncalled_precision + uncalled_recall == 0):
+  print("Uncalled F-1 score: 0")
+else:
+  print("Uncalled F-1 score: " + str(2 * uncalled_precision * uncalled_recall / (uncalled_precision + uncalled_recall)))
 print("Uncalled Mean time per read : " + str(mean(uncalled_time_per_read)))
 print("Uncalled Median time per read : " + str(median(uncalled_time_per_read)))
 print("Uncalled Mean # of sequenced bases per read : " + str(mean(uncalled_maplast_pos + uncalled_umaplast_pos)))
@@ -112,11 +121,21 @@ print("Sigmap TP: " + str(sigmap_tp))
 print("Sigmap FP: " + str(sigmap_fp))
 print("Sigmap FN: " + str(sigmap_fn))
 print("Sigmap TN: " + str(sigmap_tn))
-sigmap_precision = sigmap_tp / (sigmap_tp + sigmap_fp)
+if (sigmap_tp + sigmap_fp == 0):
+    sigmap_precision = 0
+else:
+  sigmap_precision = sigmap_tp / (sigmap_tp + sigmap_fp)
 print("Sigmap precision: " + str(sigmap_precision))
-sigmap_recall = sigmap_tp / (sigmap_tp + sigmap_fn)
+
+if (sigmap_tp + sigmap_fn == 0):
+  sigmap_recall = 0
+else:
+  sigmap_recall = sigmap_tp / (sigmap_tp + sigmap_fn)
 print("Sigmap recall: " + str(sigmap_recall))
-print("Sigmap F-1 score: " + str(2 * sigmap_precision * sigmap_recall / (sigmap_precision + sigmap_recall)))
+if (sigmap_precision + sigmap_recall == 0):
+  print("Sigmap F-1 score: 0")
+else:
+  print("Sigmap F-1 score: " + str(2 * sigmap_precision * sigmap_recall / (sigmap_precision + sigmap_recall)))
 print("Sigmap Mean time per mapped read : " + str(mean(sigmap_time_per_chunk)))
 print("Sigmap Median time per mapped read : " + str(median(sigmap_time_per_chunk)))
 print("Sigmap Mean time per unmapped read : " + str(mean(sigmap_time_per_read)))
@@ -145,8 +164,6 @@ rawhash_refgap = []
 rawhash_readgap = []
 for line in fps[2]:
   cols = line.rstrip().split()
-  print(cols)
-  print(len(cols))
   if (len(cols) == 23):
     mt = float(cols[12].split(":")[2])
     lastpos = int(cols[1])
@@ -167,10 +184,6 @@ for line in fps[2]:
     s2 = float(cols[18].split(":")[2])
     sm = float(cols[19].split(":")[2])
     at = float(cols[20].split(":")[2])
-    rawhash_refgap.append(at)
-    aq = float(cols[21].split(":")[2])
-    rawhash_readgap.append(aq)
-    print(cols[22].split(":")[2])
     if (cols[22].split(":")[2] == 'tp'):
       rawhash_tp += 1
       rawhash_time_per_chunk.append(mt / chunk)
@@ -195,11 +208,20 @@ print("RawHash TP: " + str(rawhash_tp))
 print("RawHash FP: " + str(rawhash_fp))
 print("RawHash FN: " + str(rawhash_fn))
 print("RawHash TN: " + str(rawhash_tn))
-rawhash_precision = rawhash_tp / (rawhash_tp + rawhash_fp)
+if (rawhash_tp + rawhash_fp == 0):
+    rawhash_precision = 0
+else:
+  rawhash_precision = rawhash_tp / (rawhash_tp + rawhash_fp)
 print("RawHash precision: " + str(rawhash_precision))
-rawhash_recall = rawhash_tp / (rawhash_tp + rawhash_fn)
+if (rawhash_tp + rawhash_fn == 0):
+  rawhash_recall = 0
+else:
+  rawhash_recall = rawhash_tp / (rawhash_tp + rawhash_fn)
 print("RawHash recall: " + str(rawhash_recall))
-print("RawHash F-1 score: " + str(2 * rawhash_precision * rawhash_recall / (rawhash_precision + rawhash_recall)))
+if (rawhash_precision + rawhash_recall == 0):
+  print("RawHash F-1 score: 0")
+else:
+  print("RawHash F-1 score: " + str(2 * rawhash_precision * rawhash_recall / (rawhash_precision + rawhash_recall)))
 print("RawHash Mean time per mapped read : " + str(mean(rawhash_time_per_chunk)))
 print("RawHash Median time per mapped read : " + str(median(rawhash_time_per_chunk)))
 print("RawHash Mean time per unmapped read : " + str(mean(rawhash_time_per_read)))
@@ -277,11 +299,20 @@ print("RawHash2 TP: " + str(rawhash2_tp))
 print("RawHash2 FP: " + str(rawhash2_fp))
 print("RawHash2 FN: " + str(rawhash2_fn))
 print("RawHash2 TN: " + str(rawhash2_tn))
-rawhash2_precision = rawhash2_tp / (rawhash2_tp + rawhash2_fp)
+if (rawhash2_tp + rawhash2_fp == 0):
+    rawhash2_precision = 0
+else:
+  rawhash2_precision = rawhash2_tp / (rawhash2_tp + rawhash2_fp)
 print("RawHash2 precision: " + str(rawhash2_precision))
-rawhash2_recall = rawhash2_tp / (rawhash2_tp + rawhash2_fn)
+if (rawhash2_tp + rawhash2_fn == 0):
+  rawhash2_recall = 0
+else:
+  rawhash2_recall = rawhash2_tp / (rawhash2_tp + rawhash2_fn)
 print("RawHash2 recall: " + str(rawhash2_recall))
-print("RawHash2 F-1 score: " + str(2 * rawhash2_precision * rawhash2_recall / (rawhash2_precision + rawhash2_recall)))
+if (rawhash2_precision + rawhash2_recall == 0):
+  print("RawHash2 F-1 score: 0")
+else:
+  print("RawHash2 F-1 score: " + str(2 * rawhash2_precision * rawhash2_recall / (rawhash2_precision + rawhash2_recall)))
 print("RawHash2 Mean time per mapped read : " + str(mean(rawhash2_time_per_chunk)))
 print("RawHash2 Median time per mapped read : " + str(median(rawhash2_time_per_chunk)))
 print("RawHash2 Mean time per unmapped read : " + str(mean(rawhash2_time_per_read)))

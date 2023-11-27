@@ -154,11 +154,13 @@ mm_reg1_t *mm_gen_regs(void *km, uint32_t hash, int qlen, int n_u, uint64_t *u, 
 void mm_mark_alt(const ri_idx_t *ri, int n, mm_reg1_t *r);
 // void mm_split_reg(mm_reg1_t *r, mm_reg1_t *r2, int n, int qlen, mm128_t *a, int is_qstrand);
 void mm_split_reg(mm_reg1_t *r, mm_reg1_t *r2, int n, int qlen, mm128_t *a);
-void mm_set_parent(void *km, float mask_level, int mask_len, int n, mm_reg1_t *r, int sub_diff, int hard_mask_level, float alt_diff_frac);
+// void mm_set_parent(void *km, float mask_level, int mask_len, int n, mm_reg1_t *r, int sub_diff, int hard_mask_level, 
+void mm_set_parent(void *km, float mask_level, int mask_len, int n, mm_reg1_t *r, int hard_mask_level, float alt_diff_frac);
 void mm_hit_sort(void *km, int *n_regs, mm_reg1_t *r, float alt_diff_frac);
 int mm_set_sam_pri(int n, mm_reg1_t *r);
 void mm_sync_regs(void *km, int n_regs, mm_reg1_t *regs);
-void mm_select_sub(void *km, float pri_ratio, int min_diff, int best_n, int check_strand, int min_strand_sc, int *n_, mm_reg1_t *r);
+// void mm_select_sub(void *km, float pri_ratio, int min_diff, int best_n, int check_strand, int min_strand_sc, int *n_, mm_reg1_t *r);
+void mm_select_sub(void *km, float pri_ratio, int best_n, int check_strand, int min_strand_sc, int *n_, mm_reg1_t *r);
 void mm_select_sub_multi(void *km, float pri_ratio, float pri1, float pri2, int max_gap_ref, int min_diff, int best_n, int n_segs, const int *qlens, int *n_, mm_reg1_t *r);
 int mm_filter_strand_retained(int n_regs, mm_reg1_t *r);
 void mm_filter_regs(const ri_mapopt_t *opt, int qlen, int *n_regs, mm_reg1_t *regs);
@@ -166,7 +168,8 @@ int mm_squeeze_a(void *km, int n_regs, mm_reg1_t *regs, mm128_t *a);
 ri_seg_t *mm_seg_gen(void *km, uint32_t hash, int n_segs, const int *qlens, int n_regs0, const mm_reg1_t *regs0, int *n_regs, mm_reg1_t **regs, const mm128_t *a);
 void mm_seg_free(void *km, int n_segs, ri_seg_t *segs);
 // void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int match_sc, int rep_len, int is_sr);
-void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int match_sc, int rep_len);
+// void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int match_sc, int rep_len);
+void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int rep_len);
 
 #ifdef __cplusplus
 }

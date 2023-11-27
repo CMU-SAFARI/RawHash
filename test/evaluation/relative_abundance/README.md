@@ -60,6 +60,8 @@ The following command will use 32 threads. you can change the maximum threads to
 bash run_minimap2.sh 32
 ```
 
+Note that this ground truth mapping is used to calculate the precision, recall, and F-1 score. For estimating the relative abundance, we use the actual number of bases of the basecalled sequences used in this particular use case. To calculate the number of bases, we suggest using `seqkit stat` on each dataset and generating the ratio of each genome based on the total number of bases from each dataset.
+
 ## Comparing RawHash2 to RawHash, UNCALLED and Sigmap
 
 After generating the `PAF` files by following each step above, run the following command. This will 1) generate the files to evaluate the mapping output of each tool and 2) output the results (i.e., throughput, mean time per read, indexing time, mapping time, relative abundance estimations, precision, recall, and F1 values).

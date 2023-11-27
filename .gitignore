@@ -48,9 +48,14 @@ test/evaluation/read_mapping/*/comparison/comparison.err
 test/evaluation/*/*/slurm*
 test/evaluation/*/*slurm*
 test/evaluation/*/*/test_*
+test/data/relative_abundance/test*
 test/evaluation/*/*/comparison/*/
 
-test/scripts/run_rawhash*_test*.sh
+test/data/*d7*
+
+test/data/relative_abundance/read_ids.txt
+
+test/scripts/*test*
 test/evaluation/read_mapping/*/parameters.txt
 test/evaluation/read_mapping/*/results.txt
 test/evaluation/read_mapping/*parameters*.txt

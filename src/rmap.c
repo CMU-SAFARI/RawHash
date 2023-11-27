@@ -9,6 +9,9 @@
 #include "sequence_until.h"
 #include "chain.h"
 
+#include <math.h>
+#include <float.h>  // for FLT_MAX
+
 #ifdef PROFILERH
 double ri_filereadtime = 0.0;
 double ri_signaltime = 0.0;
@@ -48,7 +51,7 @@ static mm128_t *collect_seed_hits(void *km,
 								  int max_max_occ,
                               	  int dist,
 								  const ri_idx_t *ri,
-								//   const char *qname,
+								  const char *qname,
 								  ri_reg1_t* reg,
 								  const mm128_v *riv,
 								  int qlen,
@@ -57,7 +60,7 @@ static mm128_t *collect_seed_hits(void *km,
 								//   int *n_seed_mini,
 								//   uint64_t **seed_mini)
 {
-	int i,j, n_seed_m;
+	int i, n_seed_m;
 	ri_seed_t *seed_hits0;
 	mm128_t *seed_hits;
 	uint32_t mask_pos = (1ULL<<31)-1;
@@ -70,37 +73,16 @@ static mm128_t *collect_seed_hits(void *km,
 		const uint64_t *hits = s_match->cr;
 		uint32_t k;
 		for (k = 0; k < s_match->n; ++k) {
-			uint32_t is_self = 0, ref_pos = (uint32_t)(hits[k] >> RI_POS_SHIFT)&mask_pos;
+			uint32_t is_self = 0, ref_pos = (uint32_t)(hits[k]>>RI_POS_SHIFT)&mask_pos;
 			mm128_t *p;
+			
+			char *ref_name = ri->seq[hits[k]>>RI_ID_SHIFT].name;
+			if(strcmp(qname, ref_name) == 0) continue;
 			// if (skip_seed(opt->flag, hits[k], s_match, qname, qlen, ri, &is_self)) continue;
 			p = &seed_hits[(*n_seed_pos)++];
 
-			if (!(hits[k]&1)) {
-				p->x = hits[k]&mask_id_shift | ref_pos; //leftmost bit is 0 to indicate forward strand match
-			}else{
-				uint32_t len = ri->seq[hits[k]>>RI_ID_SHIFT].len;
-				// p->x = 1ULL<<63 | hits[k]&mask_id_shift | (len - (ref_pos + 1 - s_match->q_span) - 1); // reverse strand
-				// p->x = 1ULL<<63 | hits[k]&mask_id_shift | (len - ref_pos + 1); // reverse strand
-				p->x = 1ULL<<63 | hits[k]&mask_id_shift | ref_pos; // reverse strand
-			}
-
-			// // forward strand because s_match->q_pos&1 is always 0 as we use single strand (0) for reads
-			// if ((hits[k]&1) == (s_match->q_pos&1)) {
-			// 	p->x = hits[k]&mask_id_shift | ref_pos; //leftmost bit is 0 to indicate forward strand match
-			// 	p->y = (uint64_t)s_match->q_span << RI_ID_SHIFT | ((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
-			// }
-			// // else if (!(opt->flag & RI_F_QSTRAND)) { // reverse strand and not in the query-strand mode
-			// // 	p->x = 1ULL<<63 | hits[k]&mask_id_shift | ref_pos;
-			// // 	p->y = (uint64_t)s_match->q_span << RI_ID_SHIFT | (qlen - ((s_match->q_pos>>1) + 1 - s_match->q_span) - 1);
-			// // }
-			// else { // reverse strand; query-strand
-			// 	// int32_t len = ri->seq[hits[k]>>RI_ID_SHIFT].len;
-			// 	// // coordinate only accurate for non-HPC seeds
-				// p->x = 1ULL<<63 | hits[k]&mask_id_shift | (len - (ref_pos + 1 - s_match->q_span) - 1);
-			// 	p->x = 1ULL<<63 | hits[k]&mask_id_shift | ref_pos; // TODO: see what happens when you enable the above line
-			// 	p->y = (uint64_t)s_match->q_span << RI_ID_SHIFT | ((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
-			// }
-
+			if (!(hits[k]&1)) p->x = hits[k]&mask_id_shift | ref_pos;
+			else p->x = 1ULL<<63 | hits[k]&mask_id_shift | ref_pos; // reverse strand
 			p->y = (uint64_t)s_match->q_span << RI_ID_SHIFT | ((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
 			p->y |= (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT;
 			if (s_match->is_tandem) p->y |= RI_SEED_TANDEM;
@@ -113,7 +95,8 @@ static mm128_t *collect_seed_hits(void *km,
 	if(reg->n_prev_anchors > 0){
 		memcpy(seed_hits + *n_seed_pos, reg->prev_anchors, reg->n_prev_anchors * sizeof(mm128_t));
 		*n_seed_pos += reg->n_prev_anchors;
-		if(reg->prev_anchors) ri_kfree(km, reg->prev_anchors); reg->prev_anchors = NULL; reg->n_prev_anchors = 0;
+		if(reg->prev_anchors) ri_kfree(km, reg->prev_anchors);
+		reg->prev_anchors = NULL; reg->n_prev_anchors = 0;
 	}
 
 	radix_sort_128x(seed_hits, seed_hits + *n_seed_pos);
@@ -134,7 +117,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	#ifdef PROFILERH
 	double signal_t = ri_realtime();
 	#endif
-	float* events = detect_events(b->km, s_len, sig, opt, &n_events);
+	float* events = detect_events(b->km, s_len, sig, opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height, &n_events);
 	#ifdef PROFILERH
 	ri_signaltime += ri_realtime() - signal_t;
 	#endif
@@ -143,6 +126,10 @@ void ri_map_frag(const ri_idx_t *ri,
 		if(events)ri_kfree(b->km, events);
 		return;
 	}
+
+	//Copy events to the end of reg->events with ri_krealloc
+	reg->events = (float*)ri_krealloc(b->km, reg->events, (reg->offset+n_events) * sizeof(float));
+	memcpy(reg->events + reg->offset, events, n_events * sizeof(float));
 
 	#ifdef PROFILERH
 	double sketch_t = ri_realtime();
@@ -172,7 +159,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	// uint64_t *seed_mini;
 
 	//Seeding
-	seed_hits = collect_seed_hits(b->km, opt->mid_occ, opt->max_max_occ, opt->occ_dist, ri, reg, &riv, n_events, &n_seed_pos, &rep_len);
+	seed_hits = collect_seed_hits(b->km, opt->mid_occ, opt->max_max_occ, opt->occ_dist, ri, qname, reg, &riv, n_events, &n_seed_pos, &rep_len);
 	ri_kfree(b->km, riv.a);
 	// ri_kfree(b->km, seed_mini);
 
@@ -212,10 +199,16 @@ void ri_map_frag(const ri_idx_t *ri,
 
 	//Find primary chains
 	reg->creg = mm_gen_regs(b->km, hash, reg->offset+n_events, reg->n_cregs, u, seed_hits);
-	mm_set_parent(b->km, opt->mask_level, opt->mask_len, reg->n_cregs, reg->creg, opt->a * 2 + opt->b, opt->flag&RI_M_HARD_MLEVEL, opt->alt_drop);
-	mm_select_sub(b->km, opt->pri_ratio, ri->k*2, opt->best_n, 1, opt->max_target_gap_length * 0.8, &(reg->n_cregs), reg->creg);
+	mm_set_parent(b->km, opt->mask_level, opt->mask_len, reg->n_cregs, reg->creg, opt->flag&RI_M_HARD_MLEVEL, opt->alt_drop);
+	mm_select_sub(b->km, opt->pri_ratio, opt->best_n, 1, opt->max_target_gap_length * 0.8, &(reg->n_cregs), reg->creg);
 	//Set MAPQ
-	mm_set_mapq(b->km, reg->n_cregs, reg->creg, opt->min_chaining_score, opt->a, rep_len);
+	mm_set_mapq(b->km, reg->n_cregs, reg->creg, opt->min_chaining_score, rep_len);
+
+	// for(int i = 0; i < reg->n_cregs; ++i){
+	// 	int rs = reg->creg[i].rev?(uint32_t)(ri->seq[reg->creg[i].rid].len+1-reg->creg[i].re):reg->creg[i].rs;
+
+	// 	fprintf(stderr, "Chain: %d rid: %d mapq: %d score: %d score0: %d cnt: %d s: %c rs: %d qs: %d qe: %d p?: %c\n", i, reg->creg[i].rid, reg->creg[i].mapq, reg->creg[i].score, reg->creg[i].score0, reg->creg[i].cnt, "+-"[reg->creg[i].rev], rs, reg->creg[i].qs, reg->creg[i].qe, "01"[reg->creg[i].parent == i]);
+	// }
 
 	ri_kfree(b->km, seed_hits);
 	if(u)ri_kfree(b->km, u);
@@ -249,7 +242,9 @@ static void map_worker_for(void *_data,
 	int is_mapped = 0;
 
 	double t = ri_realtime();
+
 	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
+		// fprintf(stderr, "%s %d\n", sig->name, c_count);
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
 
@@ -262,41 +257,38 @@ static void map_worker_for(void *_data,
 		if (reg0->n_cregs > 1) {
 
 			float bestQ = reg0->creg[0].mapq;
+			// uint32_t bestQi = 0;
 			// float best2Q = reg0->creg[1].mapq;
 			float bestC = reg0->creg[0].score;
 			// best2C = reg0->creg[1].score;
+			float bestA = reg0->creg[0].cnt;
 
 			if (bestQ >= 50) {is_mapped = 1; break;}
 
 			float meanC = 0;
-			float meanQ = 0;
+			// float meanQ = 0;
+			float meanA = 0;
+
 			for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
 				meanC += reg0->creg[c_ind].score;
-				meanQ += reg0->creg[c_ind].mapq;
+				// meanQ += reg0->creg[c_ind].mapq;
+				meanA += reg0->creg[c_ind].cnt;
 			}
 
 			meanC /= reg0->n_cregs;
-			meanQ /= reg0->n_cregs;
+			// meanQ /= reg0->n_cregs;
+			meanA /= reg0->n_cregs;
 
-			//TODO: Experimental weighted sum technique for the next commits
 			float r_bestq = (bestQ > 60)?1.0f:bestQ/60.0f;
-			// float r_best2q = (bestQ > 0 && bestQ >best2Q)?(1.0f - (best2Q/bestQ)):0.0f;
-			// float r_best2c = (bestC > 0)?(1.0f - (best2C/bestC)):0.0f;
-			float r_bestmq = (bestQ > meanQ)?(1.0f - (meanQ/bestQ)):((meanQ > 0)?-1.0:0.0); //introducing penalty with -1
 			float r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f;
+			if(r_bestmc < 0) r_bestmc = 0.0f;
+			float r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f;
+			if(r_bestma < 0) r_bestma = 0.0f;
 
-			// Compute the weighted sum
-			// float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + opt->w_bestmq*r_bestmq +
-			// 					 opt->w_best2c*r_best2c + opt->w_bestmc*r_bestmc;
-			
-			// float weighted_sum = opt->w_bestq*r_bestq + opt->w_best2q*r_best2q + opt->w_best2c*r_best2c;
-
-			float weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+			float weighted_sum = opt->w_bestmq*r_bestq + opt->w_bestma*r_bestma + opt->w_bestmc*r_bestmc;
 			
 			// Compare the weighted sum against a threshold to make the decision
 			if (weighted_sum >= opt->w_threshold) {is_mapped = 1; break;}
-
-			//TODO: increase score for those with query ending towards the end (i.e., meaning they benefited from more recent sequencing)
 		} else if (reg0->n_cregs == 1 && reg0->creg[0].mapq >= opt->min_mapq) {is_mapped = 1; break;}
 	} double mapping_time = ri_realtime() - t;
 
@@ -307,8 +299,6 @@ static void map_worker_for(void *_data,
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
 	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset) / opt->sample_per_base;
-	// Save results in vector and output PAF
-	
 	mm_reg1_t* chains = reg0->creg;
 
 	if(!chains) {reg0->n_cregs = 0;}
@@ -321,20 +311,6 @@ static void map_worker_for(void *_data,
 
 	mean_chain_score /= reg0->n_cregs;
 	if (is_mapped || (reg0->creg && reg0->creg[0].mapq > opt->min_mapq)) {
-							
-		// float anchor_ref_gap_avg_length = 0;
-		// float anchor_read_gap_avg_length = 0;
-		// for (size_t ai = 0; ai < n_anchors0; ++ai) {
-		// 	if (ai < n_anchors0 - 1) {
-		// 		// anchor_ref_gap_avg_length += chains[0].anchors[ai].target_position - chains[0].anchors[ai + 1].target_position;
-		// 		// anchor_read_gap_avg_length += chains[0].anchors[ai].query_position - chains[0].anchors[ai + 1].query_position;
-		// 		anchor_ref_gap_avg_length += chains[0].anchors[ai].target_position - chains[0].anchors[ai + 1].target_position;
-		// 		anchor_read_gap_avg_length += chains[0].anchors[ai].query_position - chains[0].anchors[ai + 1].query_position;
-		// 	}
-		// }
-		// anchor_ref_gap_avg_length /= n_anchors0;
-		// anchor_read_gap_avg_length /= n_anchors0;
-		// std::string tags;
 		char *tags = (char *)malloc(1024 * sizeof(char));
 		tags[0] = '\0'; // make it an empty string
 		char buffer[256]; // temporary buffer
@@ -346,17 +322,6 @@ static void map_worker_for(void *_data,
 		sprintf(buffer, "\ts1:i:%d", chains[0].score); strcat(tags, buffer);
 		sprintf(buffer, "\ts2:i:%d", reg0->n_cregs > 1 ? chains[1].score : 0); strcat(tags, buffer);
 		sprintf(buffer, "\tsm:f:%.2f", mean_chain_score); strcat(tags, buffer);
-		
-		// tags.append("mt:f:" + std::to_string(mapping_time * 1000));
-		// tags.append("\tci:i:" + std::to_string(c_count + 1));
-		// tags.append("\tsl:i:" + std::to_string(qlen));
-		// tags.append("\tcm:i:" + std::to_string(n_anchors0));
-		// tags.append("\tnc:i:" + std::to_string(reg0->n_cregs));
-		// tags.append("\ts1:i:" + std::to_string(chains[0].score));
-		// tags.append("\ts2:f:" + std::to_string(reg0->n_cregs > 1 ? chains[1].score : 0));
-		// tags.append("\tsm:f:" + std::to_string(mean_chain_score));
-		// tags.append("\tat:f:" + std::to_string((float)anchor_ref_gap_avg_length));
-		// tags.append("\taq:f:" + std::to_string((float)anchor_read_gap_avg_length));
 
 		reg0->read_id = sig->rid;
 		reg0->ref_id = chains[0].rid;
@@ -369,10 +334,8 @@ static void map_worker_for(void *_data,
 		reg0->mapq = chains[0].mapq;
 		reg0->rev = (chains[0].rev == 1)?1:0;
 		reg0->mapped = 1; 
-		// reg0->tags = strdup(tags.c_str());
 		reg0->tags = tags;
 	} else {
-		// std::string tags;
 		char *tags = (char *)malloc(1024 * sizeof(char));
 		tags[0] = '\0'; // make it an empty string
 		char buffer[256]; // temporary buffer
@@ -380,46 +343,19 @@ static void map_worker_for(void *_data,
 		sprintf(buffer, "mt:f:%.6f", mapping_time * 1000); strcat(tags, buffer);
 		sprintf(buffer, "\tci:i:%d", c_count + 1); strcat(tags, buffer);
 		sprintf(buffer, "\tsl:i:%d", qlen); strcat(tags, buffer);
-		// tags.append("mt:f:" + std::to_string(mapping_time * 1000));
-		// tags.append("\tci:i:" + std::to_string(c_count + 1));
-		// tags.append("\tsl:i:" + std::to_string(qlen));
 		if (reg0->n_cregs >= 1) {
-			// float anchor_ref_gap_avg_length = 0;
-			// float anchor_read_gap_avg_length = 0;
-			// for (size_t ai = 0; ai < n_anchors0; ++ai) {
-			// 	if (ai < n_anchors0 - 1) {
-			// 		anchor_ref_gap_avg_length += chains[0].anchors[ai].target_position - chains[0].anchors[ai + 1].target_position;
-			// 		anchor_read_gap_avg_length += chains[0].anchors[ai].query_position - chains[0].anchors[ai + 1].query_position;
-			// 	}
-			// }
-			// if(n_anchors0)anchor_ref_gap_avg_length /= n_anchors0;
-			// if(n_anchors0)anchor_read_gap_avg_length /= n_anchors0;
 
 			sprintf(buffer, "\tcm:i:%d", n_anchors0); strcat(tags, buffer);
 			sprintf(buffer, "\tnc:i:%d", reg0->n_cregs); strcat(tags, buffer);
 			sprintf(buffer, "\ts1:i:%d", chains[0].score); strcat(tags, buffer);
 			sprintf(buffer, "\ts2:i:%d", reg0->n_cregs > 1 ? chains[1].score : 0); strcat(tags, buffer);
 			sprintf(buffer, "\tsm:f:%.2f", mean_chain_score); strcat(tags, buffer);
-			// tags.append("\tcm:i:" + std::to_string(n_anchors0));
-			// tags.append("\tnc:i:" + std::to_string(reg0->n_cregs));
-			// tags.append("\ts1:i:" + std::to_string(chains[0].score));
-			// tags.append("\ts2:i:" + std::to_string(reg0->n_cregs > 1 ? chains[1].score: 0));
-			// tags.append("\tsm:f:" + std::to_string(mean_chain_score));
-			// tags.append("\tat:f:" + std::to_string((float)anchor_ref_gap_avg_length));
-			// tags.append("\taq:f:" + std::to_string((float)anchor_read_gap_avg_length));
 		}else {
 			sprintf(buffer, "\tcm:i:0"); strcat(tags, buffer);
 			sprintf(buffer, "\tnc:i:0"); strcat(tags, buffer);
 			sprintf(buffer, "\ts1:i:0"); strcat(tags, buffer);
 			sprintf(buffer, "\ts2:i:0"); strcat(tags, buffer);
 			sprintf(buffer, "\tsm:f:0"); strcat(tags, buffer);
-			// tags.append("\tcm:i:0");
-			// tags.append("\tnc:i:0");
-			// tags.append("\ts1:i:0");
-			// tags.append("\ts2:i:0");
-			// tags.append("\tsm:f:0");
-			// tags.append("\tat:f:0");
-			// tags.append("\taq:f:0");
 		}
 
 		reg0->read_id = sig->rid;
@@ -433,12 +369,12 @@ static void map_worker_for(void *_data,
 		reg0->mapq = 0;
 		reg0->rev = 0;
 		reg0->mapped = 0;
-		// reg0->tags = strdup(tags.c_str());
 		reg0->tags = tags;
 	}
 
 	if(reg0->prev_anchors) {ri_kfree(b->km, reg0->prev_anchors); reg0->prev_anchors = NULL; reg0->n_prev_anchors = 0;}
 	if(reg0->creg)free(reg0->creg);
+	if(reg0->events)ri_kfree(b->km, reg0->events);
 	reg0->creg = NULL;
 	reg0->n_cregs = 0;
 
@@ -450,8 +386,6 @@ static void map_worker_for(void *_data,
 		b->km = ri_km_init();
 	}
 }
-
-typedef struct { size_t n, m; ri_sig_t **a; } rhsig_v;
 
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 							int64_t chunk_size,
