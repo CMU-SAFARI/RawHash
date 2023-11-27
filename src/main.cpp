@@ -326,10 +326,10 @@ int main(int argc, char *argv[])
 		return fp_help == stdout? 0 : 1;
 	}
 
-	if(ipt.w && ipt.n){
-		fprintf(stderr, "[ERROR] minimizer window 'w' ('%d') and BLEND 'neighbor' ('%d') values cannot be set together. At least one of them must be zero to enable one of the seeding options: %s\n", ipt.w, ipt.n, strerror(errno));
-		return 1;
-	}
+	// if(ipt.w && ipt.n){
+	// 	fprintf(stderr, "[ERROR] minimizer window 'w' ('%d') and BLEND 'neighbor' ('%d') values cannot be set together. At least one of them must be zero to enable one of the seeding options: %s\n", ipt.w, ipt.n, strerror(errno));
+	// 	return 1;
+	// }
 
 	idx_rdr = ri_idx_reader_open(argv[o.ind], &ipt, fnw);
 	if (idx_rdr == 0) {

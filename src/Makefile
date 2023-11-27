@@ -1,10 +1,11 @@
+
 #pass DEBUG=1 to make to enable debugging
 ifdef DEBUG
-	CFLAGS=-Wall -O2 -fsanitize=address -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=--std=c++11 -Wall -O2 -fsanitize=address -g -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS=-Wall -O2 -fsanitize=address -g -Wc++-compat -fopenmp -march=native -mavx2 -msse4.1 -pthread -DHAVE_KALLOC
+	CPPFLAGS=--std=c++11 -Wall -O2 -fsanitize=address -g -fopenmp -march=native -mavx2 -msse4.1 -pthread -DHAVE_KALLOC
 else
-	CFLAGS=-Wall -O3 -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS=-Wall -O3 -Wc++-compat -fopenmp -march=native -mavx2 -msse4.1 -pthread -DHAVE_KALLOC
+	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -mavx2 -msse4.1 -pthread -DHAVE_KALLOC
 endif
 
 #pass PROFILE=1 to make to enable profiling
@@ -204,17 +205,26 @@ endif
 $(PROG): $(OBJS)
 	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -lstdc++
 
-rsig.o: rsig.c
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# rsig.o: rsig.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
-main.o: main.cpp
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# rindex.o: rindex.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
-rmap.o: rmap.c
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# main.o: main.cpp
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
-rindex.o: rindex.c
-	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+# rmap.o: rmap.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+# lchain.o: lchain.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+# rseed.o: rseed.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
+
+# hit.o: hit.c
+# 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
 .SUFFIXES:
 .SUFFIXES:.cpp .o
@@ -225,8 +235,11 @@ rindex.o: rindex.c
 .SUFFIXES:
 .SUFFIXES:.c .o
 
+# %.o: %.c
+# 	${CC} -c $(CFLAGS) $(INCLUDES) $< -o $@
+
 %.o: %.c
-	${CC} -c $(CFLAGS) $(INCLUDES) $< -o $@
+	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@
 
 clean: ## Remove all generated files
 	rm -fr *.o $(PROG) *~
