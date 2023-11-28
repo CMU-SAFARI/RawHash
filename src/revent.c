@@ -137,8 +137,26 @@ static inline uint32_t gen_peaks(ri_detect_t *short_detector, ri_detect_t *long_
 	return curInd;
 }
 
-static inline float* gen_events(void *km, const uint32_t *peaks, uint32_t peak_size, const float *prefix_sum, const float *prefix_sum_square, uint32_t s_len, uint32_t* n_events) {
-	// Count number of events found
+/**
+ * @brief Generates events from peaks, prefix sums and s_len.
+ * 
+ * @param km Pointer to memory manager.
+ * @param peaks Array of peak positions.
+ * @param peak_size Size of peaks array.
+ * @param prefix_sum Array of prefix sums.
+ * @param prefix_sum_square Array of prefix sums squared.
+ * @param s_len Length of the signal.
+ * @param n_events Pointer to the number of events generated.
+ * @return float* Pointer to the array of generated events.
+ */
+static inline float* gen_events(void *km,
+								const uint32_t *peaks,
+								const uint32_t peak_size,
+								const float *prefix_sum,
+								const float *prefix_sum_square,
+								const uint32_t s_len,
+								uint32_t* n_events)
+{
 	uint32_t n_ev = 1;
 	double mean = 0, std_dev = 0, sum = 0, sum2 = 0;
 
@@ -146,34 +164,20 @@ static inline float* gen_events(void *km, const uint32_t *peaks, uint32_t peak_s
 		if (peaks[i] > 0 && peaks[i] < s_len)
 			n_ev++;
 
-	if(!n_ev) return 0;
-
 	float* events = (float*)ri_kmalloc(km, n_ev*sizeof(float));
-
-	// events[0] = (prefix_sum[peaks[0]])/peaks[0];
-
 	float l_prefixsum = 0, l_peak = 0;
 
-	// First event -- starts at zero
-	// gen_event(0, peaks[0], prefix_sum, prefix_sum_square, s_len, events);
-	// Other events -- peak[i-1] -> peak[i]
 	for (uint32_t pi = 0; pi < n_ev - 1; pi++){
-		// events[pi] = (prefix_sum[peaks[pi]] - prefix_sum[peaks[pi-1]]) / peaks[pi] - peaks[pi-1];
 		events[pi] = (prefix_sum[peaks[pi]] - l_prefixsum)/(peaks[pi]-l_peak);
 		sum += events[pi];
 		sum2 += events[pi]*events[pi];
 		l_prefixsum = prefix_sum[peaks[pi]];
 		l_peak = peaks[pi];
 	}
-		// events[pi] = (prefix_sum[peaks[pi]] - prefix_sum[peaks[pi-1]]) / peaks[pi] - peaks[pi-1];
-		// gen_event(peaks[pi - 1], peaks[pi], prefix_sum, prefix_sum_square, s_len, events+pi);
 
-	// Last event -- ends at s_len
 	events[n_ev-1] = (prefix_sum[s_len] - l_prefixsum)/(s_len-l_peak);
 	sum += events[n_ev-1];
 	sum2 += events[n_ev-1]*events[n_ev-1];
-
-	// gen_event(peaks[n_ev - 2], s_len, prefix_sum, prefix_sum_square, s_len, events+n_ev-1);
 
 	//normalization
 	mean = sum/n_ev;

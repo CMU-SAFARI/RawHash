@@ -134,7 +134,10 @@ static inline uint64_t hash64(uint64_t key, uint64_t mask){
 //     }
 // }
 
-void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int len, int w, int e, int q, int lq, int k, mm128_v *p){
+void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int len, float diff, int w, int e, int q, int lq, int k, mm128_v *p){
+
+	const uint32_t quant_bit = lq+2;
+	assert(len > 0 && (w > 0 && w < 256) && e*quant_bit <= 64);
 	
 	int j, buf_pos, min_pos;
 	mm128_t buf[256], min = { UINT64_MAX, UINT64_MAX };
@@ -142,11 +145,9 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 	// int step = 1;//TODO: make this an argument
 	// uint32_t span = (k+e-1)*step;
 	uint32_t span = k+e-1;
-	const uint32_t quant_bit = lq+2;
+	
 	const uint32_t shift_r = 32-q;
 	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_l_quant = (1UL<<lq)-1; //for least sig. 5 bits
-
-	assert(len > 0 && (w > 0 && w < 256) && e*quant_bit <= 64);
 
 	memset(buf, 0xff, w * 16);
 	// rh_kv_resize(mm128_t, km, *p, p->n + (len/step)/w);
@@ -163,7 +164,7 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 
 	// for (i = l = buf_pos = min_pos = 0; i < len; i += step) {
     for (i = l = buf_pos = min_pos = 0; i < len; ++i) {
-        if(i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF) continue;
+        if(i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < diff) continue;
 
 		l++;
 		mm128_t info = { UINT64_MAX, UINT64_MAX };
@@ -209,16 +210,17 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
     }
 	if (min.x != UINT64_MAX)
 		rh_kv_push(mm128_t, km, *p, min);
-
 }
 
-void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int q, int lq, int k, mm128_v *p){
+void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int len, float diff, int e, int q, int lq, int k, mm128_v *p){
+
+	uint32_t quant_bit = lq+2;
+	assert(len > 0 && e*quant_bit <= 64);
 
 	// int step = 1;//TODO: make this an argument
 	// uint32_t span = (k+e-1)*step;
 	uint32_t span = k+e-1;
 	
-	uint32_t quant_bit = lq+2; 
 	uint32_t shift_r = 32-q;
 	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_l_quant = (1UL<<lq)-1; //for least sig. 5 bits
 
@@ -237,7 +239,7 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
 
 	// for (i = 0; i < len; i += step) {
     for (i = 0; i < len; ++i) {
-        if((i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF)) continue;
+        if((i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < diff)) continue;
 
 		l_sigpos = i;
 		signal = *((uint32_t*)&s_values[i]);
@@ -263,12 +265,10 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
     }
 }
 
-void ri_sketch(void *km, const float* s_values, uint32_t id, int strand, int len, int w, int e, int n, int q, int lq, int k, mm128_v *p){
-
-	assert(e > 1 && e < 10);
+void ri_sketch(void *km, const float* s_values, uint32_t id, int strand, int len, float diff, int w, int e, int n, int q, int lq, int k, mm128_v *p){
 
 	// if(w & n) ri_sketch_blend_min(km, s_values, id, strand, len, w, e, n, q, lq, k, p);
 	// else if(n) ri_sketch_blend(km, s_values, id, strand, len, e, n, q, lq, k, p);
-	if(w) ri_sketch_min(km, s_values, id, strand, len, w, e, q, lq, k, p);
-	else ri_sketch_reg(km, s_values, id, strand, len, e, q, lq, k, p);
+	if(w) ri_sketch_min(km, s_values, id, strand, len, diff, w, e, q, lq, k, p);
+	else ri_sketch_reg(km, s_values, id, strand, len, diff, e, q, lq, k, p);
 }

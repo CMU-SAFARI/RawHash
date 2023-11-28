@@ -298,10 +298,10 @@ for line in fps[3]:
       rawhash2_tn += 1
   if not mapped_genome and true_genome:
       rawhash2_fn += 1
-  if (len(cols) == 21):
+  if (len(cols) == 20):
     mt = float(cols[12].split(":")[2])
     lastpos = int(cols[1])
-    if (cols[20].split(":")[2] != 'na'):
+    if (cols[19].split(":")[2] != 'na'):
       rawhash2_time_per_read.append(mt)
       if(cols[2] != '*'):
         rawhash2_maplast_pos.append(lastpos)
@@ -315,15 +315,15 @@ for line in fps[3]:
     cm = int(cols[15].split(":")[2])
     nc = int(cols[16].split(":")[2])
     s1 = float(cols[17].split(":")[2])
-    s2 = float(cols[18].split(":")[2])
-    sm = float(cols[19].split(":")[2])
-    if (cols[20].split(":")[2] == 'tp'):
+    # s2 = float(cols[18].split(":")[2])
+    sm = float(cols[18].split(":")[2])
+    if (cols[19].split(":")[2] == 'tp'):
       rawhash2_time_per_chunk.append(mt / chunk)
-    if (cols[20].split(":")[2] == 'fp' or cols[20].split(":")[2] == 'na'):
+    if (cols[19].split(":")[2] == 'fp' or cols[19].split(":")[2] == 'na'):
       rawhash2_time_per_chunk.append(mt / chunk)
-    if (cols[20].split(":")[2] == 'fn'):
+    if (cols[19].split(":")[2] == 'fn'):
       rawhash2_time_per_chunk.append(mt / chunk)
-    if (cols[20].split(":")[2] == 'tn'):
+    if (cols[19].split(":")[2] == 'tn'):
       rawhash2_time_per_chunk.append(mt / chunk)
   if (len(cols) == 15):
     mt = float(cols[12].split(":")[2])

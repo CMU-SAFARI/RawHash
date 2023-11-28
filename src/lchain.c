@@ -293,12 +293,12 @@ static inline int32_t compute_score(const mm128_t *ai,
 	// int32_t sidi = (ai->y & RI_SEED_SEG_MASK) >> RI_SEED_SEG_SHIFT;
 	// int32_t sidj = (aj->y & RI_SEED_SEG_MASK) >> RI_SEED_SEG_SHIFT;
 
-	if(dq <= 0 || dq > max_dist_t) return INT32_MIN;
+	if(dq <= 0 || dq > max_dist_q) return INT32_MIN;
 
 	//Calculate the distance between two anchors in the reference
 	dr = (int32_t)(ai->x - aj->x);
 	// if(sidi == sidj && (dr == 0 || dq > max_dist_q)) return INT32_MIN;
-	if(dr == 0 || dq > max_dist_q) return INT32_MIN;
+	if(dr == 0 || dr > max_dist_t) return INT32_MIN;
 
 	//Calculate the distance between two anchors in the diagonal
 	dd = dr > dq? dr - dq : dq - dr;
@@ -315,7 +315,7 @@ static inline int32_t compute_score(const mm128_t *ai,
 	// TODO: currently the span is only determined by "e" (number of events concatanated in a seed)
 	q_span = (aj->y>>RI_ID_SHIFT)&span_mask;
 
-	// Matching bases. Consider the the gap (dg) if it is smaller than the span (q_span).
+	// Matching bases. Consider the matching bases (dg) if it is larger than the span (q_span).
 	sc = q_span < dg? q_span : dg;
 	
 	// Integrating penalties to the score

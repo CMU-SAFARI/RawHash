@@ -9,17 +9,31 @@
 extern "C" {
 #endif
 
-typedef struct ri_reg1_s{
-	uint32_t read_id;
-	uint32_t ref_id;
-	const char* read_name;
+typedef struct ri_map_s{
+	uint32_t c_id; //chain index
 	uint32_t read_length;
+	uint32_t ref_id;
 	uint32_t read_start_position;
 	uint32_t read_end_position;
 	uint32_t fragment_start_position;
 	uint32_t fragment_length;
 	uint8_t mapq : 6, rev : 1, mapped : 1;
 	char* tags;
+} ri_map_t;
+
+typedef struct ri_reg1_s{
+	uint32_t read_id;
+	// uint32_t ref_id;
+	const char* read_name;
+	// uint32_t read_start_position;
+	// uint32_t read_end_position;
+	// uint32_t fragment_start_position;
+	// uint32_t fragment_length;
+	// uint8_t mapq : 6, rev : 1, mapped : 1;
+	// char* tags;
+
+	ri_map_t* maps;
+	uint32_t n_maps;
 
 	uint32_t offset;
 	float* events;

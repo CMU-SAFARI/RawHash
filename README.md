@@ -20,6 +20,12 @@ RawHash performs real-time mapping of nanopore raw signals. When the prefix of r
 
 # Recent changes
 
+* We have integrated the signal alignment functionality with DTW as proposed in RawAlign (see the citation below). The parameters may still not be highly optimized as this is still in experimental stage. Use it with caution.
+
+* Offline overlapping functionality is integrated.
+
+* rmap.c is now rmap.cpp (needs to be compiled with C++) due to the recent DTW integration. We are planning to make it a C-compatible implementation again.
+
 * We have released RawHash2, a more sensitive and faster raw signal mapping mechanism with substantial improvements over RawHash. RawHash2 is available within this repository. You can still use the earlier version, RawHash v1, from [this release](https://github.com/CMU-SAFARI/RawHash/releases/tag/v1.0).
 
 * It is now possible to disable compiling HDF5, SLOW5, and POD5. Please check the `Compiling with HDF5, SLOW5, and POD5` section below for details.
@@ -156,9 +162,9 @@ Please follow the instructions in the [README](test/README.md) file in [test](./
 * Ability to specify even/odd channels to eject the reads only from these specified channels.
 * Please create issues if you want to see more features that can make RawHash2 easily integratable with nanopore sequencers for any use case.
 
-# Citing RawHash and RawHash2
+# Citing RawHash, RawHash2, and RawAlign
 
-To cite RawHash and RawHash2, you can use the following BibTeX:
+If you use RawHash in your work, please consider citing the following papers:
 
 ```bibtex
 @article{firtina_rawhash_2023,
@@ -174,10 +180,30 @@ To cite RawHash and RawHash2, you can use the following BibTeX:
 	issn = {1367-4811},
 	url = {https://doi.org/10.1093/bioinformatics/btad272},
 }
+
+@article{firtina_rawhash2_2023,
+  title = {{RawHash2}: Accurate and Fast Mapping of Raw Nanopore Signals using a Hash-based Seeding Mechanism},
+  author = {Firtina, Can and Soysal, Melina and Lindegger, Joël and Mutlu, Onur},
+  journal = {arXiv},
+  year = {2023},
+  month = sep,
+  doi = {10.48550/arXiv.2309.05771},
+  url = {https://doi.org/10.48550/arXiv.2309.05771},
+}
+
+@article{lindegger_rawalign_2023,
+  title = {{RawAlign}: {Accurate, Fast, and Scalable Raw Nanopore Signal Mapping via Combining Seeding and Alignment}},
+  author = {Lindegger, Joël and Firtina, Can and Ghiasi, Nika Mansouri and Sadrosadati, Mohammad and Alser, Mohammed and Mutlu, Onur},
+  journal = {arXiv},
+  year = {2023},
+  month = oct,
+  doi = {10.48550/arXiv.2310.05037},
+  url = {https://doi.org/10.48550/arXiv.2310.05037},
+}
 ```
 
 # Acknowledgement
 
-RawHash2 uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage, DP and RMQ-based chaining) and the R9.4 segmentation parameters from [Sigmap](https://github.com/haowenz/sigmap).
+RawHash2 uses [klib](https://github.com/attractivechaos/klib), some code snippets from [Minimap2](https://github.com/lh3/minimap2) (e.g., pipelining, hash table usage, DP and RMQ-based chaining) and the R9.4 segmentation parameters from [Sigmap](https://github.com/haowenz/sigmap). RawHash2 uses the DTW integration as proposed in RawAlign (please see the citation details above).
 
 We thank [Melina Soysal](https://github.com/melina2200) and [Marie-Louise Dugua](https://github.com/MarieSarahLouise) for their feedback to improve the RawHash implementation and test scripts.

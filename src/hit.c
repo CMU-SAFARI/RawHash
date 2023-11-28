@@ -141,6 +141,7 @@ mm_reg1_t *mm_gen_regs(void *km,
 		ri->cnt = (int32_t)z[i].y;
 		ri->as = z[i].y >> 32; //start anchor (as) index of chain_i
 		ri->div = -1.0f;
+		ri->alignment_score = 0;
 		// mm_reg_set_coor(ri, qlen, a, is_qstrand);
 		mm_reg_set_coor(ri, qlen, a);
 	}
@@ -503,8 +504,8 @@ void mm_set_mapq(void *km,
 				 mm_reg1_t *regs,
 				 int min_chain_sc,
 				//  int match_sc,
-				 int rep_len)
-				//  int is_sr)
+				 int rep_len,
+				 int is_dtw)
 {
 	static const float q_coef = 40.0f;
 	int64_t sum_sc = 0;
@@ -517,13 +518,20 @@ void mm_set_mapq(void *km,
 	uniq_ratio = (float)sum_sc / (sum_sc + rep_len);
 	for (i = 0; i < n_regs; ++i) {
 		mm_reg1_t *r = &regs[i];
-		int mapq, subsc;
-		float pen_s1 = (r->score > 200? 1.0f : 0.005 * r->score) * uniq_ratio;
+		int mapq = 0, subsc;
+		float pen_s1 = (r->score > 100? 1.0f : 0.01 * r->score) * uniq_ratio;
 		float pen_cm = r->cnt > 10? 1.0f : 0.1f * r->cnt;
 		pen_cm = pen_s1 < pen_cm? pen_s1 : pen_cm;
 		subsc = r->subsc > min_chain_sc? r->subsc : min_chain_sc;
 		float x = (float)subsc / r->score0;
-		mapq = (int)(pen_cm * q_coef * (1.0f - x) * logf(r->score));
+		if(is_dtw && r->alignment_score > 0){
+			// float identity = (float)r->mlen / r->blen;
+			// mapq = (int)(identity * pen_cm * q_coef * (1.0f - x) * logf(r->alignment_score));
+			mapq = (int)(pen_cm * q_coef * (1.0f - x) * 2*logf(r->alignment_score));
+			// fprintf(stderr, "mapq: %d, alignment_score: %f\n", mapq, r->alignment_score);
+		}else if (!is_dtw)
+			mapq = (int)(pen_cm * q_coef * (1.0f - x) * logf(r->score));
+
 		mapq -= (int)(4.343f * logf(r->n_sub + 1) + .499f);
 		mapq = mapq > 0? mapq : 0;
 		r->mapq = mapq < 60? mapq : 60;

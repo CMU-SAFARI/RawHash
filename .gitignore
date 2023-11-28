@@ -74,3 +74,5 @@ test/*.idx
 src/*.o
 
 extern/pod5*
+
+test/evaluation/rawsamble/

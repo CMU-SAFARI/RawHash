@@ -9,8 +9,8 @@
 extern "C" {
 #endif
 
-#define RI_SEED_TANDEM 38 //32+6
-#define RI_SEED_SELF 39
+#define RI_SEED_TANDEM (1ULL<<38) //32+6
+#define RI_SEED_SELF (1ULL<<39)
 #define RI_SEED_SEG_SHIFT 40
 #define RI_SEED_SEG_MASK   (0xffULL<<(RI_SEED_SEG_SHIFT))
 

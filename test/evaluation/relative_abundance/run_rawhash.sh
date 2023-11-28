@@ -4,7 +4,8 @@ THREAD=$1
 
 #relative_abundance
 OUTDIR="./rawhash/"
-FAST5="../../data/relative_abundance/fast5_files/"
+# FAST5="../../data/relative_abundance/fast5_files/"
+FAST5="../../data/relative_abundance/test_fast5_files/"
 REF="../../data/relative_abundance/ref.fa"
 PORE="../../../extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model"
 PRESET="fast"

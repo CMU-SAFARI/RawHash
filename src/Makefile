@@ -13,7 +13,7 @@ ifdef PROFILE
 	CPPFLAGS+=-g -fno-omit-frame-pointer -march=native -DPROFILERH=1
 endif
 
-OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rindex.o lchain.o rseed.o rmap.o hit.o main.o
+OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rindex.o lchain.o rseed.o rmap.o dtw.o hit.o main.o
 
 CXX_COMPILER_VERSION ?= $(shell $(CXX) -dumpversion)
 SYSTEM_PROCESSOR ?= $(shell uname -m)
@@ -249,7 +249,7 @@ hit.o: chain.h kalloc.h khash.h
 rsig.o: hdf5_tools.hpp rh_kvec.h
 rseed.o: rsketch.h kalloc.h rutils.h rindex.h
 hit.o: rmap.h kalloc.h khash.h
-rmap.o: rindex.h rsig.h kthread.h rh_kvec.h rutils.h rsketch.h revent.h sequence_until.h
+rmap.o: rindex.h rsig.h kthread.h rh_kvec.h rutils.h rsketch.h revent.h sequence_until.h dtw.h
 revent.o: roptions.h kalloc.h
 rindex.o: roptions.h rutils.h rsketch.h rsig.h bseq.h khash.h rh_kvec.h kthread.h
 main:o rawhash.h ketopt.h rutils.h

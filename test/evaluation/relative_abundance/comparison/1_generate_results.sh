@@ -6,8 +6,8 @@ uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash/relative_abundan
 uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash2/relative_abundance_rawhash2_fast.paf > relative_abundance_rawhash2_fast_ann.paf 2> relative_abundance_rawhash2_fast.throughput
 uncalled pafstats -r ../true_mappings.paf --annotate ../rawhash2/relative_abundance_w3_rawhash2_fast.paf > relative_abundance_w3_rawhash2_fast_ann.paf 2> relative_abundance_w3_rawhash2_fast.throughput
 
-python ../../../scripts/compare_relative_pafs.py relative_abundance_uncalled_ann.paf relative_abundance_sigmap_ann.paf relative_abundance_rawhash_fast_ann.paf relative_abundance_rawhash2_fast_ann.paf ../true_mappings.paf > relative_abundance_rawhash_fast.comparison
-python ../../../scripts/compare_relative_pafs.py relative_abundance_uncalled_ann.paf relative_abundance_sigmap_ann.paf relative_abundance_rawhash_fast_ann.paf relative_abundance_w3_rawhash2_fast_ann.paf ../true_mappings.paf > relative_abundance_w3_rawhash_fast.comparison
+python ../../../scripts/compare_relative_pafs.py relative_abundance_uncalled_ann.paf relative_abundance_sigmap_ann.paf relative_abundance_rawhash_fast_ann.paf relative_abundance_rawhash2_fast_ann.paf ../true_mappings.paf > relative_abundance_rawhash2_fast.comparison
+python ../../../scripts/compare_relative_pafs.py relative_abundance_uncalled_ann.paf relative_abundance_sigmap_ann.paf relative_abundance_rawhash_fast_ann.paf relative_abundance_w3_rawhash2_fast_ann.paf ../true_mappings.paf > relative_abundance_w3_rawhash2_fast.comparison
 
 for i in '../true_mappings.paf' '../uncalled/relative_abundance_uncalled.paf' '../sigmap/relative_abundance_sigmap.paf' '../rawhash/relative_abundance_rawhash_fast.paf' '../rawhash2/relative_abundance_rawhash2_fast.paf' '../rawhash2/relative_abundance_w3_rawhash2_fast.paf' ; do
 if test -f $i; then

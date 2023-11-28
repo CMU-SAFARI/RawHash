@@ -18,6 +18,23 @@
 #define RI_M_NO_SPAN		0x8
 #define RI_M_ALIGN			0x10
 #define RI_M_NO_ADAPTIVE	0x20
+//DTW related
+#define RI_M_DTW_EVALUATE_CHAINS 0x40
+#define RI_M_DTW_OUTPUT_CIGAR	0x80
+#define RI_M_DTW_LOG_SCORES		0x100
+#define RI_M_DISABLE_CHAININGSCORE_FILTERING 0x200
+#define RI_M_OUTPUT_CHAINS		0x400
+#define RI_M_LOG_ANCHORS		0x800
+#define RI_M_LOG_NUM_ANCHORS	0x1000
+//Overlapping related
+#define RI_M_ALL_CHAINS			0x2000
+
+//DTW related
+#define RI_M_DTW_BORDER_CONSTRAINT_GLOBAL	0
+#define RI_M_DTW_BORDER_CONSTRAINT_SPARSE	1
+#define RI_M_DTW_BORDER_CONSTRAINT_LOCAL	2
+#define RI_M_DTW_FILL_METHOD_FULL		0
+#define RI_M_DTW_FILL_METHOD_BANDED		1
 
 #ifdef __cplusplus
 extern "C" {
@@ -28,6 +45,8 @@ typedef struct ri_idxopt_s{
 	short b, w, e, n, q, lq, k, flag, lev_col;
 	int64_t mini_batch_size;
 	uint64_t batch_size;
+
+	float diff;
 
 	uint32_t window_length1;
 	uint32_t window_length2;
@@ -51,7 +70,6 @@ typedef struct ri_mapopt_s{
 	//Seeding parameters
 	float mid_occ_frac;
 	int32_t min_mid_occ, max_mid_occ;
-	// int32_t q_mid_occ;
 	float q_occ_frac;
 
 	int32_t mid_occ;     // ignore seeds with occurrences above this threshold
@@ -68,40 +86,18 @@ typedef struct ri_mapopt_s{
 	int rmq_size_cap;
 	int max_num_skips;
 	int min_num_anchors;
-	// uint32_t num_best_chains;
 	int min_chaining_score;
 	float chain_gap_scale;
 	float chain_skip_scale;
 
-	float w_bestma, w_bestmq, w_bestmc, w_threshold;
-	// float w_best2q, w_best2c;
+	float w_bestq, w_besta, w_bestma, w_bestmq, w_bestmc, w_threshold;
 
 	float mask_level;
 	int mask_len;
 	float pri_ratio;
-	int best_n;      // top best_n chains are subjected to DP alignment
+	int best_n;
 
 	float alt_drop;
-
-	// int a, b;
-	// int q, e, q2, e2; // matching score, mismatch, gap-open and gap-ext penalties
-	// int sc_ambi; // score when one or both bases are "N"
-	// int noncan;      // cost of non-canonical splicing sites
-	// int junc_bonus;
-	// int zdrop, zdrop_inv;   // break alignment if alignment score drops too fast along the diagonal
-	// int end_bonus;
-	// int min_dp_max;  // drop an alignment if the score of the max scoring segment is below this threshold
-	// int min_ksw_len;
-	// int anchor_ext_len, anchor_ext_shift;
-	// float max_clip_ratio; // drop an alignment if BOTH ends are clipped above this ratio
-
-	// int rank_min_len;
-	// float rank_frac;
-
-	// int pe_ori, pe_bonus;
-
-	// int64_t max_sw_mat;
-	// int64_t cap_kalloc;
 
 	//Mapping parameters
 	uint32_t step_size;
@@ -109,9 +105,12 @@ typedef struct ri_mapopt_s{
 	// uint32_t min_chain_anchor;
 
 	int min_mapq;
-	// int min_bestmapq;
-	// float min_bestmapq_ratio, min_meanmapq_ratio;
-	// float min_bestchain_ratio, min_meanchain_ratio;
+
+	uint32_t dtw_border_constraint;
+	uint32_t dtw_fill_method;
+	float dtw_band_radius_frac;
+	float dtw_match_bonus;
+	float dtw_min_score;
 
 	float t_threshold;
 	uint32_t tn_samples;

@@ -39,6 +39,9 @@ typedef struct {
 	uint32_t hash;
 	float div;
 	mm_extra_t *p;
+
+	//DTW related
+	float alignment_score;
 } mm_reg1_t;
 
 typedef struct {
@@ -169,7 +172,8 @@ ri_seg_t *mm_seg_gen(void *km, uint32_t hash, int n_segs, const int *qlens, int 
 void mm_seg_free(void *km, int n_segs, ri_seg_t *segs);
 // void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int match_sc, int rep_len, int is_sr);
 // void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int match_sc, int rep_len);
-void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int rep_len);
+// void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int rep_len);
+void mm_set_mapq(void *km, int n_regs, mm_reg1_t *regs, int min_chain_sc, int rep_len, int is_dtw);
 
 #ifdef __cplusplus
 }

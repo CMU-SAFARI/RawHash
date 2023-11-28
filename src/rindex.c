@@ -51,10 +51,11 @@ void ri_idx_stat(const ri_idx_t *ri)
 	fprintf(stderr, "[M::%s] pore kmer size: %d; concatanated events: %d; quantization method (most sig. Q/least sig. lq): %d/%d; w: %d; n: %d; #seq: %d\n", __func__, ri->k, ri->e, ri->q, ri->lq, ri->w, ri->n, ri->n_seq);
 }
 
-ri_idx_t* ri_idx_init(int b, int w, int e, int n, int q, int lq, int k, int flag){
+ri_idx_t* ri_idx_init(float diff, int b, int w, int e, int n, int q, int lq, int k, int flag){
 	ri_idx_t* ri;
 	ri = (ri_idx_t*)calloc(1, sizeof(ri_idx_t));
   	ri->b = b, ri->w = w; ri->e = e; ri->n = n; ri->q = q; ri->lq = lq, ri->k = k, ri->flag = flag;
+	ri->diff = diff;
   	ri->B = (ri_idx_bucket_t*)calloc(1<<ri->b, sizeof(ri_idx_bucket_t));
   	ri->km = ri_km_init();
 
@@ -135,30 +136,33 @@ static void *worker_pipeline(void *shared, int step, void *in)
     } else if (step == 1) { // step 1: compute sketch
         step_t *s = (step_t*)in;
 
+		int seq_c = s->seq[s->n_seq-1].rid + 1;
+
 		if(p->ri->flag & RI_I_STORE_SIG){
-			p->ri->F = (float**)ri_kmalloc(p->ri->km, s->n_seq * sizeof(float*));
-			p->ri->f_l_sig = (uint32_t*)ri_kmalloc(p->ri->km, s->n_seq * sizeof(uint32_t));
-			p->ri->R = (float**)ri_kmalloc(p->ri->km, s->n_seq * sizeof(float*));
-			p->ri->r_l_sig = (uint32_t*)ri_kmalloc(p->ri->km, s->n_seq * sizeof(uint32_t));
+			p->ri->F = (float**)ri_krealloc(0, p->ri->F,seq_c * sizeof(float*));
+			p->ri->f_l_sig = (uint32_t*)ri_krealloc(0, p->ri->f_l_sig,seq_c * sizeof(uint32_t));
+			p->ri->R = (float**)ri_krealloc(0, p->ri->R,seq_c * sizeof(float*));
+			p->ri->r_l_sig = (uint32_t*)ri_krealloc(0, p->ri->r_l_sig,seq_c * sizeof(uint32_t));
 
 			for (i = 0; i < s->n_seq; ++i) {
 				mm_bseq1_t* t = &s->seq[i];
 				if (t->l_seq > 0){
 					uint32_t s_len;
-					p->ri->F[i] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
-					float* s_values = p->ri->F[i];
+					uint32_t r_id = s->seq[i].rid;
+					p->ri->F[r_id] = (float*)ri_kcalloc(0, t->l_seq, sizeof(float));
+					float* s_values = p->ri->F[r_id];
 
-					ri_seq_to_sig(t->seq, t->l_seq, p->pore_vals, p->ri->k, 0, &s_len, p->ri->F[i]);
-					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
-					p->ri->f_l_sig[i] = s_len;
+					ri_seq_to_sig(t->seq, t->l_seq, p->pore_vals, p->ri->k, 0, &s_len, s_values);
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+					p->ri->f_l_sig[r_id] = s_len;
 
-					p->ri->R[i] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
-					s_values = p->ri->R[i];
+					p->ri->R[r_id] = (float*)ri_kcalloc(0, t->l_seq, sizeof(float));
+					s_values = p->ri->R[r_id];
 					ri_seq_to_sig(t->seq, t->l_seq, p->pore_vals, p->ri->k, 1, &s_len, s_values);
-					ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
-					p->ri->r_l_sig[i] = s_len;
+					ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+					p->ri->r_l_sig[r_id] = s_len;
 				}
-				free(t->seq); free(t->name); 
+				free(t->seq); free(t->name);
 			}
 		}else{
 			for (i = 0; i < s->n_seq; ++i) {
@@ -168,10 +172,10 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					float* s_values = (float*)calloc(t->l_seq, sizeof(float));
 
 					ri_seq_to_sig(t->seq, t->l_seq, p->pore_vals, p->ri->k, 0, &s_len, s_values);
-					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
 
 					ri_seq_to_sig(t->seq, t->l_seq, p->pore_vals, p->ri->k, 1, &s_len, s_values);
-					ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+					ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
 
 					free(s_values);
 				}
@@ -268,33 +272,21 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
     } else if (step == 1) { // step 1: compute sketch
         step_t *s = (step_t*)in;
 
-		if(p->ri->flag & RI_I_STORE_SIG){
-			p->ri->F = (float**)ri_kmalloc(p->ri->km, s->n_seq * sizeof(float*));
-			p->ri->f_l_sig = (uint32_t*)ri_kmalloc(p->ri->km, s->n_seq * sizeof(uint32_t));
-			// p->ri->R = (float**)ri_kmalloc(p->ri->km, s->n_seq * sizeof(float*));
-			// p->ri->r_l_sig = (uint32_t*)ri_kmalloc(p->ri->km, s->n_seq * sizeof(uint32_t));
-
-			for (i = 0; i < s->n_seq; ++i) {
-				ri_sig_t* t = s->sig[i];
-				if (t->l_sig > 0){
-					
-				}
-				free(t->sig); free(t->name); 
-			}
-		}else {
+		//TODO Complete similar to worker_pipeline
+		// }else {
 			for (i = 0; i < s->n_seq; ++i) {
 				ri_sig_t* t = s->sig[i];
 				if (t->l_sig > 0){
 					uint32_t s_len = 0;
 					float* s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_len);
 
-					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
 
 					if(s_values)free(s_values);
 				}
 				free(t->sig); free(t->name); 
 			}
-		}
+		// }
 		free(s->sig); s->sig = 0;
 		return s;
     } else if (step == 2) { // dispatch sketch to buckets
@@ -394,6 +386,7 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 	
 	fwrite(RI_IDX_MAGIC, 1, RI_IDX_MAGIC_BYTE, idx_file);
 	fwrite(pars, sizeof(uint32_t), 8, idx_file);
+	fwrite(&ri->diff, sizeof(float), 1, idx_file);
 
 	for (i = 0; i < ri->n_seq; ++i) {
 
@@ -422,18 +415,18 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 		if(ri->flag & RI_I_STORE_SIG){
 			fwrite(&(ri->f_l_sig[i]), 4, 1, idx_file);
 			fwrite(ri->F[i], 4, ri->f_l_sig[i], idx_file);
-			ri_kfree(ri->km, ri->F[i]);
+			ri_kfree(0, ri->F[i]);
 			fwrite(&(ri->r_l_sig[i]), 4, 1, idx_file);
 			fwrite(ri->R[i], 4, ri->r_l_sig[i], idx_file);
-			ri_kfree(ri->km, ri->R[i]);
+			ri_kfree(0, ri->R[i]);
 		}
 	}
 
 	if(ri->flag & RI_I_STORE_SIG){
-		ri_kfree(ri->km, ri->F);
-		ri_kfree(ri->km, ri->f_l_sig);
-		ri_kfree(ri->km, ri->R);
-		ri_kfree(ri->km, ri->r_l_sig);
+		ri_kfree(0, ri->F);
+		ri_kfree(0, ri->f_l_sig);
+		ri_kfree(0, ri->R);
+		ri_kfree(0, ri->r_l_sig);
 	}
 
 	for (i = 0; i < 1U<<ri->b; ++i) {
@@ -469,34 +462,35 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 	int pars[8];
 	fread(&pars[0], sizeof(int), 8, idx_file);
 
-	ri = ri_idx_init(14, pars[0], pars[1], pars[2], pars[3], pars[4], pars[5], pars[7]);
+	float diff;
+	fread(&diff, sizeof(float), 1, idx_file);
+
+	ri = ri_idx_init(diff, 14, pars[0], pars[1], pars[2], pars[3], pars[4], pars[5], pars[7]);
 	ri->n_seq = pars[6];
-	// if(ri->flag & RI_I_SIG_TARGET) ri->sig = (ri_sig_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_sig_t));
-	// else
-	ri->seq = (ri_idx_seq_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_idx_seq_t));
+	if(ri->flag&RI_I_SIG_TARGET) ri->sig = (ri_sig_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_sig_t));
+	else ri->seq = (ri_idx_seq_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_idx_seq_t));
 
 	if(ri->flag & RI_I_STORE_SIG){
-		ri->F = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
-		ri->f_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
-		ri->R = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
-		ri->r_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
+		ri->F = (float**)ri_kcalloc(0, ri->n_seq, sizeof(float*));
+		ri->f_l_sig = (uint32_t*)ri_kcalloc(0, ri->n_seq, sizeof(uint32_t));
+		ri->R = (float**)ri_kcalloc(0, ri->n_seq, sizeof(float*));
+		ri->r_l_sig = (uint32_t*)ri_kcalloc(0, ri->n_seq, sizeof(uint32_t));
 	}
 
 	for (i = 0; i < ri->n_seq; ++i) {
 		uint8_t l;
-
-		// if(ri->flag & RI_I_SIG_TARGET){
-		// 	ri_sig_t *s = &ri->sig[i];
-		// 	fread(&l, 1, 1, idx_file);
-		// 	if (l) {
-		// 		s->name = (char*)ri_kmalloc(ri->km, l + 1);
-		// 		fread(s->name, 1, l, idx_file);
-		// 		s->name[l] = 0;
-		// 	}
-		// 	fread(&s->l_sig, 4, 1, idx_file);
-		// 	s->offset = sum_len;
-		// 	sum_len += s->l_sig;
-		// }else {
+		if(ri->flag&RI_I_SIG_TARGET){
+			ri_sig_t *s = &ri->sig[i];
+			fread(&l, 1, 1, idx_file);
+			if (l) {
+				s->name = (char*)ri_kmalloc(ri->km, l + 1);
+				fread(s->name, 1, l, idx_file);
+				s->name[l] = 0;
+			}
+			fread(&s->l_sig, 4, 1, idx_file);
+			s->offset = sum_len;
+			sum_len += s->l_sig;
+		}else {
 			ri_idx_seq_t *s = &ri->seq[i];
 			fread(&l, 1, 1, idx_file);
 			if (l) {
@@ -507,14 +501,15 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 			fread(&s->len, 4, 1, idx_file);
 			s->offset = sum_len;
 			sum_len += s->len;
-		// }
+		}
 
 		if(ri->flag & RI_I_STORE_SIG){
 			fread(&(ri->f_l_sig[i]), 4, 1, idx_file);
-			ri->F[i] = (float*)ri_kmalloc(ri->km, ri->f_l_sig[i] * sizeof(float));
+			ri->F[i] = (float*)ri_kmalloc(0, ri->f_l_sig[i] * sizeof(float));
 			fread(ri->F[i], 4, ri->f_l_sig[i], idx_file);
+
 			fread(&(ri->r_l_sig[i]), 4, 1, idx_file);
-			ri->R[i] = (float*)ri_kmalloc(ri->km, ri->r_l_sig[i] * sizeof(float));
+			ri->R[i] = (float*)ri_kmalloc(0, ri->r_l_sig[i] * sizeof(float));
 			fread(ri->R[i], 4, ri->r_l_sig[i], idx_file);
 		}
 	}
@@ -585,7 +580,7 @@ void ri_idx_reader_close(ri_idx_reader_t* r){
 	free(r);
 }
 
-ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, float* pore_vals, int b, int w, int e, int n, int q, int lq, int k, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
+ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, float* pore_vals, float diff, int b, int w, int e, int n, int q, int lq, int k, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
 {
 
 	if(flag&RI_I_SIG_TARGET) return 0;
@@ -597,7 +592,7 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, float* pore_vals, int b, int w, int e, 
 	pl.batch_size = batch_size;
 	pl.fp = fp;
 	pl.pore_vals = pore_vals;
-	pl.ri = ri_idx_init(b, w, e, n, q, lq, k, flag);
+	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
 
 	kt_pipeline(n_threads < 3? n_threads : 3, worker_pipeline, &pl, 3);
 	ri_idx_post(pl.ri, n_threads);
@@ -605,7 +600,7 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, float* pore_vals, int b, int w, int e, 
 	return pl.ri;
 }
 
-ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, float* pore_vals, int b, int w, int e, int n, int q, int lq, int k, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
+ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, float* pore_vals, float diff, int b, int w, int e, int n, int q, int lq, int k, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
 {
 
 	if(!(flag&RI_I_SIG_TARGET)) return 0;
@@ -620,7 +615,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, float
 	pl.n_f = n_f;
 	pl.cur_f = cur_f;
 	pl.pore_vals = pore_vals;
-	pl.ri = ri_idx_init(b, w, e, n, q, lq, k, flag);
+	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
 
 	pl.ri->window_length1 = window_length1;
 	pl.ri->window_length2 = window_length2;
@@ -645,11 +640,11 @@ ri_idx_t* ri_idx_reader_read(ri_idx_reader_t* r, float* pore_vals, int n_threads
 		ri = ri_idx_load(r->fp.idx);
 	} else if(r->opt.flag & RI_I_SIG_TARGET) {
 
-		ri = ri_idx_siggen(&(r->sfp), r->sf, r->cur_f, r->n_f, pore_vals, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.window_length1, r->opt.window_length2, r->opt.threshold1, r->opt.threshold2, r->opt.peak_height, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
+		ri = ri_idx_siggen(&(r->sfp), r->sf, r->cur_f, r->n_f, pore_vals, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.window_length1, r->opt.window_length2, r->opt.threshold1, r->opt.threshold2, r->opt.peak_height, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
 
 	}
 	else{
-		ri = ri_idx_gen(r->fp.seq, pore_vals, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
+		ri = ri_idx_gen(r->fp.seq, pore_vals, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
 	}
 	if (ri) {
 		if (r->fp_out) ri_idx_dump(r->fp_out, ri);

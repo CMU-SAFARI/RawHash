@@ -233,6 +233,9 @@ void ri_sig_close(ri_sig_file_t *fp)
 			if(fp->ch_path[i])free(fp->ch_path[i]);
 			if(fp->raw_path[i])free(fp->raw_path[i]);
 		}
+		free(fp->ch_path);
+		free(fp->raw_path);
+		delete fp->fp;
 	}
 	#endif
 	#ifndef NPOD5RH

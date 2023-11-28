@@ -29,6 +29,7 @@ typedef struct ri_idx_seq_s{
 typedef struct ri_idx_s{
 	int32_t b, w, e, n, q, lq, k, flag;
 	int32_t index;
+	float diff;
 	struct ri_idx_bucket_s *B; // index (hidden)
 
 	void *km, *h;

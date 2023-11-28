@@ -165,7 +165,7 @@ void ri_seed_mz_flt(void *km, mm128_v *riv, int32_t q_occ_max, float q_occ_frac)
 	for (st = 0, i = 1; i <= riv->n; ++i) {
 		if (i == riv->n || a[i].x != a[st].x) {
 			int32_t cnt = i - st;
-			if (cnt > q_occ_max && cnt > riv->n * q_occ_frac){
+			if (cnt > riv->n * q_occ_frac){
 				for (j = st; j < i; ++j)
 					riv->a[a[j].y].x = 0;
 			}
