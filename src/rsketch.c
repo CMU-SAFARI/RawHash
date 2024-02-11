@@ -5,6 +5,12 @@
 #include <string.h>
 #include <x86intrin.h>
 
+#ifndef __cplusplus
+typedef unsigned char bool;
+static const bool false = 0;
+static const bool true = 1;
+#endif
+
 static inline uint64_t hash64(uint64_t key, uint64_t mask){
     key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
     key = key ^ key >> 24;
@@ -342,7 +348,7 @@ void ri_sketch_blend_hybrid(void *km, const float* s_values, uint32_t id, int st
 
 void ri_sketch_blend_quant(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int n, int q, int lq, int k, mm128_v *p) {
  
-	int blendConcat = 0, f=1; 
+	int blendConcat = 0; 
 	uint64_t blendVal = 0;
 	const uint64_t blendmask = (1ULL<<28)-1;
     mm128_t blendBuf[n]; 
@@ -361,7 +367,7 @@ void ri_sketch_blend_quant(void *km, const float* s_values, uint32_t id, int str
 	const uint32_t shift_r = 32-q;
 	const uint64_t id_shift = (uint64_t)id << RI_ID_SHIFT, mask = (1ULL << 32) - 1, mask_events = (1ULL << (q * e)) - 1, mask_l_quant = (1UL << lq) - 1, mask_q_quant = (1UL << quant_bit) - 1; // for least sig. 5 bits
 
-	int sigBufFull = 0, blendBufFull = 0, blendPos = 0, counter = 0, limit = 4;
+	int sigBufFull = 0, blendBufFull = 0, blendPos = 0, counter = 0;
 	uint32_t i, sigBufPos = 0, l_sigpos = 0; //last signal position
 	uint32_t signal = 0, shortQuantVal = 0;
 	uint64_t longQuantVal = 0, concatBlend = 0;
@@ -380,36 +386,26 @@ void ri_sketch_blend_quant(void *km, const float* s_values, uint32_t id, int str
 
 		mm128_t info = { UINT64_MAX, UINT64_MAX };
 		// check the size of shortQuantVal here
-		longQuantVal = (longQuantVal << quant_bit | hash64(shortQuantVal, mask)) & mask_events;// we concatenate these until we have n many 
+		longQuantVal = (longQuantVal << quant_bit | shortQuantVal) & mask_events;// we concatenate these until we have n many 
 		sigBuf[sigBufPos].y = id_shift | (uint32_t)i << RI_POS_SHIFT | strand;
 		if(++sigBufPos == n) {sigBufFull = 1; sigBufPos = 0;}
 
 		if(!sigBufFull) continue; 
 
-		blendBuf[blendPos].x = longQuantVal; 
+		blendBuf[blendPos].x = longQuantVal; // here we would normally hash.
 		blendBuf[blendPos].y = sigBuf[sigBufPos].y;
 
 		if(++blendPos == n){blendBufFull = 1; blendPos = 0;};
 
 		if (blendBufFull)
 		{
-			//if(f) {
-			blendVal = calc_blend_rm_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, longQuantVal, blendBuf[blendPos].x, mask_q_quant, 32);
+			blendVal = calc_blend_rm_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, longQuantVal, blendBuf[blendPos].x, blendmask, 32);
 			info.x = blendVal<<RI_HASH_SHIFT |span; 
 			info.y = blendBuf[blendPos].y; 
-			//}
-			/*else {
-				blendConcat++; 
-				blendVal = calc_blend_rm_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, shortQuantVal, blendBuf[blendPos].x, mask_q_quant, 32);
-				concatBlend = (concatBlend << quant_bit | hash64(blendVal, mask)) & mask_events;
-				if(blendConcat == 3) {
-					info.x = concatBlend << RI_HASH_SHIFT | span;
-					info.y = blendBuf[blendPos].y;
-				}
-			}*/
+		
 			rh_kv_push(mm128_t, km, *p, info);
 		}else {
-			calc_blend_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, longQuantVal, mask_q_quant, 32);
+			calc_blend_simd(&blndcnt_lsb, &blndcnt_msb, &ma, &mb, longQuantVal, blendmask, 32);
 		}
 	}
 }
@@ -561,9 +557,10 @@ void ri_sketch_min(void *km, const float* s_values, uint32_t id, int strand, int
 
 void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int len, int e, int q, int lq, int k, mm128_v *p){
 
-	// int step = 1;//TODO: make this an argument
-	// uint32_t span = (k+e-1)*step;
-	uint32_t span = k+e-1;
+	int step = 1;//TODO: make this an argument
+	uint32_t span = (k+e-1)*step;
+	// uint32_t span = e; // TODO: span has a role in chaining calculating and in earlier version we use only e for that score.
+	//try to integrate the earlier (commented out) version of span into score calculation accurately.
 	
 	uint32_t quant_bit = lq+2; 
 	uint32_t shift_r = 32-q;
@@ -574,21 +571,19 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
 	uint32_t signal = 0, tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
-	assert(len > 0 && e*quant_bit <= 64);
-
-	// rh_kv_resize(mm128_t, km, *p, p->n + len/step);
-	rh_kv_resize(mm128_t, km, *p, p->n + len);
+	rh_kv_resize(mm128_t, km, *p, p->n + len/step);
 
 	mm128_t sigBuf[e];
 	memset(sigBuf, 0, e*sizeof(mm128_t));
 
-	// for (i = 0; i < len; i += step) {
-    for (i = 0; i < len; ++i) {
+    for (i = 0; i < len; i += step) {
         if((i > 0 && fabs(s_values[i] - s_values[l_sigpos]) < LAST_SIG_DIFF)) continue;
 
 		l_sigpos = i;
 		signal = *((uint32_t*)&s_values[i]);
 		tmpQuantSignal = signal>>30<<lq | ((signal>>shift_r)&mask_l_quant);
+		// signal = quantize_float_uint32(s_values[i], -2.75f, 2.75f);
+		// tmpQuantSignal = signal&mask_quant;
 
 		sigBuf[sigBufPos].y = id_shift | (uint32_t)i<<RI_POS_SHIFT | strand;
 		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
@@ -614,13 +609,10 @@ void ri_sketch(void *km, const float* s_values, uint32_t id, int strand, int len
 
 	assert(e >= 1 && e < 10);
 	//int f = 1; // decides whether or not to use the hybrid method or Blend_quant
-	//if(w & n) ri_sketch_blend_min(km, s_values, id, strand, len, w, e, n, q, lq, k, p);
-	//else if(n) ri_sketch_blend_quant(km, s_values, id, strand, len, e, n, q, lq, k, p);
-	//q = 11;
-	//if(w) ri_sketch_min(km, s_values, id, strand, len, w, e, q, lq, k, p);
-	//ri_sketch_blend(km, s_values, id, strand, len, e, n, q, lq, k, p);
-	ri_sketch_blend_quant(km, s_values, id, strand, len, e, n, q, lq, k, p);
-	//if(n) ri_sketch_blend_hybrid(km, s_values, id, strand, len, e, n, q, lq, k, p);
+	if(w & n) ri_sketch_blend_min(km, s_values, id, strand, len, w, e, n, q, lq, k, p);
+	//ri_sketch_blend_quant(km, s_values, id, strand, len, e, n, q, lq, k, p);
+	else if(n) ri_sketch_blend(km, s_values, id, strand, len, e, n, q, lq, k, p);
 	//else if(n) ri_sketch_blend_hybrid(km, s_values, id, strand, len, e, n, q, lq, k, p);
-	//ri_sketch_reg(km, s_values, id, strand, len, e, q, lq, k, p);
+	else if(w) ri_sketch_min(km, s_values, id, strand, len, w, e, q, lq, k, p);
+	else ri_sketch_reg(km, s_values, id, strand, len, e, q, lq, k, p);
 }
