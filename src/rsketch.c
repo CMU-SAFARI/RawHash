@@ -2,6 +2,7 @@
 #include <assert.h>
 #include "rh_kvec.h"
 #include <math.h>
+#include <float.h>
 
 static inline uint64_t hash64(uint64_t key, uint64_t mask){
     key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;

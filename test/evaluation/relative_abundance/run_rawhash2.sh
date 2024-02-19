@@ -12,10 +12,11 @@ PRESET="fast"
 mkdir -p ${OUTDIR}
 
 #The following is the run using default parameters:
-PREFIX="relative_abundance"
-bash ../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"
+# PREFIX="relative_abundance"
+# PARAMS="--best-chains 5 --w-threshold 0.5 --map-model ../read_mapping/feature_set.tflite"
+# bash ../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} "${PARAMS}" > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"
 
 #Minimizers
 PREFIX="relative_abundance_w3"
-PARAMS="-w 3"
+PARAMS="-w 3 --best-chains 5 --w-threshold 0.5 --map-model ../read_mapping/feature_set.tflite"
 bash ../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} "${PARAMS}" > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"

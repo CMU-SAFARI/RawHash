@@ -4,6 +4,7 @@
 #include "rindex.h"
 #include "rsig.h"
 #include "chain.h"
+#include "tensorflow/lite/core/c/c_api.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,8 +42,6 @@ typedef struct ri_reg1_s{
 	uint32_t n_prev_anchors;
 	mm_reg1_t* creg; // This is for transition purposes.
 	int n_cregs;
-
-	uint32_t n_chains;
 } ri_reg1_t;
 
 typedef struct pipeline_ms{
@@ -57,6 +56,8 @@ typedef struct pipeline_ms{
 	float** su_estimations;
 	uint32_t* su_c_estimations;
 	int su_stop;
+
+	TfLiteModel* map_model;
 } pipeline_mt;
 
 typedef struct step_ms{

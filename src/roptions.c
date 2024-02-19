@@ -31,7 +31,9 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->sample_per_base = (float)opt->sample_rate / opt->bp_per_sec;
 
 	//seeding
-	opt->mid_occ_frac = 5e-3f; //--mid-occ-frac
+	// opt->mid_occ_frac = 75e-4f; //--mid-occ-frac
+	opt->mid_occ_frac = 1e-2f; //--mid-occ-frac
+	// opt->mid_occ_frac = 5e-3f; //--mid-occ-frac
 	opt->q_occ_frac = 1e-2f; //--q-occ-frac
 	opt->min_mid_occ = 50; //--q-mid-occ [I1, I2]
 	opt->max_mid_occ = 500000; //--q-mid-occ [I1, I2]
@@ -59,6 +61,8 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	
 	opt->pri_ratio = 0.3f;
 	opt->best_n = 0;
+
+	opt->top_n_mean = 0; //--top-n-mean
 
 	opt->alt_drop = 0.15f; //--alt-drop
 

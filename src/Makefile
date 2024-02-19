@@ -74,6 +74,8 @@ endif
 SLOW5_INCLUDE_DIR ?= ${SLOW5_DIR}/include
 SLOW5_LIB_DIR ?= ${SLOW5_DIR}/lib
 
+LIBS+=-L${WORKDIR}/tensorflow/tflite_build/
+
 #pass NOPOD5=1 to make to disable compiling with POD5
 ifeq ($(NOPOD5),1)
 	CFLAGS+=-DNPOD5RH=1
@@ -101,7 +103,8 @@ else
 	LIBS+=${SLOW5_LIB_DIR}/libslow5.a
 endif
 
-LIBS+=-lm -lz -ldl 
+INCLUDES+=-I${WORKDIR}/tensorflow/
+LIBS+=-lm -lz -ldl -ltensorflowlite_c
 
 PROG=rawhash2
 
@@ -129,8 +132,8 @@ endif
 
 .PHONY: all subset clean help
 
-all: zstd hdf5 slow5 pod5 check_hdf5 check_slow5 check_pod5 $(PROG) ## Build RawHash with HDF5, SLOW5, and POD5
-subset: check_zstd check_pod5 check_slow5 check_hdf5 $(PROG) ## Build RawHash without recompiling HDF5, SLOW5, and POD5
+all: zstd hdf5 slow5 pod5 tensorflow check_hdf5 check_slow5 check_pod5 check_tensorflow $(PROG) ## Build RawHash with HDF5, SLOW5, and POD5
+subset: check_zstd check_pod5 check_slow5 check_hdf5 check_tensorflow $(PROG) ## Build RawHash without recompiling HDF5, SLOW5, and POD5
 
 help: ##Show help
 	@echo "Set PROFILE=1 to enable profiling"
@@ -166,6 +169,9 @@ check_pod5:
 		[ -f "$(POD5_LIB_DIR)/libpod5_format.a" ] || { echo "POD5 library not found" >&2; exit 1; }; \
 	fi
 
+check_tensorflow:
+		@[ -e "${WORKDIR}/tensorflow/tflite_build/libtensorflowlite_c.so" ] || { echo "Tensorflow library not found" >&2; exit 1; }
+
 zstd:
 	@if [ "$(NOPOD5)" != "1" ]; then \
 		cd ${WORKDIR}/zstd && make -j; \
@@ -190,6 +196,9 @@ pod5: check_zstd
 		cd $(WORKDIR) && mkdir -p $(POD5_URLDIR); cd $(POD5_URLDIR); wget -qO- $(POD5_URL) | tar -xzv; \
 	fi
 
+tensorflow:
+	cd ${WORKDIR}/tensorflow && mkdir -p tflite_build && cd tflite_build/ && cmake ../tensorflow/lite/c && cmake --build . -j; \
+
 ifeq ($(NOHDF5),1)
 FASTDEPCOM=${CC}
 FASTDEPCOM_FLAGS=$(CFLAGS)
@@ -202,7 +211,7 @@ endif
 # 	${FASTDEPCOM} $(FASTDEPCOM_FLAGS) $(OBJS) -o $(PROG) $(LIBS)
 
 $(PROG): $(OBJS)
-	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -lstdc++
+	${CXX} $(CPPFLAGS) $(OBJS) -o $(PROG) $(LIBS) -lstdc++ -Wl,-rpath,${WORKDIR}/tensorflow/tflite_build/
 
 # rsig.o: rsig.c
 # 	$(FASTDEPCOM) -c $(FASTDEPCOM_FLAGS) $(INCLUDES) $< -o $@

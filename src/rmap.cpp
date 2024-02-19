@@ -23,6 +23,13 @@ double ri_maptime = 0.0;
 double ri_maptime_multithread = 0.0;
 #endif
 
+typedef struct rh_norm_inference_s{
+	float is_prim, qlen, mapq, score, alignment_score, cnt, mlen, blen, n_sub;
+} rh_norm_inference_t;
+
+#define N_FEATURES 9
+// #define TRAIN_MAP
+
 static ri_tbuf_t *ri_tbuf_init(void)
 {
 	ri_tbuf_t *b;
@@ -188,6 +195,31 @@ void align_chain(mm_reg1_t *chain, mm128_t* anchors, const ri_idx_t *ri, const f
 	}
 }
 
+unsigned int find_closest_pore_ind(const ri_porem_t* pairs, unsigned int array_size, float s_val) {
+    unsigned int left = 0, right = array_size - 1;
+    unsigned int closest_index = 0;
+    float min_diff = FLT_MAX;
+
+    while (left <= right) {
+        unsigned int mid = left + (right - left) / 2;
+        float diff = fabs(pairs[mid].pore_val - s_val);
+
+        if (diff < min_diff) {
+            min_diff = diff;
+            closest_index = mid;
+        }
+
+        if (pairs[mid].pore_val < s_val) {
+            left = mid + 1;
+        } else if (pairs[mid].pore_val > s_val) {
+            right = mid - 1;
+        } else {
+            break; // Exact match found
+        }
+    }
+    return pairs[closest_index].rev_ind;
+}
+
 //returns n_regs // currently we report one mapping
 void ri_map_frag(const ri_idx_t *ri,
 				const uint32_t s_len,
@@ -195,7 +227,8 @@ void ri_map_frag(const ri_idx_t *ri,
 				ri_reg1_t* reg,
 				ri_tbuf_t *b,
 				const ri_mapopt_t *opt,
-				const char *qname)
+				const char *qname,
+				const uint32_t c_count = 0)
 {	
 	uint32_t n_events = 0;
 
@@ -213,8 +246,10 @@ void ri_map_frag(const ri_idx_t *ri,
 	}
 
 	//Copy events to the end of reg->events with ri_krealloc
-	reg->events = (float*)ri_krealloc(b->km, reg->events, (reg->offset+n_events) * sizeof(float));
-	memcpy(reg->events + reg->offset, events, n_events * sizeof(float));
+	if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+		reg->events = (float*)ri_krealloc(b->km, reg->events, (reg->offset+n_events) * sizeof(float));
+		memcpy(reg->events + reg->offset, events, n_events * sizeof(float));
+	}
 
 	#ifdef PROFILERH
 	double sketch_t = ri_realtime();
@@ -223,6 +258,20 @@ void ri_map_frag(const ri_idx_t *ri,
 	//Sketching
 	mm128_v riv = {0,0,0};
 	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
+	if(ri->flag&RI_I_REV_QUERY){
+		float* rev_events = (float*)ri_kmalloc(b->km, n_events * sizeof(float));
+
+		//Update this for loop for your own mechanism (normalized event values)
+		for(int i = 0; i < n_events; ++i){
+			//the most basic event calling
+			unsigned int rev_ind = find_closest_pore_ind(ri->pore_inds, ri->n_pore_vals, events[n_events-1-i]);
+			//if needed, normalize the event value here. By defauly, pore_vals should have the normalized values below.
+			rev_events[i] = ri->pore_vals[rev_ind];
+		}
+		ri_sketch(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
+		if(rev_events){ri_kfree(b->km, rev_events); rev_events = NULL;}
+	}
+	
 	if(events){ri_kfree(b->km, events); events = NULL;}
 	// if (opt->q_occ_frac > 0.0f) ri_seed_mz_flt(b->km, &riv, opt->mid_occ, opt->q_occ_frac);
 
@@ -310,31 +359,36 @@ void ri_map_frag(const ri_idx_t *ri,
 	//Set MAPQ TODO: integrate alignment score within mapq
 	mm_set_mapq(b->km, reg->n_cregs, reg->creg, opt->min_chaining_score, rep_len, (opt->flag&RI_M_DTW_EVALUATE_CHAINS)?1:0);
 
-	// for(int i = 0; i < reg->n_cregs; ++i){
+	#ifdef DEBUGOUT
+	for(int ic = 0; ic < reg->n_cregs; ++ic){
+		int rid = reg->creg[ic].rid;
+		int rs = reg->creg[ic].rev?(uint32_t)(ri->seq[rid].len+1-reg->creg[ic].re):reg->creg[ic].rs;
+		char* rname = (ri->flag&RI_I_SIG_TARGET)?ri->sig[rid].name:ri->seq[rid].name;
 
-	// 	int rid = reg->creg[i].rid;
-	// 	int rs = reg->creg[i].rev?(uint32_t)(ri->seq[rid].len+1-reg->creg[i].re):reg->creg[i].rs;
-	// 	float* ref = (reg->creg[i].rev)?ri->R[rid]:ri->F[rid];
-	// 	uint32_t r_len = (reg->creg[i].rev)?ri->r_l_sig[rid]:ri->f_l_sig[rid];
+		// float* ref = (reg->creg[ic].rev)?ri->R[rid]:ri->F[rid];
+		// uint32_t r_len = (reg->creg[ic].rev)?ri->r_l_sig[rid]:ri->f_l_sig[rid];
 
-	// 	fprintf(stderr, "Chain: %d rid: %d mapq: %d score: %d align: %f cnt: %d s: %c rs: %d qs: %d qe: %d p?: %c\n", i, rid, reg->creg[i].mapq, reg->creg[i].score, reg->creg[i].alignment_score, reg->creg[i].cnt, "+-"[reg->creg[i].rev], rs, reg->creg[i].qs, reg->creg[i].qe, "01"[reg->creg[i].parent == i]);
+		// fprintf(stderr, "Chain: %d\trid: %d\tmapq: %d\tscore: %d\tcnt: %d\ts: %c\trs: %d\tql: %d\tp?: %c\n", ic, rid, reg->creg[ic].mapq, reg->creg[ic].score, reg->creg[ic].cnt, "+-"[reg->creg[ic].rev], rs, reg->creg[ic].qs, reg->creg[ic].qe, "01"[reg->creg[ic].parent == ic]);
 
-	// 	// float* revents = ref + reg->creg[i].rs;
-	// 	// uint32_t rlen = reg->creg[i].re - reg->creg[i].rs + 1;
+		// 	fprintf(stderr, "Chain: %d rid: %d mapq: %d score: %d align: %f cnt: %d s: %c rs: %d qs: %d qe: %d p?: %c\n", ic, rid, reg->creg[ic].mapq, reg->creg[ic].score, reg->creg[ic].alignment_score, reg->creg[ic].cnt, "+-"[reg->creg[ic].rev], rs, reg->creg[ic].qs, reg->creg[ic].qe, "01"[reg->creg[ic].parent == ic]);
 
-	// 	//print ref starting from rs until re - rs + 1
-	// 	// for(int j = 0; j < rlen; ++j){
-	// 	// 	fprintf(stderr, "%f ", revents[j]);
-	// 	// } fprintf(stderr, " 1\n");
+		// 	// float* revents = ref + reg->creg[ic].rs;
+		// 	// uint32_t rlen = reg->creg[ic].re - reg->creg[ic].rs + 1;
 
-	// 	// float* qevents = reg->events + reg->creg[i].qs;
-	// 	// uint32_t qlen = reg->creg[i].qe - reg->creg[i].qs + 1;
+		// 	//print ref starting from rs until re - rs + 1
+		// 	// for(int j = 0; j < rlen; ++j){
+		// 	// 	fprintf(stderr, "%f ", revents[j]);
+		// 	// } fprintf(stderr, " 1\n");
 
-	// 	//print reg->Events from qs until qe - qs + 1
-	// 	// for(int j = 0; j < qlen; ++j){
-	// 	// 	fprintf(stderr, "%f ", qevents[j]);
-	// 	// } fprintf(stderr, " 2\n");
-	// }
+		// 	// float* qevents = reg->events + reg->creg[ic].qs;
+		// 	// uint32_t qlen = reg->creg[ic].qe - reg->creg[ic].qs + 1;
+
+		// 	//print reg->Events from qs until qe - qs + 1
+		// 	// for(int j = 0; j < qlen; ++j){
+		// 	// 	fprintf(stderr, "%f ", qevents[j]);
+		// 	// } fprintf(stderr, " 2\n");
+	}
+	#endif
 
 	if(seed_hits){ri_kfree(b->km, seed_hits); seed_hits = NULL;}
 	if(u){ri_kfree(b->km, u); u = NULL;}
@@ -344,6 +398,71 @@ void ri_map_frag(const ri_idx_t *ri,
 	#endif
 
 	reg->offset += n_events;
+}
+
+static void calculate_mean_std(ri_reg1_t* reg, const int n_chains, float* mean, float* std_dev) {
+    int ic;
+    // Initialize mean and std_dev arrays
+    for (ic = 0; ic < N_FEATURES; ++ic) {mean[ic] = 0; std_dev[ic] = 0;}
+
+    // Calculate sums for mean
+    for (ic = 0; ic < n_chains; ++ic) {
+        // Add sums for other fields
+		mean[0] += ((reg->creg[ic].parent == ic)?1:0);
+		mean[1] += (reg->creg[ic].qe - reg->creg[ic].qs);
+		mean[2] += reg->creg[ic].mapq;
+		mean[3] += reg->creg[ic].alignment_score;
+		mean[4] += reg->creg[ic].score;
+		mean[5] += reg->creg[ic].cnt;
+		mean[6] += reg->creg[ic].mlen;
+		mean[7] += reg->creg[ic].blen;
+		mean[8] += reg->creg[ic].n_sub;
+    }
+
+    // Finalize mean calculation
+    for (ic = 0; ic < N_FEATURES; ++ic) {mean[ic] /= n_chains;}
+
+    // Calculate sums for standard deviation
+    for (ic = 0; ic < n_chains; ++ic) {
+        // Add sums for other fields
+		std_dev[0] += pow(((reg->creg[ic].parent == ic)?1:0) - mean[0], 2);
+		std_dev[1] += pow((reg->creg[ic].qe - reg->creg[ic].qs) - mean[1], 2);
+		std_dev[2] += pow(reg->creg[ic].mapq - mean[2], 2);
+		std_dev[3] += pow(reg->creg[ic].alignment_score - mean[3], 2);
+		std_dev[4] += pow(reg->creg[ic].score - mean[4], 2);
+		std_dev[5] += pow(reg->creg[ic].cnt - mean[5], 2);
+		std_dev[6] += pow(reg->creg[ic].mlen - mean[6], 2);
+		std_dev[7] += pow(reg->creg[ic].blen - mean[7], 2);
+		std_dev[8] += pow(reg->creg[ic].n_sub - mean[8], 2);
+    }
+
+    // Finalize std_dev calculation
+    for (ic = 0; ic < N_FEATURES; ++ic) {std_dev[ic] = sqrt(std_dev[ic] / n_chains);}
+}
+
+static void normalize_chains(ri_reg1_t* reg, rh_norm_inference_t** norm_vals){
+	float mean[N_FEATURES] = {0};
+    float std_dev[N_FEATURES] = {0};
+    
+    // Assuming norm_vals is already allocated with n_chains elements
+    rh_norm_inference_t* norm_vals_ptr = *norm_vals;
+    
+    // Calculate mean and std_dev
+    calculate_mean_std(reg, reg->n_cregs, mean, std_dev);
+
+    // Normalize and store in norm_vals
+    for (int ic = 0; ic < reg->n_cregs; ++ic) {
+        // Normalize other fields similarly
+        norm_vals_ptr[ic].is_prim = (std_dev[0] == 0)?0:(((reg->creg[ic].parent == ic)?1:0) - mean[0])/std_dev[0];
+		norm_vals_ptr[ic].qlen = (std_dev[1] == 0)?0:((reg->creg[ic].qe - reg->creg[ic].qs) - mean[1])/std_dev[1];
+		norm_vals_ptr[ic].mapq = (std_dev[2] == 0)?0:(reg->creg[ic].mapq - mean[2])/std_dev[2];
+		norm_vals_ptr[ic].alignment_score = (std_dev[3] == 0)?0:(reg->creg[ic].alignment_score - mean[3])/std_dev[3];
+		norm_vals_ptr[ic].score = (std_dev[4] == 0)?0:(reg->creg[ic].score - mean[4])/std_dev[4];
+		norm_vals_ptr[ic].cnt = (std_dev[5] == 0)?0:(reg->creg[ic].cnt - mean[5])/std_dev[5];
+		norm_vals_ptr[ic].mlen = (std_dev[6] == 0)?0:(reg->creg[ic].mlen - mean[6])/std_dev[6];
+		norm_vals_ptr[ic].blen = (std_dev[7] == 0)?0:(reg->creg[ic].blen - mean[7])/std_dev[7];
+		norm_vals_ptr[ic].n_sub = (std_dev[8] == 0)?0:(reg->creg[ic].n_sub - mean[8])/std_dev[8];
+    }
 }
 
 static void map_worker_for(void *_data,
@@ -359,9 +478,9 @@ static void map_worker_for(void *_data,
 
 	ri_sig_t* sig = s->sig[i];
 
-	uint32_t max_chunk =  opt->max_num_chunk;
 	uint32_t qlen = sig->l_sig;
 	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
+	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk;
 	uint32_t s_qs, s_qe = l_chunk;
 
 	uint32_t c_count = 0;
@@ -369,8 +488,23 @@ static void map_worker_for(void *_data,
 
 	double t = ri_realtime();
 
-	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk && reg0->n_maps == 0; s_qs += l_chunk, ++c_count) {
-		// fprintf(stderr, "%s %d\n", sig->name, c_count);
+	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
+	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
+
+	TfLiteInterpreter* interpreter = TfLiteInterpreterCreate(s->p->map_model, options);
+	if (!interpreter) {
+		fprintf(stderr, "Failed to create interpreter\n");
+		exit(1);
+	}
+
+	if (TfLiteInterpreterAllocateTensors(interpreter) != kTfLiteOk) {
+		fprintf(stderr, "Failed to allocate tensors\n");
+		exit(1);
+	}
+
+	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
+
+	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
 
@@ -378,80 +512,80 @@ static void map_worker_for(void *_data,
 
 		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name);
 
-		if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
+		// #ifndef TRAIN_MAP
+		// if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
+		// 	reg0->n_maps++;
+		// 	reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+		// 	reg0->maps[reg0->n_maps-1].c_id = 0;
+		// 	break;
+		// }
+		// #endif
+
+		rh_norm_inference_t* norm_vals;
+
+		if(reg0->n_cregs > 0){
+			norm_vals = (rh_norm_inference_t*)ri_kmalloc(b->km, reg0->n_cregs * sizeof(rh_norm_inference_t));
+			normalize_chains(reg0, &norm_vals);
+		}
+
+		// print
+		#ifdef TRAIN_MAP
+		float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset)/opt->sample_per_base;
+		for (int ic = 0; ic < reg0->n_cregs; ++ic) {
+			int qs = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qs:(int)(read_position_scale*reg0->creg[ic].qs);
+			int qe = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qe:(int)(read_position_scale*reg0->creg[ic].qe);
+
+			int rid = reg0->creg[ic].rid;
+			int rs = reg0->creg[ic].rev?(uint32_t)(s->p->ri->seq[rid].len+1-reg0->creg[ic].re):reg0->creg[ic].rs;
+			int rl = (uint32_t)(reg0->creg[ic].re - reg0->creg[ic].rs + 1);
+			int re = rs + rl;
+			char* rname = (s->p->ri->flag&RI_I_SIG_TARGET)?s->p->ri->sig[rid].name:s->p->ri->seq[rid].name;
+
+			fprintf(stderr, "%d\t%d\t%s\t%d\t%d\t%s\t%d\t%d\t%c\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", c_count, ic, sig->name, qs, qe, rname, rs, re, "+-"[reg0->creg[ic].rev], norm_vals[ic].is_prim, norm_vals[ic].qlen, norm_vals[ic].mapq, norm_vals[ic].alignment_score, norm_vals[ic].score, norm_vals[ic].cnt, norm_vals[ic].mlen, norm_vals[ic].blen, norm_vals[ic].n_sub);
+		}
+		#endif
+	
+		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
+		float* weighted_sums = NULL;
+		if(reg0->n_cregs > 0) weighted_sums = (float*)ri_kcalloc(b->km, reg0->n_cregs, sizeof(float));
+		
+		for(int ic = 0; ic < reg0->n_cregs; ++ic){
+			float weighted_sum = 0.0f;
+			TfLiteTensorCopyFromBuffer(input_tensor, &norm_vals[ic], sizeof(rh_norm_inference_t));
+			
+			// Invoke the interpreter for the current instance
+			// if (
+			TfLiteInterpreterInvoke(interpreter);
+			//  == kTfLiteOk) {
+			const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
+			TfLiteTensorCopyToBuffer(output_tensor, &weighted_sums[ic], sizeof(float));
+			// }
+		}
+
+		// Find the best chain
+		float max_weighted_sum = -2;
+		int best_chain = -1;
+		for(int ic = 0; ic < reg0->n_cregs; ++ic){
+			if(weighted_sums[ic] > max_weighted_sum){
+				max_weighted_sum = weighted_sums[ic];
+				best_chain = ic;
+			}
+		}
+
+		// Compare the weighted sum against a threshold to make the decision
+		#ifndef TRAIN_MAP
+		if (max_weighted_sum >= opt->w_threshold) {
 			reg0->n_maps++;
 			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-			reg0->maps[reg0->n_maps-1].c_id = 0;
-			break;
+			reg0->maps[reg0->n_maps-1].c_id = best_chain;
+			// fprintf(stderr, "Aligned ic: %d\n", ic);
 		}
+		#endif
 
-		//TODO make n_cregs a parameter of best n mappings
-		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
-		float meanC = 0, meanQ = 0;
-		// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
-		// 	uint32_t chain_cnt = 0;
-		// 	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
-		// 		if(reg0->creg[c_ind].alignment_score < opt->dtw_min_score) continue;
-		// 		chain_cnt++;
-		// 		meanC += reg0->creg[c_ind].score;
-		// 		meanQ += reg0->creg[c_ind].mapq;
-		// 		// meanA += reg0->creg[c_ind].alignment_score;
-		// 	}
-		// 	if(chain_cnt){meanC /= chain_cnt; meanQ /= chain_cnt;}
-		// }
-		// else{
-		for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
-			meanC += reg0->creg[c_ind].score;
-			meanQ += reg0->creg[c_ind].mapq;
-		}
-		if(reg0->n_cregs > 0){meanC /= reg0->n_cregs; meanQ /= reg0->n_cregs;}
-		// }
-		
-		for(int ic = 0; ic < n_chains; ++ic){
-			float r_bestma = 0.0f, r_bestmq = 0.0f, r_bestmc = 0.0f, r_bestq = 0.0f;
-			float bestQ = 0.0f, bestC = 0.0f, bestA = 0.0f, weighted_sum = 0.0f;
-			bestQ = reg0->creg[ic].mapq;
-			bestC = reg0->creg[ic].score;
-
-			if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
-				bestA = reg0->creg[ic].alignment_score;
-				if(n_chains == 1){ //no all-vs-all overlap mod
-					uint32_t best_ind = 0;
-					for(int i = 1; i < reg0->n_cregs; ++i){
-						if(reg0->creg[i].alignment_score > bestA){
-							bestA = reg0->creg[i].alignment_score;
-							best_ind = i;
-						}
-					}
-					ic = best_ind;
-					bestQ = reg0->creg[ic].mapq;
-					bestC = reg0->creg[ic].score;
-				}
-				if(bestA >= opt->dtw_min_score){
-					// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
-					r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
-					r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
-					r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
-
-					weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
-				}
-			}else{
-				r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
-				r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
-				r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
-
-				weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
-			}
-			
-			// Compare the weighted sum against a threshold to make the decision
-			if (weighted_sum >= opt->w_threshold) {
-				reg0->n_maps++;
-				reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-				reg0->maps[reg0->n_maps-1].c_id = ic;
-				// fprintf(stderr, "Aligned ic: %d\n", ic);
-			}
-		}
+		if(reg0->n_cregs > 0) {ri_kfree(b->km, norm_vals); ri_kfree(b->km, weighted_sums);}
+		#ifndef TRAIN_MAP
 		if(reg0->n_maps > 0) break;
+		#endif
 	} double mapping_time = ri_realtime() - t;
 
 	#ifdef PROFILERH
@@ -465,9 +599,6 @@ static void map_worker_for(void *_data,
 
 	if(!chains) {reg0->n_cregs = 0;}
 	float mean_chain_score = 0;
-	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind)
-		mean_chain_score += chains[c_ind].score;
-	if(reg0->n_cregs > 0) mean_chain_score /= reg0->n_cregs;
 
 	if(reg0->n_maps == 0 && reg0->creg && reg0->creg[0].mapq > opt->min_mapq){
 		reg0->n_maps++;
@@ -500,7 +631,7 @@ static void map_worker_for(void *_data,
 
 		reg0->read_id = sig->rid;
 		reg0->read_name = sig->name;
-		reg0->maps[0].read_length = (uint32_t)(read_position_scale * reg0->offset);
+		reg0->maps[0].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->offset:(uint32_t)(read_position_scale * reg0->offset);
 		reg0->maps[0].c_id = 0;
 		reg0->maps[0].ref_id = 0;
 		reg0->maps[0].read_start_position = 0;
@@ -528,10 +659,10 @@ static void map_worker_for(void *_data,
 
 			reg0->read_id = sig->rid;
 			reg0->read_name = sig->name;
-			reg0->maps[m].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?(read_position_scale*reg0->offset):(uint32_t)(read_position_scale*chains[c_id].qe);
+			reg0->maps[m].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?(reg0->offset):(uint32_t)(read_position_scale*chains[c_id].qe);
 			reg0->maps[m].ref_id = chains[c_id].rid;
-			reg0->maps[m].read_start_position = (uint32_t)(read_position_scale*chains[c_id].qs);
-			reg0->maps[m].read_end_position = (uint32_t)(read_position_scale*chains[c_id].qe);
+			reg0->maps[m].read_start_position = (s->p->ri->flag&RI_I_SIG_TARGET)?chains[c_id].qs:(uint32_t)(read_position_scale*chains[c_id].qs);
+			reg0->maps[m].read_end_position = (s->p->ri->flag&RI_I_SIG_TARGET)?chains[c_id].qe:(uint32_t)(read_position_scale*chains[c_id].qe);
 			if(s->p->ri->flag&RI_I_SIG_TARGET) reg0->maps[m].fragment_start_position = chains[c_id].rev?(uint32_t)(s->p->ri->sig[chains[c_id].rid].l_sig+1-chains[c_id].re):chains[c_id].rs;
 			else reg0->maps[m].fragment_start_position = chains[c_id].rev?(uint32_t)(s->p->ri->seq[chains[c_id].rid].len+1-chains[c_id].re):chains[c_id].rs;
 			reg0->maps[m].fragment_length = (uint32_t)(chains[c_id].re - chains[c_id].rs + 1);
@@ -553,6 +684,9 @@ static void map_worker_for(void *_data,
 		ri_km_destroy(b->km);
 		b->km = ri_km_init();
 	}
+
+	TfLiteInterpreterDelete(interpreter);
+	TfLiteInterpreterOptionsDelete(options);
 }
 
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
@@ -788,6 +922,11 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	pl.mini_batch_size = opt->mini_batch_size;
 	pl_threads = pl.n_threads == 1?1:2;
 	pl.su_stop = 0;
+	pl.map_model = TfLiteModelCreateFromFile(opt->model_map_path);
+	if (!pl.map_model) {
+		fprintf(stderr, "Failed to load model\n");
+		exit(1);
+	}
 
 	if(opt->flag & RI_M_SEQUENCEUNTIL){
 		pl.su_nreads = 0;
@@ -818,6 +957,8 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	#ifdef PROFILERH
 	fprintf(stderr, "\n[M::%s] File read: %.6f sec; Signal-to-event: %.6f sec; Sketching: %.6f sec; Seeding: %.6f sec; Chaining: %.6f sec; Mapping: %.6f sec; Mapping (multi-threaded): %.6f sec\n", __func__, ri_filereadtime, ri_signaltime, ri_sketchtime, ri_seedtime, ri_chaintime, ri_maptime, ri_maptime_multithread);
 	#endif
+
+	TfLiteModelDelete(pl.map_model);
 
 	return 0;
 }

@@ -11,6 +11,7 @@
 #define RI_I_SYNCMER	0x8
 #define RI_I_STORE_SIG	0x10
 #define RI_I_SIG_TARGET	0x20
+#define RI_I_REV_QUERY	0x40
 
 #define RI_M_SEQUENCEUNTIL	0x1
 #define RI_M_RMQ			0x2
@@ -28,6 +29,9 @@
 #define RI_M_LOG_NUM_ANCHORS	0x1000
 //Overlapping related
 #define RI_M_ALL_CHAINS			0x2000
+
+//Characterization related
+#define RI_M_OUT_ALL_CHAINS 0x4000
 
 //DTW related
 #define RI_M_DTW_BORDER_CONSTRAINT_GLOBAL	0
@@ -97,6 +101,8 @@ typedef struct ri_mapopt_s{
 	float pri_ratio;
 	int best_n;
 
+	int top_n_mean;
+
 	float alt_drop;
 
 	//Mapping parameters
@@ -126,6 +132,8 @@ typedef struct ri_mapopt_s{
 	float threshold1;
 	float threshold2;
 	float peak_height;
+
+	char* model_map_path;
 } ri_mapopt_t;
 
 /**

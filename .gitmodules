@@ -12,3 +12,6 @@
 [submodule "extern/zstd"]
 	path = extern/zstd
 	url = https://github.com/facebook/zstd
+[submodule "extern/tensorflow"]
+	path = extern/tensorflow
+	url = https://github.com/tensorflow/tensorflow.git

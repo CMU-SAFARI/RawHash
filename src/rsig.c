@@ -18,7 +18,7 @@ void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k
 	double mean = 0, std_dev = 0, sum = 0, sum2 = 0, curval = 0;
 
 	for (i = l = j = n = 0; i < len; ++i) {
-		if(strand) pos = len - i -1;
+		if(strand) pos = len-i-1;
 		else pos = i;
 		int c = seq_nt4_table[(uint8_t)str[pos]];
 		if (c < 4) { // not an ambiguous base

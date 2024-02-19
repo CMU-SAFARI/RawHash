@@ -12,10 +12,10 @@ mkdir -p ${OUTDIR}
 
 #Viral preset (default for viral genomes)
 PREFIX="contamination"
-PARAMS="--min-mapq 5 --min-score 20 --chain-skip-scale 0.3 --best-chains 5"
+PARAMS="--min-mapq 5 --min-score 20 --chain-skip-scale 0.3 --best-chains 5 --w-threshold 0.5 --map-model ../read_mapping/feature_set.tflite"
 bash ../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} "${PARAMS}" > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"
 
 #Minimizers
 PREFIX="contamination_w3"
-PARAMS="-w 3 --min-mapq 5 --min-score 20 --chain-skip-scale 0.3 --best-chains 5"
+PARAMS="-w 3 --min-mapq 5 --min-score 20 --chain-skip-scale 0.3 --best-chains 5 --w-threshold 0.5 --map-model ../read_mapping/feature_set.tflite"
 bash ../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} "${PARAMS}" > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"

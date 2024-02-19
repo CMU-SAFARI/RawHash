@@ -60,6 +60,8 @@ test/evaluation/read_mapping/*/parameters.txt
 test/evaluation/read_mapping/*/results.txt
 test/evaluation/read_mapping/*parameters*.txt
 
+test/evaluation/read_mapping/*.txt
+
 test/*.paf
 test/eval/*.paf
 test/eval/*.time
@@ -76,3 +78,6 @@ src/*.o
 extern/pod5*
 
 test/evaluation/rawsamble/
+
+extern/tensorflow/tflite_build/
+test/evaluation/read_mapping/*.features

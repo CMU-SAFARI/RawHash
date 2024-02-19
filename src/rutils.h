@@ -22,6 +22,7 @@ typedef struct { uint32_t x, y; } mm64_t;
 typedef struct { size_t n, m; mm128_t *a; } mm128_v;
 typedef struct { size_t n, m; mm64_t *a; } mm64_v;
 typedef struct { size_t n, m; char **a; } ri_char_v;
+typedef struct ri_porem_s{float pore_val; unsigned int ind; unsigned int rev_ind;} ri_porem_t;
 
 void radix_sort_128x(mm128_t *beg, mm128_t *end);
 void radix_sort_64(uint64_t *beg, uint64_t *end);
@@ -32,7 +33,7 @@ double ri_realtime(void);
 double ri_cputime(void);
 long ri_peakrss(void);
 
-void load_pore(const char* fpore, const short k, const short lev_col, float** pore_vals);
+void load_pore(const char* fpore, const short k, const short lev_col, float** pore_vals, ri_porem_t** pore_inds);
 
 #ifdef __cplusplus
 }
