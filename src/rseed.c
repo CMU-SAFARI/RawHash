@@ -70,7 +70,7 @@ ri_seed_t *ri_seed_collect_all(void *km, const ri_idx_t *ri, const mm128_v *riv,
 		const uint64_t *cr;
 		ri_seed_t *q;
 		mm128_t *p = &riv->a[i];
-		uint32_t q_pos = (uint32_t)riv->a[i].y, q_span = p->x & span_mask;
+		uint32_t q_pos = (uint32_t)p->y, q_span = p->x & span_mask;
 		int t;
 		cr = ri_idx_get(ri, p->x>>RI_HASH_SHIFT, &t);
 		if (t == 0) continue;

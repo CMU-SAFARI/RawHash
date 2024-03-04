@@ -121,7 +121,7 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 		ri_idxopt_init(io);
 		ri_mapopt_init(mo);
 	} else if (strcmp(preset, "sensitive") == 0) {
-		io->e = 6; io->q = 9; io->lq = 3; io->w = 0; io->n = 0;
+		io->e = 6; io->w = 0; io->n = 0;
 	} else if (strcmp(preset, "r10sensitive") == 0) {
 		io->k = 9; io->e = 8; io->q = 8; io->lq = 2; io->w = 0; io->n = 0;
 		mo->window_length1 = 5; mo->window_length2 = 12;
@@ -140,20 +140,20 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 
 		mo->max_num_chunk = 15, mo->min_mapq = 2, mo->min_num_anchors = 2, mo->min_chaining_score = 15, mo->chain_gap_scale = 1.2f, mo->chain_skip_scale = 0.0f;
 	} else if (strcmp(preset, "fast") == 0) {
-		io->e = 8; io->q = 9; io->lq = 3; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
+		io->e = 8; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
 
 		mo->max_num_chunk = 15, mo->min_mapq = 5, mo->min_num_anchors = 2, mo->min_chaining_score = 10, mo->chain_gap_scale = 0.6f, mo->chain_skip_scale = 0.0f;
 	} else if (strcmp(preset, "faster") == 0) {
-		io->e = 8; io->q = 9; io->lq = 3; io->w = 3; io->n = 0; mo->mini_batch_size = 1000000000;
+		io->e = 8; io->w = 3; io->n = 0; mo->mini_batch_size = 1000000000;
 	} else if (strcmp(preset, "viral") == 0) {
-		io->e = 5; io->q = 9; io->lq = 3; io->w = 0; io->n = 0;
+		io->e = 5; io->w = 0; io->n = 0;
 		mo->bw = 100; mo->max_target_gap_length = 500; mo->max_query_gap_length = 500;
 
 		// mo->w_best2q = 0.1f; mo->w_best2c = 0.7f; mo->w_bestmq = 0.0f; mo->w_bestmc = 0.2f; mo->w_threshold = 0.3f;
 
 		mo->max_num_chunk = 5, mo->min_mapq = 2, mo->min_num_anchors = 2, mo->min_chaining_score = 10; mo->chain_gap_scale = 1.2f; mo->chain_skip_scale = 0.3f;
 	} else if (strcmp(preset, "sequence-until") == 0) {
-		io->e = 7; io->q = 9; io->lq = 3; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
+		io->e = 7; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
 	} else return -1;
 	return 0;
 }
@@ -457,22 +457,26 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	float* pore_vals = 0;
-	ri_porem_t* pore_inds = 0;
+	
+	ri_pore_t pore;
+	pore.pore_vals = 0;
+	pore.pore_inds = 0;
+	pore.max_val = -5000.0;
+	pore.min_val = 5000.0;
 	if(!idx_rdr->is_idx && fpore == 0){
 		fprintf(stderr, "[ERROR] missing input: please specify a pore model file with -p when generating the index from a sequence file\n");
 		ri_idx_reader_close(idx_rdr);
 		return 1;
 	}else if(!idx_rdr->is_idx && fpore){
-		load_pore(fpore, ipt.k, ipt.lev_col, &pore_vals, &pore_inds);
-		if(!pore_vals){
+		load_pore(fpore, ipt.k, ipt.lev_col, &pore);
+		if(!pore.pore_vals){
 			fprintf(stderr, "[ERROR] cannot parse the k-mer pore model file. Please see the example k-mer model files provided in the RawHash repository.\n");
 			ri_idx_reader_close(idx_rdr);
 			return 1;
 		}
 	}
 
-	while ((ri = ri_idx_reader_read(idx_rdr, pore_vals, pore_inds, n_threads)) != 0) {
+	while ((ri = ri_idx_reader_read(idx_rdr, &pore, n_threads)) != 0) {
 		int ret;
 		if (ri_verbose >= 3)
 			fprintf(stderr, "[M::%s::%.3f*%.2f] loaded/built the index for %d target sequence(s)\n",
@@ -501,8 +505,8 @@ int main(int argc, char *argv[])
 	}
 	// n_parts = idx_rdr->n_parts;
 	ri_idx_reader_close(idx_rdr);
-	if(pore_vals)free(pore_vals);
-	if(pore_inds)free(pore_inds);
+	if(pore.pore_vals)free(pore.pore_vals);
+	if(pore.pore_inds)free(pore.pore_inds);
 
 	if (fflush(stdout) == EOF) {
 		perror("[ERROR] failed to write the results");

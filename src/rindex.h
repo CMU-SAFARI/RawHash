@@ -32,9 +32,7 @@ typedef struct ri_idx_s{
 	float diff;
 	struct ri_idx_bucket_s *B; // index (hidden)
 
-	float* pore_vals;
-	ri_porem_t* pore_inds;
-	uint32_t n_pore_vals;
+	ri_pore_t* pore;
 
 	void *km, *h;
 
@@ -135,7 +133,7 @@ ri_idx_t* ri_idx_init(int b, int w, int e, int n, int q, int lq, int k, int flag
  * 
  * @return				rindex (index)
  */
-ri_idx_t *ri_idx_reader_read(ri_idx_reader_t *r, float* pore_vals, ri_porem_t* pore_inds, int n_threads);
+ri_idx_t *ri_idx_reader_read(ri_idx_reader_t *r, ri_pore_t* pore, int n_threads);
 
 /**
  * Adds the values in an array to the index

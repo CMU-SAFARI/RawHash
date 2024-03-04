@@ -10,7 +10,13 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k, const int strand, uint32_t* s_len, float* s_values){
+void ri_seq_to_sig(const char *str,
+				   int len,
+				   const ri_pore_t* pore,
+				   const int k,
+				   const int strand, 
+				   uint32_t* s_len,
+				   float* s_values){
 
 	int i, j, l, pos, n = 0;
 	// uint64_t shift1 = 2 * (k - 1);
@@ -24,14 +30,12 @@ void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k
 		if (c < 4) { // not an ambiguous base
 			if(!strand) kmer = (kmer << 2 | c) & mask;    // forward k-mer
 			// else kmer = (kmer >> 2) | (3ULL^c) << shift1; // reverse k-mer
-			//TODO: this is currently based on the ordering in the original ordering in the sigmap implementation. Change later to above
 			else kmer = ((kmer << 2) | (3ULL^c)) & mask; // reverse k-mer
-		}else
-      		kmer = (kmer << 2) & mask; //TODO: This is not the best approach. We are basically inserting 00 (A?) to kmer whenever c >= 4. Mask it instead
+		}
 
 		if(i+1 < k) continue;
 
-		curval = pore_vals[kmer];
+		curval = pore->pore_vals[kmer];
 		s_values[j++] = curval;
 		sum += curval;
 		sum2 += curval*curval;
@@ -40,8 +44,7 @@ void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k
 	mean = sum/j;
 	std_dev = sqrt(sum2/j - (mean)*(mean));
 
-	for(i = 0; i < j; ++i)
-		s_values[i] = (s_values[i]-mean)/std_dev;
+	for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
 
 	*s_len = j;
 }

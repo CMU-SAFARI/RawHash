@@ -29,6 +29,7 @@ typedef struct rh_norm_inference_s{
 
 #define N_FEATURES 9
 // #define TRAIN_MAP
+// #define INFER_MAP
 
 static ri_tbuf_t *ri_tbuf_init(void)
 {
@@ -195,29 +196,29 @@ void align_chain(mm_reg1_t *chain, mm128_t* anchors, const ri_idx_t *ri, const f
 	}
 }
 
-unsigned int find_closest_pore_ind(const ri_porem_t* pairs, unsigned int array_size, float s_val) {
-    unsigned int left = 0, right = array_size - 1;
+unsigned int find_closest_pore_ind(const ri_pore_t* pore, float s_val) {
+    unsigned int left = 0, right = pore->n_pore_vals - 1;
     unsigned int closest_index = 0;
     float min_diff = FLT_MAX;
 
     while (left <= right) {
         unsigned int mid = left + (right - left) / 2;
-        float diff = fabs(pairs[mid].pore_val - s_val);
+        float diff = fabs(pore->pore_inds[mid].pore_val - s_val);
 
         if (diff < min_diff) {
             min_diff = diff;
             closest_index = mid;
         }
 
-        if (pairs[mid].pore_val < s_val) {
+        if (pore->pore_inds[mid].pore_val < s_val) {
             left = mid + 1;
-        } else if (pairs[mid].pore_val > s_val) {
+        } else if (pore->pore_inds[mid].pore_val > s_val) {
             right = mid - 1;
         } else {
             break; // Exact match found
         }
     }
-    return pairs[closest_index].rev_ind;
+    return pore->pore_inds[closest_index].rev_ind;
 }
 
 //returns n_regs // currently we report one mapping
@@ -228,6 +229,8 @@ void ri_map_frag(const ri_idx_t *ri,
 				ri_tbuf_t *b,
 				const ri_mapopt_t *opt,
 				const char *qname,
+				TfLiteInterpreter* interpreter,
+				TfLiteTensor* input_tensor,
 				const uint32_t c_count = 0)
 {	
 	uint32_t n_events = 0;
@@ -258,18 +261,22 @@ void ri_map_frag(const ri_idx_t *ri,
 	//Sketching
 	mm128_v riv = {0,0,0};
 	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
-	if(ri->flag&RI_I_REV_QUERY){
-		float* rev_events = (float*)ri_kmalloc(b->km, n_events * sizeof(float));
 
-		//Update this for loop for your own mechanism (normalized event values)
-		for(int i = 0; i < n_events; ++i){
-			//the most basic event calling
-			unsigned int rev_ind = find_closest_pore_ind(ri->pore_inds, ri->n_pore_vals, events[n_events-1-i]);
-			//if needed, normalize the event value here. By defauly, pore_vals should have the normalized values below.
-			rev_events[i] = ri->pore_vals[rev_ind];
-		}
-		ri_sketch(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
-		if(rev_events){ri_kfree(b->km, rev_events); rev_events = NULL;}
+	if(ri->flag&RI_I_REV_QUERY){
+
+		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv, interpreter, input_tensor);
+
+		// float* rev_events = (float*)ri_kmalloc(b->km, n_events * sizeof(float));
+
+		// //Update this for loop for your own mechanism (normalized event values)
+		// for(int i = 0; i < n_events; ++i){
+		// 	//the most basic event calling
+		// 	unsigned int rev_ind = find_closest_pore_ind(ri->pore, events[n_events-1-i]);
+		// 	//if needed, normalize the event value here. By defauly, pore_vals should have the normalized values below.
+		// 	rev_events[i] = ri->pore_vals[rev_ind];
+		// }
+		// ri_sketch(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
+		// if(rev_events){ri_kfree(b->km, rev_events); rev_events = NULL;}
 	}
 	
 	if(events){ri_kfree(b->km, events); events = NULL;}
@@ -488,6 +495,7 @@ static void map_worker_for(void *_data,
 
 	double t = ri_realtime();
 
+	// #ifdef INFER_MAP
 	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
 	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
 
@@ -503,6 +511,7 @@ static void map_worker_for(void *_data,
 	}
 
 	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
+	// #endif
 
 	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
@@ -510,23 +519,95 @@ static void map_worker_for(void *_data,
 
 		if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
 
-		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name);
+		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, interpreter, input_tensor);
 
-		// #ifndef TRAIN_MAP
-		// if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
-		// 	reg0->n_maps++;
-		// 	reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-		// 	reg0->maps[reg0->n_maps-1].c_id = 0;
-		// 	break;
+		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
+
+		#ifndef INFER_MAP
+		if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
+			reg0->n_maps++;
+			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+			reg0->maps[reg0->n_maps-1].c_id = 0;
+			break;
+		}
+
+		//TODO make n_cregs a parameter of best n mappings
+		
+		float meanC = 0, meanQ = 0;
+		// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+		// 	uint32_t chain_cnt = 0;
+		// 	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
+		// 		if(reg0->creg[c_ind].alignment_score < opt->dtw_min_score) continue;
+		// 		chain_cnt++;
+		// 		meanC += reg0->creg[c_ind].score;
+		// 		meanQ += reg0->creg[c_ind].mapq;
+		// 		// meanA += reg0->creg[c_ind].alignment_score;
+		// 	}
+		// 	if(chain_cnt){meanC /= chain_cnt; meanQ /= chain_cnt;}
 		// }
-		// #endif
+		// else{
+		for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
+			meanC += reg0->creg[c_ind].score;
+			meanQ += reg0->creg[c_ind].mapq;
+		}
+		if(reg0->n_cregs > 0){meanC /= reg0->n_cregs; meanQ /= reg0->n_cregs;}
+		// }
+		
+		for(int ic = 0; ic < n_chains; ++ic){
+			float r_bestma = 0.0f, r_bestmq = 0.0f, r_bestmc = 0.0f, r_bestq = 0.0f;
+			float bestQ = 0.0f, bestC = 0.0f, bestA = 0.0f, weighted_sum = 0.0f;
+			bestQ = reg0->creg[ic].mapq;
+			bestC = reg0->creg[ic].score;
 
+			if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+				bestA = reg0->creg[ic].alignment_score;
+				if(n_chains == 1){ //no all-vs-all overlap mod
+					uint32_t best_ind = 0;
+					for(int i = 1; i < reg0->n_cregs; ++i){
+						if(reg0->creg[i].alignment_score > bestA){
+							bestA = reg0->creg[i].alignment_score;
+							best_ind = i;
+						}
+					}
+					ic = best_ind;
+					bestQ = reg0->creg[ic].mapq;
+					bestC = reg0->creg[ic].score;
+				}
+				if(bestA >= opt->dtw_min_score){
+					// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+					r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+					r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
+					r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
+
+					weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+				}
+			}else{
+				r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
+				r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
+				r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
+
+				weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+			}
+			
+			#ifndef TRAIN_MAP
+			// Compare the weighted sum against a threshold to make the decision
+			if (weighted_sum >= opt->w_threshold) {
+				reg0->n_maps++;
+				reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+				reg0->maps[reg0->n_maps-1].c_id = ic;
+				// fprintf(stderr, "Aligned ic: %d\n", ic);
+			}
+			#endif
+		}
+		#endif
+
+		#ifdef INFER_MAP
 		rh_norm_inference_t* norm_vals;
-
 		if(reg0->n_cregs > 0){
 			norm_vals = (rh_norm_inference_t*)ri_kmalloc(b->km, reg0->n_cregs * sizeof(rh_norm_inference_t));
 			normalize_chains(reg0, &norm_vals);
 		}
+		#endif
 
 		// print
 		#ifdef TRAIN_MAP
@@ -544,22 +625,16 @@ static void map_worker_for(void *_data,
 			fprintf(stderr, "%d\t%d\t%s\t%d\t%d\t%s\t%d\t%d\t%c\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", c_count, ic, sig->name, qs, qe, rname, rs, re, "+-"[reg0->creg[ic].rev], norm_vals[ic].is_prim, norm_vals[ic].qlen, norm_vals[ic].mapq, norm_vals[ic].alignment_score, norm_vals[ic].score, norm_vals[ic].cnt, norm_vals[ic].mlen, norm_vals[ic].blen, norm_vals[ic].n_sub);
 		}
 		#endif
-	
-		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
+
+		#ifdef INFER_MAP
 		float* weighted_sums = NULL;
 		if(reg0->n_cregs > 0) weighted_sums = (float*)ri_kcalloc(b->km, reg0->n_cregs, sizeof(float));
 		
 		for(int ic = 0; ic < reg0->n_cregs; ++ic){
-			float weighted_sum = 0.0f;
 			TfLiteTensorCopyFromBuffer(input_tensor, &norm_vals[ic], sizeof(rh_norm_inference_t));
-			
-			// Invoke the interpreter for the current instance
-			// if (
 			TfLiteInterpreterInvoke(interpreter);
-			//  == kTfLiteOk) {
 			const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
 			TfLiteTensorCopyToBuffer(output_tensor, &weighted_sums[ic], sizeof(float));
-			// }
 		}
 
 		// Find the best chain
@@ -583,6 +658,8 @@ static void map_worker_for(void *_data,
 		#endif
 
 		if(reg0->n_cregs > 0) {ri_kfree(b->km, norm_vals); ri_kfree(b->km, weighted_sums);}
+		#endif
+
 		#ifndef TRAIN_MAP
 		if(reg0->n_maps > 0) break;
 		#endif
@@ -685,8 +762,10 @@ static void map_worker_for(void *_data,
 		b->km = ri_km_init();
 	}
 
+	// #ifdef INFER_MAP
 	TfLiteInterpreterDelete(interpreter);
 	TfLiteInterpreterOptionsDelete(options);
+	// #endif
 }
 
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
@@ -867,6 +946,7 @@ static void *map_worker_pipeline(void *shared,
 				// if(reg0->tags) {free(reg0->tags); reg0->tags = NULL;}
 				if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
 				free(reg0); s->reg[k] = NULL;
+				fflush(stdout);
 			}
 		}
 
@@ -922,11 +1002,13 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	pl.mini_batch_size = opt->mini_batch_size;
 	pl_threads = pl.n_threads == 1?1:2;
 	pl.su_stop = 0;
+	// #ifdef INFER_MAP
 	pl.map_model = TfLiteModelCreateFromFile(opt->model_map_path);
 	if (!pl.map_model) {
 		fprintf(stderr, "Failed to load model\n");
 		exit(1);
 	}
+	// #endif
 
 	if(opt->flag & RI_M_SEQUENCEUNTIL){
 		pl.su_nreads = 0;
@@ -958,7 +1040,9 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	fprintf(stderr, "\n[M::%s] File read: %.6f sec; Signal-to-event: %.6f sec; Sketching: %.6f sec; Seeding: %.6f sec; Chaining: %.6f sec; Mapping: %.6f sec; Mapping (multi-threaded): %.6f sec\n", __func__, ri_filereadtime, ri_signaltime, ri_sketchtime, ri_seedtime, ri_chaintime, ri_maptime, ri_maptime_multithread);
 	#endif
 
+	#ifdef INFER_MAP
 	TfLiteModelDelete(pl.map_model);
+	#endif
 
 	return 0;
 }
