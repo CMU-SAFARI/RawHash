@@ -1,7 +1,22 @@
+# todo: remove this section again
+DEBUG=1 #todo
+DEBUG_OPTS="-O2"
+# DEBUG_OPTS="-O0"
+# HDF5_COMPILE=0
+HDF5_INCLUDE_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/include
+HDF5_LIB_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/lib
+POD5_DOWNLOAD=0
+# NOHDF5=1
+NOPOD5=1
+# also disable fsanitize in debug (cflags etc) below!
+asan=
+tsan=
+
+
 #pass DEBUG=1 to make to enable debugging
 ifdef DEBUG
-	CFLAGS=-Wall -O2 -fsanitize=address -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=--std=c++11 -Wall -O2 -fsanitize=address -g -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS=-Wall ${DEBUG_OPTS} -fsanitize=address -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CPPFLAGS=--std=c++11 -Wall ${DEBUG_OPTS} -fsanitize=address -g -fopenmp -march=native -pthread -DHAVE_KALLOC
 else
 	CFLAGS=-Wall -O3 -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
 	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -pthread -DHAVE_KALLOC
@@ -14,6 +29,10 @@ ifdef PROFILE
 endif
 
 OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rindex.o lchain.o rseed.o rmap.o dtw.o hit.o main.o
+
+CC = ccache gcc
+CXX = ccache g++
+CPPFLAGS += -B/usr/libexec/mold # for faster linking
 
 CXX_COMPILER_VERSION ?= $(shell $(CXX) -dumpversion)
 SYSTEM_PROCESSOR ?= $(shell uname -m)
@@ -121,11 +140,13 @@ endif
 endif
 
 ifneq ($(asan),)
+	$(info AddressSanitizer enabled)
 	CFLAGS+=-fsanitize=address
 	LIBS+=-fsanitize=address
 endif
 
 ifneq ($(tsan),)
+	$(info ThreadSanitizer enabled)
 	CFLAGS+=-fsanitize=thread
 	LIBS+=-fsanitize=thread
 endif
@@ -199,13 +220,16 @@ pod5: check_zstd
 tensorflow:
 	cd ${WORKDIR}/tensorflow && mkdir -p tflite_build && cd tflite_build/ && cmake ../tensorflow/lite/c && cmake --build . -j; \
 
-ifeq ($(NOHDF5),1)
-FASTDEPCOM=${CC}
-FASTDEPCOM_FLAGS=$(CFLAGS)
-else
+# ifeq ($(NOHDF5),1)
+# FASTDEPCOM=${CC}
+# FASTDEPCOM_FLAGS=$(CFLAGS)
+# else
+# FASTDEPCOM=${CXX}
+# FASTDEPCOM_FLAGS=$(CPPFLAGS)
+# endif
+# always use CPP
 FASTDEPCOM=${CXX}
 FASTDEPCOM_FLAGS=$(CPPFLAGS)
-endif
 
 # $(PROG): $(OBJS)
 # 	${FASTDEPCOM} $(FASTDEPCOM_FLAGS) $(OBJS) -o $(PROG) $(LIBS)

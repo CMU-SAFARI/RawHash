@@ -1,0 +1,27 @@
+
+
+RawHash outputs (except for the last column "Label"):
+['ChunkCount', 'ChainID', 'ReadName', 'QStr', 'QEnd', 'RefChromosome', 'RefStr', 'RefEnd', 'RefStrand', 
+               'PrimaryOrSecondary', 'MappingLength', 'MappingQuality', 'AlignmentScore', 
+               'ChainScore', 'NumAnchors', 'Mlen', 'Blen', 'NSub', 'Label']
+
+make_training.py appends 'Label' to this line (0 or 1)
+For this, it uses
+'QStr', 'QEnd', 'RefStr', 'RefEnd', 'RefStrand', 'RefChromosome', 
+(qs, qe, rs, re, strand, chromosome)
+and compares it to the ground-truth alignment. 
+
+train_rh2.py then learns a model to predict this label given the following columns:
+['PrimaryOrSecondary', 'MappingLength', 'MappingQuality', 'AlignmentScore', 
+                        'ChainScore', 'NumAnchors', 'Mlen', 'Blen', 'NSub']
+That is, the model predicts whether a chunk is in the correct position based on these features. It can then be used to select the best chain which constitutes the actual mapping that is output.
+
+
+RI_STORE_SIG: whether to store the signal (generated from a fasta reference)
+RI_I_REV_QUERY: whether the index is queried with the read and its reverse complement (through a RC prediction model); if not, need to store reference signal for both forward and reverse signal
+
+Suppose we only store the positive strand of the reference.
+If we query a read from the positive strand, we are fine.
+If we query a read r from the reverse strand, we predict the read rp as if it had been on the forward strand, rp[i] = rc_kmer(r[-i]), i.e. from the other direction
+
+

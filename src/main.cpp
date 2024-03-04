@@ -188,7 +188,7 @@ int ri_mapopt_parse_dtw_fill_method(ri_mapopt_t *opt, char* arg) {
     return 0;
 }
 
-char* ri_maptopt_dtw_mode_to_string(uint32_t dtw_border_constraint){
+const char* ri_maptopt_dtw_mode_to_string(uint32_t dtw_border_constraint){
 	switch(dtw_border_constraint){
 		case RI_M_DTW_BORDER_CONSTRAINT_GLOBAL:
 			return "full";
@@ -203,6 +203,8 @@ char* ri_maptopt_dtw_mode_to_string(uint32_t dtw_border_constraint){
 
 int main(int argc, char *argv[])
 {
+	fprintf(stderr, "Using RawHash version 2.1\n");
+
 	const char *opt_str = "k:d:p:e:q:l:w:n:o:t:K:x:";
 	ketopt_t o = KETOPT_INIT;
 	ri_mapopt_t opt;

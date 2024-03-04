@@ -1,0 +1,35 @@
+git clone --recursive git@github.com:CMU-SAFARI/RawHash.git # rawhash2_new
+git submodule update --init --recursive
+
+clear; make -j $(nproc)
+
+
+
+use mold
+
+
+configure g++-12, otherwise debugger is messed up (select intellisense config in VSCode)
+
+export PATH=/home/mmordig/rawhash_project/rawhash2_new/bin:$PATH
+export PATH=~/rawhash_project/rawhash2-env/bin:$PATH
+conda activate rawhash2-env
+
+cd test/data/
+mkdir -p d2_ecoli_r94
+cd d2_ecoli_r94
+old_rawhash_dir=/home/mmordig/rawhash_project/rawhash2/test/data/d2_ecoli_r94/
+cp -r \
+    ${old_rawhash_dir}/fast5_files \
+    ${old_rawhash_dir}/slow5_files \
+    ${old_rawhash_dir}/reads.fasta \
+    ${old_rawhash_dir}/ref.fa \
+    .
+
+${OUTDIR} ${PREFIX} --> single arg: ${OUTDIR}_${PREFIX}
+quote args like ${THREAD} --> "${THREAD}"
+
+makefile does not work if it first needs to build hdf5, rather first build hdf5 only, then set 
+HDF5_INCLUDE_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/include
+HDF5_LIB_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/lib
+also, the makefile does not detect dependency changes, e.g. when compiling with hdf5, make clean needs to be run first
+mkdir small_fast5_files
