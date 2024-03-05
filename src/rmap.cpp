@@ -28,7 +28,9 @@ typedef struct rh_norm_inference_s{
 } rh_norm_inference_t;
 
 #define N_FEATURES 9
+// TRAIN_MAP: to output data for training ML model
 // #define TRAIN_MAP
+// INFER_MAP: to use ML model for inference
 // #define INFER_MAP
 
 static ri_tbuf_t *ri_tbuf_init(void)
@@ -229,6 +231,7 @@ void ri_map_frag(const ri_idx_t *ri,
 				ri_tbuf_t *b,
 				const ri_mapopt_t *opt,
 				const char *qname,
+				// interpreter, input_tensor only needed for reverse query if RI_I_REV_QUERY flag is set
 				TfLiteInterpreter* interpreter,
 				TfLiteTensor* input_tensor,
 				const uint32_t c_count = 0)
@@ -495,7 +498,7 @@ static void map_worker_for(void *_data,
 
 	double t = ri_realtime();
 
-	// #ifdef INFER_MAP
+	#ifdef INFER_MAP
 	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
 	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
 
@@ -511,7 +514,10 @@ static void map_worker_for(void *_data,
 	}
 
 	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
-	// #endif
+	#else
+	TfLiteInterpreter* interpreter = NULL;
+	TfLiteTensor* input_tensor = NULL;
+	#endif
 
 	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
@@ -762,10 +768,10 @@ static void map_worker_for(void *_data,
 		b->km = ri_km_init();
 	}
 
-	// #ifdef INFER_MAP
+	#ifdef INFER_MAP
 	TfLiteInterpreterDelete(interpreter);
 	TfLiteInterpreterOptionsDelete(options);
-	// #endif
+	#endif
 }
 
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
@@ -1002,13 +1008,13 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	pl.mini_batch_size = opt->mini_batch_size;
 	pl_threads = pl.n_threads == 1?1:2;
 	pl.su_stop = 0;
-	// #ifdef INFER_MAP
+	#ifdef INFER_MAP
 	pl.map_model = TfLiteModelCreateFromFile(opt->model_map_path);
 	if (!pl.map_model) {
 		fprintf(stderr, "Failed to load model\n");
 		exit(1);
 	}
-	// #endif
+	#endif
 
 	if(opt->flag & RI_M_SEQUENCEUNTIL){
 		pl.su_nreads = 0;

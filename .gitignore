@@ -1,4 +1,5 @@
 bin/
+run_dir/
 
 test/data/d1_*
 test/data/d2_*

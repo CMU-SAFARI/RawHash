@@ -1,4 +1,5 @@
 #!/bin/bash
+set -ex
 
 #Runs the indexing and mapping step of rawhash2, generates the output file as well as the corresponding .time files
 

@@ -79,7 +79,7 @@ void ri_idx_destroy(ri_idx_t *ri){
 	if(ri->km) ri_km_destroy(ri->km);
 	if(ri->n_seq && ri->seq){
 		for (i = 0; i < ri->n_seq; ++i){
-			free(ri->seq[i].name);
+			// free(ri->seq[i].name); // km
 
 			if(ri->flag&RI_I_STORE_SIG){
 				if(ri->F && ri->F[i]) free(ri->F[i]);
@@ -96,13 +96,13 @@ void ri_idx_destroy(ri_idx_t *ri){
 			}
 		}
 
-		if(ri->seq) free(ri->seq);
+		// if(ri->seq) free(ri->seq); // km
 	} else if(ri->n_seq && ri->sig){
 		for (i = 0; i < ri->n_seq; ++i){
 			if(ri->sig[i].name)free(ri->sig[i].name);
 			if(ri->sig[i].sig)free(ri->sig[i].sig);
 		}
-		free(ri->sig);
+		// free(ri->sig); // km
 	}
 
 	free(ri);
@@ -468,9 +468,18 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 	fwrite(&ri->diff, sizeof(float), 1, idx_file);
 	fwrite(ri->pore, sizeof(ri_pore_t), 1, idx_file);
 	fwrite(ri->pore->pore_vals, sizeof(float), ri->pore->n_pore_vals, idx_file);
-	ri_kfree(0, ri->pore->pore_vals); ri->pore->pore_vals = 0;
+	if (ri->owns_pore_model) {
+		ri_kfree(0, ri->pore->pore_vals); 
+		ri->pore->pore_vals = 0;
+	}
+	// ri->pore->pore_vals = NULL;
 	fwrite(ri->pore->pore_inds, sizeof(ri_porei_t), ri->pore->n_pore_vals, idx_file);
-	ri_kfree(0, ri->pore->pore_inds); ri->pore->pore_inds = 0;
+	if (ri->owns_pore_model) {
+		ri_kfree(0, ri->pore->pore_inds); 
+		ri->pore->pore_inds = 0;
+	}
+	// ri->pore->pore_inds = NULL;
+	// ri_kfree(0, ri->pore); // readonly: ri->pore = NULL;
 
 	for (i = 0; i < ri->n_seq; ++i) {
 		if(ri->flag & RI_I_SIG_TARGET){
@@ -563,6 +572,7 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 	fread(ri->pore->pore_vals, sizeof(float), ri->pore->n_pore_vals, idx_file);
 	ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(0, ri->pore->n_pore_vals * sizeof(ri_porei_t));
 	fread(ri->pore->pore_inds, sizeof(ri_porei_t), ri->pore->n_pore_vals, idx_file);
+	ri->owns_pore_model = true;
 
 	if(ri->flag & RI_I_STORE_SIG){
 		ri->F = (float**)ri_kcalloc(0, ri->n_seq, sizeof(float*));
@@ -691,8 +701,10 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	pl.fp = fp;
 	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
 	
-	pl.ri->pore = (ri_pore_t*)ri_kmalloc(0, sizeof(ri_pore_t));
-	memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
+	// pl.ri->pore = (ri_pore_t*)ri_kmalloc(0, sizeof(ri_pore_t));
+	// memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
+	pl.ri->pore = pore;
+	pl.ri->owns_pore_model = false;
 
 	kt_pipeline(n_threads < 3? n_threads : 3, worker_pipeline, &pl, 3);
 	ri_idx_post(pl.ri, n_threads);
@@ -716,8 +728,10 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.cur_f = cur_f;
 	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
 
-	pl.ri->pore = (ri_pore_t*)ri_kmalloc(0, sizeof(ri_pore_t));
-	memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
+	// pl.ri->pore = (ri_pore_t*)ri_kmalloc(0, sizeof(ri_pore_t));
+	// memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
+	pl.ri->pore = pore;
+	pl.ri->owns_pore_model = false;
 
 	pl.ri->window_length1 = window_length1;
 	pl.ri->window_length2 = window_length2;

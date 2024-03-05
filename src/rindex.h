@@ -33,6 +33,7 @@ typedef struct ri_idx_s{
 	struct ri_idx_bucket_s *B; // index (hidden)
 
 	ri_pore_t* pore;
+	bool owns_pore_model;
 
 	void *km, *h;
 

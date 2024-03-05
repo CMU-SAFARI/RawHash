@@ -136,6 +136,8 @@ void ri_sketch_reg(void *km, const float* s_values, uint32_t id, int strand, int
 }
 
 void ri_sketch_reg_rev(void *km, const float* s_values, uint32_t id, int strand, int len, float diff, int e, int q, int lq, int k, mm128_v *p, TfLiteInterpreter* interpreter, TfLiteTensor* input_tensor){
+	assert(interpreter != NULL);
+	assert(input_tensor != NULL);
 
 	uint32_t quant_bit = lq+2;
 	assert(len > 0 && e*quant_bit <= 64);
