@@ -188,7 +188,7 @@ int ri_mapopt_parse_dtw_fill_method(ri_mapopt_t *opt, char* arg) {
     return 0;
 }
 
-char* ri_maptopt_dtw_mode_to_string(uint32_t dtw_border_constraint){
+const char* ri_maptopt_dtw_mode_to_string(uint32_t dtw_border_constraint){
 	switch(dtw_border_constraint){
 		case RI_M_DTW_BORDER_CONSTRAINT_GLOBAL:
 			return "full";
@@ -203,6 +203,14 @@ char* ri_maptopt_dtw_mode_to_string(uint32_t dtw_border_constraint){
 
 int main(int argc, char *argv[])
 {
+	fprintf(stderr, "Using RawHash version 2.1\n");
+	// print args
+	fprintf(stderr, "Received the following args: ");
+	for (int i = 0; i < argc; i++) {
+		fprintf(stderr, "%s ", argv[i]);
+	}
+	fprintf(stderr, "\n");
+
 	const char *opt_str = "k:d:p:e:q:l:w:n:o:t:K:x:";
 	ketopt_t o = KETOPT_INIT;
 	ri_mapopt_t opt;
@@ -459,8 +467,8 @@ int main(int argc, char *argv[])
 
 	
 	ri_pore_t pore;
-	pore.pore_vals = 0;
-	pore.pore_inds = 0;
+	pore.pore_vals = NULL;
+	pore.pore_inds = NULL;
 	pore.max_val = -5000.0;
 	pore.min_val = 5000.0;
 	if(!idx_rdr->is_idx && fpore == 0){
@@ -484,8 +492,9 @@ int main(int argc, char *argv[])
 		if (argc != o.ind + 1) ri_mapopt_update(&opt, ri);
 		if (ri_verbose >= 3) ri_idx_stat(ri);
 		if (argc - (o.ind + 1) == 0) {
+			fprintf(stderr, "[INFO] no files to query index on, just created the index\n");
 			ri_idx_destroy(ri);
-			continue; // no query files
+			continue; // no query files, just creating the index
 		}
 		ret = 0;
 		// if (!(opt.flag & MM_F_FRAG_MODE)) { //TODO: enable frag mode directly from options

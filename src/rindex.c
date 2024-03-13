@@ -77,33 +77,33 @@ void ri_idx_destroy(ri_idx_t *ri){
 	}
 
 	if(ri->km) ri_km_destroy(ri->km);
-	if(ri->n_seq && ri->seq){
-		for (i = 0; i < ri->n_seq; ++i){
-			free(ri->seq[i].name);
+	// if(ri->n_seq && ri->seq){
+	// 	for (i = 0; i < ri->n_seq; ++i){
+	// 		free(ri->seq[i].name);
 
-			if(ri->flag&RI_I_STORE_SIG){
-				if(ri->F && ri->F[i]) free(ri->F[i]);
-				if(!(ri->flag&RI_I_REV_QUERY) && ri->R && ri->R[i]) free(ri->R[i]);
-			}
-		}
+	// 		if(ri->flag&RI_I_STORE_SIG){
+	// 			if(ri->F && ri->F[i]) free(ri->F[i]);
+	// 			if(!(ri->flag&RI_I_REV_QUERY) && ri->R && ri->R[i]) free(ri->R[i]);
+	// 		}
+	// 	}
 
-		if(ri->flag&RI_I_STORE_SIG){
-			if(ri->F) free(ri->F);
-			if(ri->f_l_sig) free(ri->f_l_sig);
-			if(!(ri->flag&RI_I_REV_QUERY)){
-				if(ri->R) free(ri->R);
-				if(ri->r_l_sig) free(ri->r_l_sig);
-			}
-		}
+	// 	if(ri->flag&RI_I_STORE_SIG){
+	// 		if(ri->F) free(ri->F);
+	// 		if(ri->f_l_sig) free(ri->f_l_sig);
+	// 		if(!(ri->flag&RI_I_REV_QUERY)){
+	// 			if(ri->R) free(ri->R);
+	// 			if(ri->r_l_sig) free(ri->r_l_sig);
+	// 		}
+	// 	}
 
-		if(ri->seq) free(ri->seq);
-	} else if(ri->n_seq && ri->sig){
-		for (i = 0; i < ri->n_seq; ++i){
-			if(ri->sig[i].name)free(ri->sig[i].name);
-			if(ri->sig[i].sig)free(ri->sig[i].sig);
-		}
-		free(ri->sig);
-	}
+	// 	if(ri->seq) free(ri->seq); // km
+	// } else if(ri->n_seq && ri->sig){
+	// 	for (i = 0; i < ri->n_seq; ++i){
+	// 		if(ri->sig[i].name)free(ri->sig[i].name);
+	// 		if(ri->sig[i].sig)free(ri->sig[i].sig);
+	// 	}
+	// 	free(ri->sig); // km
+	// }
 
 	free(ri->B); free(ri);
 }
@@ -204,12 +204,12 @@ static void *worker_pipeline(void *shared, int step, void *in)
 		int seq_c = s->seq[s->n_seq-1].rid + 1;
 
 		if(p->ri->flag&RI_I_STORE_SIG){
-			p->ri->F = (float**)ri_krealloc(0, p->ri->F,seq_c * sizeof(float*));
-			p->ri->f_l_sig = (uint32_t*)ri_krealloc(0, p->ri->f_l_sig,seq_c * sizeof(uint32_t));
+			p->ri->F = (float**)ri_krealloc(p->ri->km, p->ri->F,seq_c * sizeof(float*));
+			p->ri->f_l_sig = (uint32_t*)ri_krealloc(p->ri->km, p->ri->f_l_sig,seq_c * sizeof(uint32_t));
 
 			if(!(p->ri->flag&RI_I_REV_QUERY)){
-				p->ri->R = (float**)ri_krealloc(0, p->ri->R,seq_c * sizeof(float*));
-				p->ri->r_l_sig = (uint32_t*)ri_krealloc(0, p->ri->r_l_sig,seq_c * sizeof(uint32_t));
+				p->ri->R = (float**)ri_krealloc(p->ri->km, p->ri->R,seq_c * sizeof(float*));
+				p->ri->r_l_sig = (uint32_t*)ri_krealloc(p->ri->km, p->ri->r_l_sig,seq_c * sizeof(uint32_t));
 			}
 
 			for (i = 0; i < s->n_seq; ++i) {
@@ -217,7 +217,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 				if (t->l_seq > 0){
 					uint32_t s_len;
 					uint32_t r_id = s->seq[i].rid;
-					p->ri->F[r_id] = (float*)ri_kcalloc(0, t->l_seq, sizeof(float));
+					p->ri->F[r_id] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
 					float* s_values = p->ri->F[r_id];
 
 					ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 0, &s_len, s_values);
@@ -225,7 +225,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					p->ri->f_l_sig[r_id] = s_len;
 
 					if(!(p->ri->flag&RI_I_REV_QUERY)){
-						p->ri->R[r_id] = (float*)ri_kcalloc(0, t->l_seq, sizeof(float));
+						p->ri->R[r_id] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
 						s_values = p->ri->R[r_id];
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
 						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
@@ -470,9 +470,13 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 	fwrite(&ri->diff, sizeof(float), 1, idx_file);
 	fwrite(ri->pore, sizeof(ri_pore_t), 1, idx_file);
 	fwrite(ri->pore->pore_vals, sizeof(float), ri->pore->n_pore_vals, idx_file);
-	ri_kfree(0, ri->pore->pore_vals); ri->pore->pore_vals = 0;
+	ri_kfree(ri->km, ri->pore->pore_vals); 
+	ri->pore->pore_vals = 0;
 	fwrite(ri->pore->pore_inds, sizeof(ri_porei_t), ri->pore->n_pore_vals, idx_file);
-	ri_kfree(0, ri->pore->pore_inds); ri->pore->pore_inds = 0;
+	ri_kfree(ri->km, ri->pore->pore_inds); 
+	ri->pore->pore_inds = 0;
+	ri_kfree(ri->km, ri->pore);
+	// ri->pore = 0;
 
 	for (i = 0; i < ri->n_seq; ++i) {
 		if(ri->flag & RI_I_SIG_TARGET){
@@ -500,21 +504,21 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 		if(ri->flag & RI_I_STORE_SIG){
 			fwrite(&(ri->f_l_sig[i]), 4, 1, idx_file);
 			fwrite(ri->F[i], 4, ri->f_l_sig[i], idx_file);
-			ri_kfree(0, ri->F[i]);
+			ri_kfree(ri->km, ri->F[i]);
 			if(!(ri->flag&RI_I_REV_QUERY)){
 				fwrite(&(ri->r_l_sig[i]), 4, 1, idx_file);
 				fwrite(ri->R[i], 4, ri->r_l_sig[i], idx_file);
-				ri_kfree(0, ri->R[i]);
+				ri_kfree(ri->km, ri->R[i]);
 			}
 		}
 	}
 
 	if(ri->flag & RI_I_STORE_SIG){
-		ri_kfree(0, ri->F);
-		ri_kfree(0, ri->f_l_sig);
+		ri_kfree(ri->km, ri->F);
+		ri_kfree(ri->km, ri->f_l_sig);
 		if(!(ri->flag&RI_I_REV_QUERY)){
-			ri_kfree(0, ri->R);
-			ri_kfree(0, ri->r_l_sig);
+			ri_kfree(ri->km, ri->R);
+			ri_kfree(ri->km, ri->r_l_sig);
 		}
 	}
 
@@ -559,19 +563,19 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 	if(ri->flag&RI_I_SIG_TARGET) ri->sig = (ri_sig_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_sig_t));
 	else ri->seq = (ri_idx_seq_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_idx_seq_t));
 
-	ri->pore = (ri_pore_t*)ri_kmalloc(0, sizeof(ri_pore_t));
+	ri->pore = (ri_pore_t*)ri_kmalloc(ri->km, sizeof(ri_pore_t));
 	fread(ri->pore, sizeof(ri_pore_t), 1, idx_file);
-	ri->pore->pore_vals = (float*)ri_kmalloc(0, ri->pore->n_pore_vals * sizeof(float));
+	ri->pore->pore_vals = (float*)ri_kmalloc(ri->km, ri->pore->n_pore_vals * sizeof(float));
 	fread(ri->pore->pore_vals, sizeof(float), ri->pore->n_pore_vals, idx_file);
-	ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(0, ri->pore->n_pore_vals * sizeof(ri_porei_t));
+	ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(ri->km, ri->pore->n_pore_vals * sizeof(ri_porei_t));
 	fread(ri->pore->pore_inds, sizeof(ri_porei_t), ri->pore->n_pore_vals, idx_file);
 
 	if(ri->flag & RI_I_STORE_SIG){
-		ri->F = (float**)ri_kcalloc(0, ri->n_seq, sizeof(float*));
-		ri->f_l_sig = (uint32_t*)ri_kcalloc(0, ri->n_seq, sizeof(uint32_t));
+		ri->F = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
+		ri->f_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
 		if(!(ri->flag&RI_I_REV_QUERY)){
-			ri->R = (float**)ri_kcalloc(0, ri->n_seq, sizeof(float*));
-			ri->r_l_sig = (uint32_t*)ri_kcalloc(0, ri->n_seq, sizeof(uint32_t));
+			ri->R = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
+			ri->r_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
 		}
 	}
 
@@ -603,12 +607,12 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 
 		if(ri->flag & RI_I_STORE_SIG){
 			fread(&(ri->f_l_sig[i]), 4, 1, idx_file);
-			ri->F[i] = (float*)ri_kmalloc(0, ri->f_l_sig[i] * sizeof(float));
+			ri->F[i] = (float*)ri_kmalloc(ri->km, ri->f_l_sig[i] * sizeof(float));
 			fread(ri->F[i], 4, ri->f_l_sig[i], idx_file);
 
 			if(!(ri->flag&RI_I_REV_QUERY)){
 				fread(&(ri->r_l_sig[i]), 4, 1, idx_file);
-				ri->R[i] = (float*)ri_kmalloc(0, ri->r_l_sig[i] * sizeof(float));
+				ri->R[i] = (float*)ri_kmalloc(ri->km, ri->r_l_sig[i] * sizeof(float));
 				fread(ri->R[i], 4, ri->r_l_sig[i], idx_file);
 			}
 		}
@@ -693,8 +697,12 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	pl.fp = fp;
 	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
 	
-	pl.ri->pore = (ri_pore_t*)ri_kmalloc(0, sizeof(ri_pore_t));
+	pl.ri->pore = (ri_pore_t*)ri_kmalloc(pl.ri->km, sizeof(ri_pore_t));
 	memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
+	pl.ri->pore->pore_vals = (float*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(float));
+	memcpy(pl.ri->pore->pore_vals, pore->pore_vals, pore->n_pore_vals * sizeof(float));
+	pl.ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(ri_porei_t));
+	memcpy(pl.ri->pore->pore_inds, pore->pore_inds, pore->n_pore_vals * sizeof(ri_porei_t));
 
 	kt_pipeline(n_threads < 3? n_threads : 3, worker_pipeline, &pl, 3);
 	ri_idx_post(pl.ri, n_threads);
@@ -718,8 +726,12 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.cur_f = cur_f;
 	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
 
-	pl.ri->pore = (ri_pore_t*)ri_kmalloc(0, sizeof(ri_pore_t));
+	pl.ri->pore = (ri_pore_t*)ri_kmalloc(pl.ri->km, sizeof(ri_pore_t));
 	memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
+	pl.ri->pore->pore_vals = (float*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(float));
+	memcpy(pl.ri->pore->pore_vals, pore->pore_vals, pore->n_pore_vals * sizeof(float));
+	pl.ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(ri_porei_t));
+	memcpy(pl.ri->pore->pore_inds, pore->pore_inds, pore->n_pore_vals * sizeof(ri_porei_t));
 
 	pl.ri->window_length1 = window_length1;
 	pl.ri->window_length2 = window_length2;
