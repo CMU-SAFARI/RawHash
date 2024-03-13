@@ -18,16 +18,17 @@ POD5_DOWNLOAD=0
 NOPOD5=1
 # also disable fsanitize in debug (cflags etc) below!
 asan=
+# asan=1
 tsan=
 endif
 
 
 #pass DEBUG=1 to make to enable debugging
 ifdef DEBUG
-#	CFLAGS=-Wall ${DEBUG_OPTS} -fsanitize=address -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-#	CPPFLAGS=--std=c++11 -Wall ${DEBUG_OPTS} -fsanitize=address -g -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CFLAGS=-Wall ${DEBUG_OPTS} -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=--std=c++11 -Wall ${DEBUG_OPTS} -g -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS=-Wall ${DEBUG_OPTS} -fsanitize=address -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CPPFLAGS=--std=c++11 -Wall ${DEBUG_OPTS} -fsanitize=address -g -fopenmp -march=native -pthread -DHAVE_KALLOC
+#	CFLAGS=-Wall ${DEBUG_OPTS} -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
+#	CPPFLAGS=--std=c++11 -Wall ${DEBUG_OPTS} -g -fopenmp -march=native -pthread -DHAVE_KALLOC
 else
 	CFLAGS=-Wall -O3 -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
 	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -pthread -DHAVE_KALLOC
@@ -167,13 +168,13 @@ endif
 endif
 
 ifneq ($(asan),)
-	$(info AddressSanitizer enabled)
+    $(info AddressSanitizer enabled)
 	CFLAGS+=-fsanitize=address
 	LIBS+=-fsanitize=address
 endif
 
 ifneq ($(tsan),)
-	$(info ThreadSanitizer enabled)
+    $(info ThreadSanitizer enabled)
 	CFLAGS+=-fsanitize=thread
 	LIBS+=-fsanitize=thread
 endif
