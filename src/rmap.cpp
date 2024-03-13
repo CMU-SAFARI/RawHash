@@ -229,6 +229,9 @@ void ri_map_frag(const ri_idx_t *ri,
 				ri_tbuf_t *b,
 				const ri_mapopt_t *opt,
 				const char *qname,
+				double* mean_sum,
+				double* std_dev_sum,
+				uint32_t* n_events_sum,
 				TfLiteInterpreter* interpreter,
 				TfLiteTensor* input_tensor,
 				const uint32_t c_count = 0)
@@ -238,7 +241,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	#ifdef PROFILERH
 	double signal_t = ri_realtime();
 	#endif
-	float* events = detect_events(b->km, s_len, sig, opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height, &n_events);
+	float* events = detect_events(b->km, s_len, sig, opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height, mean_sum, std_dev_sum, n_events_sum, &n_events);
 	#ifdef PROFILERH
 	ri_signaltime += ri_realtime() - signal_t;
 	#endif
@@ -513,13 +516,16 @@ static void map_worker_for(void *_data,
 	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
 	// #endif
 
+	double mean_sum = 0, std_dev_sum = 0;
+	uint32_t n_events_sum = 0;
+
 	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
 
 		if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
 
-		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, interpreter, input_tensor);
+		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum, interpreter, input_tensor);
 
 		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
 

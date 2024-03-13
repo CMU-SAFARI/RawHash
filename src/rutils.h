@@ -36,6 +36,9 @@ long ri_peakrss(void);
 
 void load_pore(const char* fpore, const short k, const short lev_col, ri_pore_t* pore);
 
+float findMedian(float arr[], int n);
+float calculateMAD(float* arr, int n, float median);
+
 #ifdef __cplusplus
 }
 #endif

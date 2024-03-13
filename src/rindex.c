@@ -57,6 +57,7 @@ ri_idx_t* ri_idx_init(float diff, int b, int w, int e, int n, int q, int lq, int
 	ri = (ri_idx_t*)calloc(1, sizeof(ri_idx_t));
   	ri->b = b, ri->w = w; ri->e = e; ri->n = n; ri->q = q; ri->lq = lq, ri->k = k, ri->flag = flag;
 	ri->diff = diff;
+	ri->seq = NULL; ri->sig = NULL; ri->F = NULL; ri->R = NULL; ri->f_l_sig = NULL; ri->r_l_sig = NULL; ri->pore = NULL; ri->h = NULL;
   	ri->B = (ri_idx_bucket_t*)calloc(1<<ri->b, sizeof(ri_idx_bucket_t));
   	ri->km = ri_km_init();
 
@@ -73,7 +74,6 @@ void ri_idx_destroy(ri_idx_t *ri){
 			free(ri->B[i].a.a);
 			kh_destroy(idx, (idxhash_t*)ri->B[i].h);
 		}
-		free(ri->B);
 	}
 
 	if(ri->km) ri_km_destroy(ri->km);
@@ -105,7 +105,7 @@ void ri_idx_destroy(ri_idx_t *ri){
 		free(ri->sig);
 	}
 
-	free(ri);
+	free(ri->B); free(ri);
 }
 
 void ri_idx_add(ri_idx_t *ri, int n, const mm128_t *a){
@@ -358,7 +358,9 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 			ri_sig_t* t = s->sig[i];
 			if (t->l_sig > 0){
 				uint32_t s_len = 0;
-				float* s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_len);
+				double s_sum = 0, s_std = 0;
+				uint32_t n_events_sum = 0;
+				float* s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_sum, &s_std, &n_events_sum, &s_len);
 
 				ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
 
@@ -742,8 +744,7 @@ ri_idx_t* ri_idx_reader_read(ri_idx_reader_t* r, ri_pore_t* pore, int n_threads)
 		ri = ri_idx_load(r->fp.idx);
 	} else if(r->opt.flag&RI_I_SIG_TARGET) {
 		ri = ri_idx_siggen(&(r->sfp), r->sf, r->cur_f, r->n_f, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.window_length1, r->opt.window_length2, r->opt.threshold1, r->opt.threshold2, r->opt.peak_height, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
-	}
-	else{
+	} else{
 		ri = ri_idx_gen(r->fp.seq, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
 	}
 

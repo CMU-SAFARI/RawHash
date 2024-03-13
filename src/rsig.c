@@ -44,6 +44,8 @@ void ri_seq_to_sig(const char *str,
 	mean = sum/j;
 	std_dev = sqrt(sum2/j - (mean)*(mean));
 
+	// fprintf(stderr, "Indexing mean: %f, std_dev: %f\n", mean, std_dev);
+
 	for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
 
 	*s_len = j;

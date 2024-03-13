@@ -138,6 +138,53 @@ void load_pore(const char* fpore, const short k, const short lev_col, ri_pore_t*
     pore->pore_inds = create_sorted_pairs(pore);
 }
 
+// Function to swap two elements
+void swap(float *a, float *b) {
+    float t = *a; *a = *b; *b = t;
+}
+
+// Partition function for QuickSelect
+int partition(float arr[], int low, int high) {
+    float pivot = arr[high];
+    int i = (low - 1);
+
+    for (int j = low; j <= high - 1; j++) {
+        if (arr[j] < pivot) {
+            i++;
+            swap(&arr[i], &arr[j]);
+        }
+    }
+    swap(&arr[i + 1], &arr[high]);
+    return (i + 1);
+}
+
+// QuickSelect function to find Median
+float quickSelect(float arr[], int low, int high, int k) {
+    if (low == high) return arr[low];
+
+    int pivotIndex = partition(arr, low, high);
+
+    if (k == pivotIndex) return arr[k];
+    else if (k < pivotIndex) return quickSelect(arr, low, pivotIndex - 1, k);
+    else return quickSelect(arr, pivotIndex + 1, high, k);
+}
+
+// Function to find median using QuickSelect
+float findMedian(float arr[], int n) {
+    if (n % 2 != 0) return quickSelect(arr, 0, n - 1, n / 2);
+    else return 0.5 * (quickSelect(arr, 0, n - 1, n / 2 - 1) + quickSelect(arr, 0, n - 1, n / 2));
+}
+
+float calculateMAD(float* arr, int n, float median) {
+    float* deviations = (float*)malloc(n * sizeof(float));
+    for (int i = 0; i < n; ++i) {
+        deviations[i] = fabs(arr[i] - median);
+    }
+    float mad = findMedian(deviations, n);
+    free(deviations);
+    return mad;
+}
+
 // #define sort_key_128x(a) ((a).x)
 KRADIX_SORT_INIT(128x, mm128_t, sort_key_128x, 8) 
 
