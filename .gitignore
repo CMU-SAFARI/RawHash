@@ -20,6 +20,7 @@ test/evaluation/*/*/slurm*.out
 test/evaluation/*/*/*.paf
 test/evaluation/*/*/rawhash
 test/evaluation/*/*/rawhash2
+test/evaluation/*/*/original_rawhash2
 test/evaluation/*/*/uncalled
 test/evaluation/*/*/*.abundance
 test/evaluation/*/*/*/slurm*.out

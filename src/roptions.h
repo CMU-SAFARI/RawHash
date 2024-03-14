@@ -63,6 +63,7 @@ typedef struct ri_idxopt_s{
 
 } ri_idxopt_t;
 
+// mapping options for a single reference sequence
 typedef struct ri_mapopt_s{
 
 	//ONT Device specific parameters

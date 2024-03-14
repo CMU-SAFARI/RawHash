@@ -236,7 +236,8 @@ void ri_map_frag(const ri_idx_t *ri,
 				uint32_t* n_events_sum,
 				TfLiteInterpreter* interpreter,
 				TfLiteTensor* input_tensor,
-				const uint32_t c_count = 0) // interpreter, input_tensor only needed for reverse query if RI_I_REV_QUERY flag is set
+				const uint32_t c_count = 0 // todo4: seems to be unused
+				) // interpreter, input_tensor only needed for reverse query if RI_I_REV_QUERY flag is set
 {	
 	uint32_t n_events = 0;
 
@@ -477,6 +478,174 @@ static void normalize_chains(ri_reg1_t* reg, rh_norm_inference_t** norm_vals){
     }
 }
 
+// map new chunk to reference sequence, reusing mapping computations for previous chunks
+// return: true if mapping was successful
+bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
+		const uint32_t s_len, // chunk length
+		const float *sig, // raw signal for chunk
+		ri_reg1_t* reg0, // to store mapping results, reuse previous computations
+		ri_tbuf_t *b,
+		const ri_mapopt_t *opt,
+		const char *qname, // read id
+		double* mean_sum, // for raw signal normalization, reused from old chunks and updated with new chunk
+		double* std_dev_sum, // see mean_sum arg
+		uint32_t* n_events_sum, // number of events in all seen chunks (not including current chunk)
+		// extra args for prediction, todo4: move into ri_tbuf_t
+		TfLiteInterpreter* interpreter,
+		TfLiteTensor* input_tensor
+		) {
+	
+
+	if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
+
+	ri_map_frag(ri, s_len, sig, reg0, b, opt, qname, mean_sum, std_dev_sum, n_events_sum, interpreter, input_tensor);
+
+	int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
+
+	#ifndef INFER_MAP
+	if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
+		reg0->n_maps++;
+		reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+		reg0->maps[reg0->n_maps-1].c_id = 0;
+		return true;
+	}
+
+	//TODO make n_cregs a parameter of best n mappings
+	
+	float meanC = 0, meanQ = 0; // mean score and quality of chains
+	// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+	// 	uint32_t chain_cnt = 0;
+	// 	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
+	// 		if(reg0->creg[c_ind].alignment_score < opt->dtw_min_score) continue;
+	// 		chain_cnt++;
+	// 		meanC += reg0->creg[c_ind].score;
+	// 		meanQ += reg0->creg[c_ind].mapq;
+	// 		// meanA += reg0->creg[c_ind].alignment_score;
+	// 	}
+	// 	if(chain_cnt){meanC /= chain_cnt; meanQ /= chain_cnt;}
+	// }
+	// else{
+	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
+		meanC += reg0->creg[c_ind].score;
+		meanQ += reg0->creg[c_ind].mapq;
+	}
+	if(reg0->n_cregs > 0){meanC /= reg0->n_cregs; meanQ /= reg0->n_cregs;}
+	// }
+	
+	for(int ic = 0; ic < n_chains; ++ic){
+		float r_bestma = 0.0f, r_bestmq = 0.0f, r_bestmc = 0.0f, r_bestq = 0.0f;
+		float bestQ = 0.0f, bestC = 0.0f, bestA = 0.0f, weighted_sum = 0.0f;
+		bestQ = reg0->creg[ic].mapq;
+		bestC = reg0->creg[ic].score;
+
+		if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+			bestA = reg0->creg[ic].alignment_score;
+			if(n_chains == 1){ //no all-vs-all overlap mod
+				uint32_t best_ind = 0;
+				for(int i = 1; i < reg0->n_cregs; ++i){
+					if(reg0->creg[i].alignment_score > bestA){
+						bestA = reg0->creg[i].alignment_score;
+						best_ind = i;
+					}
+				}
+				ic = best_ind;
+				bestQ = reg0->creg[ic].mapq;
+				bestC = reg0->creg[ic].score;
+			}
+			if(bestA >= opt->dtw_min_score){
+				// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+				r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+				r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
+				r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
+
+				weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+			}
+		}else{
+			r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
+			r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
+			r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
+
+			weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+		}
+		
+		#ifndef TRAIN_MAP
+		// Compare the weighted sum against a threshold to make the decision
+		if (weighted_sum >= opt->w_threshold) {
+			reg0->n_maps++;
+			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+			reg0->maps[reg0->n_maps-1].c_id = ic;
+			// fprintf(stderr, "Aligned ic: %d\n", ic);
+		}
+		#endif
+	}
+	#endif
+
+	#ifdef INFER_MAP
+	rh_norm_inference_t* norm_vals;
+	if(reg0->n_cregs > 0){
+		norm_vals = (rh_norm_inference_t*)ri_kmalloc(b->km, reg0->n_cregs * sizeof(rh_norm_inference_t));
+		normalize_chains(reg0, &norm_vals);
+	}
+	#endif
+
+	// print
+	#ifdef TRAIN_MAP
+	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset)/opt->sample_per_base;
+	for (int ic = 0; ic < reg0->n_cregs; ++ic) {
+		int qs = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qs:(int)(read_position_scale*reg0->creg[ic].qs);
+		int qe = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qe:(int)(read_position_scale*reg0->creg[ic].qe);
+
+		int rid = reg0->creg[ic].rid;
+		int rs = reg0->creg[ic].rev?(uint32_t)(s->p->ri->seq[rid].len+1-reg0->creg[ic].re):reg0->creg[ic].rs;
+		int rl = (uint32_t)(reg0->creg[ic].re - reg0->creg[ic].rs + 1);
+		int re = rs + rl;
+		char* rname = (s->p->ri->flag&RI_I_SIG_TARGET)?s->p->ri->sig[rid].name:s->p->ri->seq[rid].name;
+
+		fprintf(stderr, "%d\t%d\t%s\t%d\t%d\t%s\t%d\t%d\t%c\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", c_count, ic, sig->name, qs, qe, rname, rs, re, "+-"[reg0->creg[ic].rev], norm_vals[ic].is_prim, norm_vals[ic].qlen, norm_vals[ic].mapq, norm_vals[ic].alignment_score, norm_vals[ic].score, norm_vals[ic].cnt, norm_vals[ic].mlen, norm_vals[ic].blen, norm_vals[ic].n_sub);
+	}
+	#endif
+
+	#ifdef INFER_MAP
+	float* weighted_sums = NULL;
+	if(reg0->n_cregs > 0) weighted_sums = (float*)ri_kcalloc(b->km, reg0->n_cregs, sizeof(float));
+	
+	for(int ic = 0; ic < reg0->n_cregs; ++ic){
+		TfLiteTensorCopyFromBuffer(input_tensor, &norm_vals[ic], sizeof(rh_norm_inference_t));
+		TfLiteInterpreterInvoke(interpreter);
+		const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
+		TfLiteTensorCopyToBuffer(output_tensor, &weighted_sums[ic], sizeof(float));
+	}
+
+	// Find the best chain
+	float max_weighted_sum = -2;
+	int best_chain = -1;
+	for(int ic = 0; ic < reg0->n_cregs; ++ic){
+		if(weighted_sums[ic] > max_weighted_sum){
+			max_weighted_sum = weighted_sums[ic];
+			best_chain = ic;
+		}
+	}
+
+	// Compare the weighted sum against a threshold to make the decision
+	#ifndef TRAIN_MAP
+	if (max_weighted_sum >= opt->w_threshold) {
+		reg0->n_maps++;
+		reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+		reg0->maps[reg0->n_maps-1].c_id = best_chain;
+		// fprintf(stderr, "Aligned ic: %d\n", ic);
+	}
+	#endif
+
+	if(reg0->n_cregs > 0) {ri_kfree(b->km, norm_vals); ri_kfree(b->km, weighted_sums);}
+	#endif
+
+	#ifndef TRAIN_MAP
+	if(reg0->n_maps > 0) return true;
+	#endif
+
+	return false;
+}
+
 static void map_worker_for(void *_data,
 						   long i,
 						   int tid) // kt_for() callback
@@ -501,7 +670,7 @@ static void map_worker_for(void *_data,
 	double t = ri_realtime();
 
 	#ifdef INFER_MAP
-	// todo4: why is the interpreter created anew for each read?, could go into s->p struct
+	// todo4: why is the interpreter created anew for each read?, could go into ri_t_buf_t struct (needs to be per thread since interpreter not thread-safe)
 	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
 	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
 
@@ -529,152 +698,11 @@ static void map_worker_for(void *_data,
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
 
-		if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
-
-		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum, interpreter, input_tensor);
-
-		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
-
-		#ifndef INFER_MAP
-		if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
-			reg0->n_maps++;
-			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-			reg0->maps[reg0->n_maps-1].c_id = 0;
+		if (continue_mapping_with_new_chunk(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum, interpreter, input_tensor)) {
+			// mapped
 			break;
 		}
 
-		//TODO make n_cregs a parameter of best n mappings
-		
-		float meanC = 0, meanQ = 0; // mean score and quality of chains
-		// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
-		// 	uint32_t chain_cnt = 0;
-		// 	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
-		// 		if(reg0->creg[c_ind].alignment_score < opt->dtw_min_score) continue;
-		// 		chain_cnt++;
-		// 		meanC += reg0->creg[c_ind].score;
-		// 		meanQ += reg0->creg[c_ind].mapq;
-		// 		// meanA += reg0->creg[c_ind].alignment_score;
-		// 	}
-		// 	if(chain_cnt){meanC /= chain_cnt; meanQ /= chain_cnt;}
-		// }
-		// else{
-		for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
-			meanC += reg0->creg[c_ind].score;
-			meanQ += reg0->creg[c_ind].mapq;
-		}
-		if(reg0->n_cregs > 0){meanC /= reg0->n_cregs; meanQ /= reg0->n_cregs;}
-		// }
-		
-		for(int ic = 0; ic < n_chains; ++ic){
-			float r_bestma = 0.0f, r_bestmq = 0.0f, r_bestmc = 0.0f, r_bestq = 0.0f;
-			float bestQ = 0.0f, bestC = 0.0f, bestA = 0.0f, weighted_sum = 0.0f;
-			bestQ = reg0->creg[ic].mapq;
-			bestC = reg0->creg[ic].score;
-
-			if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
-				bestA = reg0->creg[ic].alignment_score;
-				if(n_chains == 1){ //no all-vs-all overlap mod
-					uint32_t best_ind = 0;
-					for(int i = 1; i < reg0->n_cregs; ++i){
-						if(reg0->creg[i].alignment_score > bestA){
-							bestA = reg0->creg[i].alignment_score;
-							best_ind = i;
-						}
-					}
-					ic = best_ind;
-					bestQ = reg0->creg[ic].mapq;
-					bestC = reg0->creg[ic].score;
-				}
-				if(bestA >= opt->dtw_min_score){
-					// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
-					r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
-					r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
-					r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
-
-					weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
-				}
-			}else{
-				r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
-				r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
-				r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
-
-				weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
-			}
-			
-			#ifndef TRAIN_MAP
-			// Compare the weighted sum against a threshold to make the decision
-			if (weighted_sum >= opt->w_threshold) {
-				reg0->n_maps++;
-				reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-				reg0->maps[reg0->n_maps-1].c_id = ic;
-				// fprintf(stderr, "Aligned ic: %d\n", ic);
-			}
-			#endif
-		}
-		#endif
-
-		#ifdef INFER_MAP
-		rh_norm_inference_t* norm_vals;
-		if(reg0->n_cregs > 0){
-			norm_vals = (rh_norm_inference_t*)ri_kmalloc(b->km, reg0->n_cregs * sizeof(rh_norm_inference_t));
-			normalize_chains(reg0, &norm_vals);
-		}
-		#endif
-
-		// print
-		#ifdef TRAIN_MAP
-		float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset)/opt->sample_per_base;
-		for (int ic = 0; ic < reg0->n_cregs; ++ic) {
-			int qs = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qs:(int)(read_position_scale*reg0->creg[ic].qs);
-			int qe = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qe:(int)(read_position_scale*reg0->creg[ic].qe);
-
-			int rid = reg0->creg[ic].rid;
-			int rs = reg0->creg[ic].rev?(uint32_t)(s->p->ri->seq[rid].len+1-reg0->creg[ic].re):reg0->creg[ic].rs;
-			int rl = (uint32_t)(reg0->creg[ic].re - reg0->creg[ic].rs + 1);
-			int re = rs + rl;
-			char* rname = (s->p->ri->flag&RI_I_SIG_TARGET)?s->p->ri->sig[rid].name:s->p->ri->seq[rid].name;
-
-			fprintf(stderr, "%d\t%d\t%s\t%d\t%d\t%s\t%d\t%d\t%c\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", c_count, ic, sig->name, qs, qe, rname, rs, re, "+-"[reg0->creg[ic].rev], norm_vals[ic].is_prim, norm_vals[ic].qlen, norm_vals[ic].mapq, norm_vals[ic].alignment_score, norm_vals[ic].score, norm_vals[ic].cnt, norm_vals[ic].mlen, norm_vals[ic].blen, norm_vals[ic].n_sub);
-		}
-		#endif
-
-		#ifdef INFER_MAP
-		float* weighted_sums = NULL;
-		if(reg0->n_cregs > 0) weighted_sums = (float*)ri_kcalloc(b->km, reg0->n_cregs, sizeof(float));
-		
-		for(int ic = 0; ic < reg0->n_cregs; ++ic){
-			TfLiteTensorCopyFromBuffer(input_tensor, &norm_vals[ic], sizeof(rh_norm_inference_t));
-			TfLiteInterpreterInvoke(interpreter);
-			const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
-			TfLiteTensorCopyToBuffer(output_tensor, &weighted_sums[ic], sizeof(float));
-		}
-
-		// Find the best chain
-		float max_weighted_sum = -2;
-		int best_chain = -1;
-		for(int ic = 0; ic < reg0->n_cregs; ++ic){
-			if(weighted_sums[ic] > max_weighted_sum){
-				max_weighted_sum = weighted_sums[ic];
-				best_chain = ic;
-			}
-		}
-
-		// Compare the weighted sum against a threshold to make the decision
-		#ifndef TRAIN_MAP
-		if (max_weighted_sum >= opt->w_threshold) {
-			reg0->n_maps++;
-			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-			reg0->maps[reg0->n_maps-1].c_id = best_chain;
-			// fprintf(stderr, "Aligned ic: %d\n", ic);
-		}
-		#endif
-
-		if(reg0->n_cregs > 0) {ri_kfree(b->km, norm_vals); ri_kfree(b->km, weighted_sums);}
-		#endif
-
-		#ifndef TRAIN_MAP
-		if(reg0->n_maps > 0) break;
-		#endif
 	} double mapping_time = ri_realtime() - t;
 
 	#ifdef PROFILERH
