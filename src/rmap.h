@@ -22,6 +22,7 @@ typedef struct ri_map_s{
 	char* tags;
 } ri_map_t;
 
+// mapping of (partial) read chunks of one read to one reference, can be used to iteratively add new chunks to check if it maps (reusing mapping attempts from previous chunks of read)
 typedef struct ri_reg1_s{
 	uint32_t read_id;
 	// uint32_t ref_id;
@@ -34,7 +35,7 @@ typedef struct ri_reg1_s{
 	// char* tags;
 
 	ri_map_t* maps;
-	uint32_t n_maps;
+	uint32_t n_maps; // number of mapping chains
 
 	uint32_t offset;
 	float* events;

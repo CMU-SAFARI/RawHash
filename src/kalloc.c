@@ -164,6 +164,7 @@ void *ri_kcalloc(void *_km, size_t count, size_t size)
 	return p;
 }
 
+// realloc to new size, copies old content (up to n_bytes) to new memory, and frees old memory (or in-place)
 void *ri_krealloc(void *_km, void *ap, size_t n_bytes) // TODO: this can be made more efficient in principle
 {
 	ri_kmem_t *km = (ri_kmem_t*)_km;

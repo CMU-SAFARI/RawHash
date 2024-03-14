@@ -88,6 +88,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"rev-query",			ko_no_argument, 		362 },
 	{ (char*)"map-model",			ko_required_argument, 	363 },
 	{ (char*)"version",				ko_no_argument, 	  	364 },
+	{ (char*)"ru-server-port",			ko_no_argument, 	  	365 }, // readuntil for real device
 	{ 0, 0, 0 }
 };
 
@@ -221,6 +222,7 @@ int main(int argc, char *argv[])
 	FILE *fp_help = stderr;
 	ri_idx_reader_t *idx_rdr;
 	ri_idx_t *ri;
+	int ru_server_port = -1; // for connecting to a real device via ReadUntil
 
 	ri_verbose = 3;
 	liftrlimit();
@@ -350,6 +352,7 @@ int main(int argc, char *argv[])
 		else if (c == 362) {ipt.flag |= RI_I_REV_QUERY;}// --rev-query
 		else if (c == 363) {opt.model_map_path = o.arg;}// --map-model
 		else if (c == 364) {puts(RH_VERSION); return 0;}// --version
+		else if (c == 365) {ru_server_port = atoi(o.arg); assert(ru_server_port > 0); }// --ru-server-port
 		else if (c == 'V') {puts(RH_VERSION); return 0;}
 	}
 

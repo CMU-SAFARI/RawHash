@@ -492,7 +492,7 @@ static void map_worker_for(void *_data,
 
 	uint32_t qlen = sig->l_sig;
 	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
-	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk;
+	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk; //todo4: why ((qlen-1)/l_chunk)+1
 	uint32_t s_qs, s_qe = l_chunk;
 
 	uint32_t c_count = 0;
@@ -501,6 +501,7 @@ static void map_worker_for(void *_data,
 	double t = ri_realtime();
 
 	#ifdef INFER_MAP
+	// todo4: why is the interpreter created anew for each read?, could go into s->p struct
 	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
 	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
 
@@ -544,7 +545,7 @@ static void map_worker_for(void *_data,
 
 		//TODO make n_cregs a parameter of best n mappings
 		
-		float meanC = 0, meanQ = 0;
+		float meanC = 0, meanQ = 0; // mean score and quality of chains
 		// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
 		// 	uint32_t chain_cnt = 0;
 		// 	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
@@ -680,21 +681,25 @@ static void map_worker_for(void *_data,
 	ri_maptime += mapping_time;
 	#endif
 
+	// correct for c_count in for-loop incremented once too much, todo4: could be solved more elegantly/robustly
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
-	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset) / opt->sample_per_base;
-	mm_reg1_t* chains = reg0->creg;
-
-	if(!chains) {reg0->n_cregs = 0;}
-	float mean_chain_score = 0;
-
+	// if no mapping was found (because several chains mapped, but none with sufficient quality), but the first chain still has sufficient quality (as if only one chain was found), then accept it as a mapping
 	if(reg0->n_maps == 0 && reg0->creg && reg0->creg[0].mapq > opt->min_mapq){
 		reg0->n_maps++;
 		reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
 		reg0->maps[reg0->n_maps-1].c_id = 0;
 	}
+	
+	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset) / opt->sample_per_base;
+	mm_reg1_t* chains = reg0->creg;
+	if(!chains) {reg0->n_cregs = 0;}
+	float mean_chain_score = 0; // todo4: this is never modified
 
-	if (reg0->n_maps == 0){
+	// write out mapping results to stderr
+	if (reg0->n_maps == 0) {
+		// no map
+
 		reg0->maps = (ri_map_t*)ri_kcalloc(0, 1, sizeof(ri_map_t));
 		char *tags = (char *)malloc(1024 * sizeof(char));
 		tags[0] = '\0'; // make it an empty string
@@ -730,7 +735,9 @@ static void map_worker_for(void *_data,
 		reg0->maps[0].rev = 0;
 		reg0->maps[0].mapped = 0;
 		reg0->maps[0].tags = tags;
-	}else{
+	} else {
+		// mapped
+
 		for(int m = 0; m < reg0->n_maps; ++m){
 			char *tags = (char *)malloc(1024 * sizeof(char));
 			uint32_t c_id = reg0->maps[m].c_id;
