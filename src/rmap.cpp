@@ -80,6 +80,14 @@ static void ri_tbuf_destroy(ri_tbuf_t *b)
 	free(b);
 }
 
+void init_reg1_t(ri_reg1_t* reg0) {
+	// assert(reg0->prev_anchors == NULL && reg0->creg == NULL && reg0->events == NULL); // should have been freed before
+	reg0->prev_anchors = NULL, reg0->creg = NULL, reg0->events = NULL;
+	reg0->offset = 0, reg0->n_prev_anchors = 0, reg0->n_cregs = 0;
+	reg0->n_maps = 0;
+	// reg0 read_id, read_name, maps will be set later
+}
+
 /**
  * Find seed matches between a chunk of a raw signal and a reference genome
  *
@@ -621,14 +629,14 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 	#ifdef TRAIN_MAP
 	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset)/opt->sample_per_base;
 	for (int ic = 0; ic < reg0->n_cregs; ++ic) {
-		int qs = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qs:(int)(read_position_scale*reg0->creg[ic].qs);
-		int qe = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qe:(int)(read_position_scale*reg0->creg[ic].qe);
+		int qs = (ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qs:(int)(read_position_scale*reg0->creg[ic].qs);
+		int qe = (ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qe:(int)(read_position_scale*reg0->creg[ic].qe);
 
 		int rid = reg0->creg[ic].rid;
-		int rs = reg0->creg[ic].rev?(uint32_t)(s->p->ri->seq[rid].len+1-reg0->creg[ic].re):reg0->creg[ic].rs;
+		int rs = reg0->creg[ic].rev?(uint32_t)(ri->seq[rid].len+1-reg0->creg[ic].re):reg0->creg[ic].rs;
 		int rl = (uint32_t)(reg0->creg[ic].re - reg0->creg[ic].rs + 1);
 		int re = rs + rl;
-		char* rname = (s->p->ri->flag&RI_I_SIG_TARGET)?s->p->ri->sig[rid].name:s->p->ri->seq[rid].name;
+		char* rname = (ri->flag&RI_I_SIG_TARGET)?ri->sig[rid].name:ri->seq[rid].name;
 
 		fprintf(stderr, "%d\t%d\t%s\t%d\t%d\t%s\t%d\t%d\t%c\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", c_count, ic, sig->name, qs, qe, rname, rs, re, "+-"[reg0->creg[ic].rev], norm_vals[ic].is_prim, norm_vals[ic].qlen, norm_vals[ic].mapq, norm_vals[ic].alignment_score, norm_vals[ic].score, norm_vals[ic].cnt, norm_vals[ic].mlen, norm_vals[ic].blen, norm_vals[ic].n_sub);
 	}
@@ -690,20 +698,46 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 // map reads from a single channel to a single reference
 class ChannelDataMapper {
 	public:
-		ChannelDataMapper(const ri_idx_t *ri): ri(ri) {
+		ChannelDataMapper(const ri_idx_t *ri, const ri_mapopt_t *opt): ri(ri), opt(opt) {
 			b = ri_tbuf_init();
 		}
 
 		// called by thread, tries to map current read in channel
 		void map_reads() {
-			ri_reg1_t* reg;
-			reg = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
 
+			{
+				ri_reg1_t* reg0 = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
+				// start new read
+				init_reg1_t(reg0);
 
+				uint32_t c_count = 0;
+				double mean_sum = 0, std_dev_sum = 0;
+				uint32_t n_events_sum = 0;
+				double t = ri_realtime();
 
-			// todo: write to queue instead which writes out reads
-			write_out_mappings_and_free(reg, ri);
-			free(reg);
+				// todo
+				uint32_t l_chunk = 10;
+				ri_sig_t* sig = NULL;
+				uint32_t qlen = 100;
+				
+				// process chunks
+
+				double mapping_time = ri_realtime() - t;
+				#ifdef PROFILERH
+				ri_maptime += mapping_time;
+				#endif
+
+				try_mapping_if_none_found(reg0, opt);
+				compute_tag_and_mapping_info(c_count + 1, l_chunk, reg0, opt, mapping_time, qlen, sig, ri);
+				free_most_of_ri_reg1_t(b->km, reg0);
+				km_destroy_and_recreate(&(b->km));
+
+				// todo: write to queue instead which writes out reads
+				write_out_mappings_and_free(reg0, ri);
+
+				// wait until read has ended
+			}
+
 		}
 
 		~ChannelDataMapper() {
@@ -713,15 +747,57 @@ class ChannelDataMapper {
 	private:
 		ri_tbuf_t* b = NULL; // thread-local buffer
 		const ri_idx_t *ri; // reference index
+		const ri_mapopt_t *opt; // mapping options
 };
 
-void init_reg1_t(ri_reg1_t* reg0) {
-	// assert(reg0->prev_anchors == NULL && reg0->creg == NULL && reg0->events == NULL); // should have been freed before
-	reg0->prev_anchors = NULL, reg0->creg = NULL, reg0->events = NULL;
-	reg0->offset = 0, reg0->n_prev_anchors = 0, reg0->n_cregs = 0;
-	reg0->n_maps = 0;
-	// reg0 read_id, read_name, maps will be set later
-}
+// class RawHashDecisionMaker : public DecisionMaker {
+// public:
+// 	RawHashDecisionMaker(const ri_idx_t *ri): ri(ri) {
+// 		b = ri_tbuf_init();
+// 	}
+// 	~RawHashDecisionMaker() {
+// 		// free buffer and reg
+// 		ri_tbuf_destroy(b);
+// 	}
+// 	Decision decide(ReadIdentifier const& read_ident, ChunkType const& chunk, bool is_first_chunk) override {
+// 		// check if it maps
+// 		if (is_first_chunk) {
+// 			mean_sum = 0;
+// 			std_dev_sum = 0;
+// 			reg0 = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
+// 			// start new read
+// 			init_reg1_t(reg0);
+// 		}
+
+// 		try_mapping_if_none_found(reg0, opt);
+// 		if (reg0->n_maps == 0) {
+//         	// no map
+// 			return Decision::STOP_RECEIVING;
+// 		} else {
+// 			// mapped
+// 			return Decision::REJECT;
+// 		}
+// 		// return decision;
+// 	}
+
+// 	void mark_final_decision(ReadIdentifier const& read_ident, Decision const& decision) {
+// 		// write to file
+
+// 		compute_tag_and_mapping_info(c_count, l_chunk, reg0, opt, mapping_time, qlen, sig, ri);
+// 		free_most_of_ri_reg1_t(b->km, reg0);
+// 		km_destroy_and_recreate(&(b->km));
+
+// 		// todo: write to queue instead which writes out reads
+// 		write_out_mappings_and_free(reg0, ri);
+// 	}
+// private:
+// 	ri_tbuf_t* b = NULL; // thread-local buffer
+// 	const ri_idx_t *ri; // reference index
+
+// 	// per read
+// 	ri_reg1_t* reg0;
+// 	double mean_sum, std_dev_sum;
+// };
 
 // map a single read to a reference, called in parallel
 static void map_worker_for(void *_data,
@@ -758,8 +834,8 @@ static void map_worker_for(void *_data,
 			break;
 		}
 
-	} double mapping_time = ri_realtime() - t;
-
+	} 
+	double mapping_time = ri_realtime() - t;
 	#ifdef PROFILERH
 	ri_maptime += mapping_time;
 	#endif
@@ -768,7 +844,7 @@ static void map_worker_for(void *_data,
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
 	try_mapping_if_none_found(reg0, opt);
-	compute_tag_and_mapping_info(c_count, l_chunk, reg0, opt, mapping_time, qlen, sig, s);
+	compute_tag_and_mapping_info(c_count + 1, l_chunk, reg0, opt, mapping_time, qlen, sig, s->p->ri);
 	free_most_of_ri_reg1_t(b->km, reg0);
 	km_destroy_and_recreate(&(b->km));
 
@@ -788,8 +864,10 @@ void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt) {
     }
 }
 
-void compute_tag_and_mapping_info(uint32_t c_count, uint32_t l_chunk, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, ri_sig_t *sig, step_mt *s) {
-    float read_position_scale = ((float)(c_count + 1) * l_chunk / reg0->offset) / opt->sample_per_base;
+// l_chunk: length of each chunk
+// qlen: total length of read (all received raw signals)
+void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t l_chunk, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, ri_sig_t *sig, const ri_idx_t* ri) {
+    float read_position_scale = ((float)num_chunks * l_chunk / reg0->offset) / opt->sample_per_base; // todo4: what is this doing? what is offset?
     mm_reg1_t *chains = reg0->creg;
     if (!chains) {
         reg0->n_cregs = 0;
@@ -806,7 +884,7 @@ void compute_tag_and_mapping_info(uint32_t c_count, uint32_t l_chunk, ri_reg1_t 
 
         sprintf(buffer, "mt:f:%.6f", mapping_time * 1000);
         strcat(tags, buffer);
-        sprintf(buffer, "\tci:i:%d", c_count + 1);
+        sprintf(buffer, "\tci:i:%d", num_chunks);
         strcat(tags, buffer);
         sprintf(buffer, "\tsl:i:%d", qlen);
         strcat(tags, buffer);
@@ -834,7 +912,7 @@ void compute_tag_and_mapping_info(uint32_t c_count, uint32_t l_chunk, ri_reg1_t 
 
         reg0->read_id = sig->rid;
         reg0->read_name = sig->name;
-        reg0->maps[0].read_length = (s->p->ri->flag & RI_I_SIG_TARGET) ? reg0->offset : (uint32_t)(read_position_scale * reg0->offset);
+        reg0->maps[0].read_length = (ri->flag & RI_I_SIG_TARGET) ? reg0->offset : (uint32_t)(read_position_scale * reg0->offset);
         reg0->maps[0].tags = tags;
 		// write invalid fields since no mapping
         reg0->maps[0].c_id = 0;
@@ -856,7 +934,7 @@ void compute_tag_and_mapping_info(uint32_t c_count, uint32_t l_chunk, ri_reg1_t 
             char buffer[256];  // temporary buffer
             sprintf(buffer, "mt:f:%.6f", mapping_time * 1000);
             strcat(tags, buffer);
-            sprintf(buffer, "\tci:i:%d", c_count + 1);
+            sprintf(buffer, "\tci:i:%d", num_chunks);
             strcat(tags, buffer);
             sprintf(buffer, "\tsl:i:%d", qlen);
             strcat(tags, buffer);
@@ -872,15 +950,15 @@ void compute_tag_and_mapping_info(uint32_t c_count, uint32_t l_chunk, ri_reg1_t 
 
             reg0->read_id = sig->rid;
             reg0->read_name = sig->name;
-            reg0->maps[m].read_length = (s->p->ri->flag & RI_I_SIG_TARGET) ? (reg0->offset) : (uint32_t)(read_position_scale * chains[c_id].qe);
+            reg0->maps[m].read_length = (ri->flag & RI_I_SIG_TARGET) ? (reg0->offset) : (uint32_t)(read_position_scale * chains[c_id].qe);
             reg0->maps[m].tags = tags;
             reg0->maps[m].ref_id = chains[c_id].rid;
-            reg0->maps[m].read_start_position = (s->p->ri->flag & RI_I_SIG_TARGET) ? chains[c_id].qs : (uint32_t)(read_position_scale * chains[c_id].qs);
-            reg0->maps[m].read_end_position = (s->p->ri->flag & RI_I_SIG_TARGET) ? chains[c_id].qe : (uint32_t)(read_position_scale * chains[c_id].qe);
-            if (s->p->ri->flag & RI_I_SIG_TARGET)
-                reg0->maps[m].fragment_start_position = chains[c_id].rev ? (uint32_t)(s->p->ri->sig[chains[c_id].rid].l_sig + 1 - chains[c_id].re) : chains[c_id].rs;
+            reg0->maps[m].read_start_position = (ri->flag & RI_I_SIG_TARGET) ? chains[c_id].qs : (uint32_t)(read_position_scale * chains[c_id].qs);
+            reg0->maps[m].read_end_position = (ri->flag & RI_I_SIG_TARGET) ? chains[c_id].qe : (uint32_t)(read_position_scale * chains[c_id].qe);
+            if (ri->flag & RI_I_SIG_TARGET)
+                reg0->maps[m].fragment_start_position = chains[c_id].rev ? (uint32_t)(ri->sig[chains[c_id].rid].l_sig + 1 - chains[c_id].re) : chains[c_id].rs;
             else
-                reg0->maps[m].fragment_start_position = chains[c_id].rev ? (uint32_t)(s->p->ri->seq[chains[c_id].rid].len + 1 - chains[c_id].re) : chains[c_id].rs;
+                reg0->maps[m].fragment_start_position = chains[c_id].rev ? (uint32_t)(ri->seq[chains[c_id].rid].len + 1 - chains[c_id].re) : chains[c_id].rs;
             reg0->maps[m].fragment_length = (uint32_t)(chains[c_id].re - chains[c_id].rs + 1);
             reg0->maps[m].mapq = chains[c_id].mapq;
             reg0->maps[m].rev = (chains[c_id].rev == 1) ? 1 : 0;
