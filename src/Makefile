@@ -1,5 +1,5 @@
 DEBUG_OPTS=-O2
-DEBUG=0
+# DEBUG=0
 
 # get hostname
 HOSTNAME := $(shell hostname)

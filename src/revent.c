@@ -255,8 +255,8 @@ float* detect_events(void *km,
 
 	uint32_t* peaks = (uint32_t*)ri_kmalloc(km, (*n) * sizeof(uint32_t));
 	uint32_t n_peaks = gen_peaks(&short_detector, &long_detector, peak_height, peaks);
+	ri_kfree(km, events); events = 0;
 	if(n_peaks > 0) events = gen_events(km, peaks, n_peaks, prefix_sum, prefix_sum_square, (*n), n);
-	else {ri_kfree(km, events); events = 0;}
 	ri_kfree(km, tstat1); ri_kfree(km, tstat2); ri_kfree(km, prefix_sum); ri_kfree(km, prefix_sum_square); ri_kfree(km, peaks);
 
 	return events;
