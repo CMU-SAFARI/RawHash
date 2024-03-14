@@ -50,12 +50,6 @@ typedef struct {
 	mm128_t *a;
 } ri_seg_t;
 
-// memory buffer for thread-local storage during mapping
-typedef struct ri_tbuf_s {
-	void *km;
-	int rep_len, frag_gap; // todo4: these seem to be unused in map_worker_for
-}ri_tbuf_t;
-
 /**
  * Create the chain from a list of anchors using the DP approach (more accurate but slower than RMQ)
  *

@@ -38,6 +38,32 @@ static ri_tbuf_t *ri_tbuf_init(void)
 	ri_tbuf_t *b;
 	b = (ri_tbuf_t*)calloc(1, sizeof(ri_tbuf_t));
 	b->km = ri_km_init();
+
+	#ifdef INFER_MAP
+	// tflite not thread-safe
+	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
+	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
+
+	TfLiteInterpreter* interpreter = TfLiteInterpreterCreate(s->p->map_model, options);
+	if (!interpreter) {
+		fprintf(stderr, "Failed to create interpreter\n");
+		exit(1);
+	}
+
+	if (TfLiteInterpreterAllocateTensors(interpreter) != kTfLiteOk) {
+		fprintf(stderr, "Failed to allocate tensors\n");
+		exit(1);
+	}
+
+	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
+	#else
+	TfLiteInterpreter* interpreter = NULL;
+	TfLiteTensor* input_tensor = NULL;
+	#endif
+
+	b->interpreter = interpreter;
+	b->input_tensor = input_tensor;
+	
 	return b;
 }
 
@@ -45,6 +71,12 @@ static void ri_tbuf_destroy(ri_tbuf_t *b)
 {
 	if (b == 0) return;
 	ri_km_destroy(b->km);
+
+	#ifdef INFER_MAP
+	TfLiteInterpreterDelete(b->interpreter);
+	TfLiteInterpreterOptionsDelete(b->options);
+	#endif
+
 	free(b);
 }
 
@@ -489,16 +521,13 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 		const char *qname, // read id
 		double* mean_sum, // for raw signal normalization, reused from old chunks and updated with new chunk
 		double* std_dev_sum, // see mean_sum arg
-		uint32_t* n_events_sum, // number of events in all seen chunks (not including current chunk)
-		// extra args for prediction, todo4: move into ri_tbuf_t
-		TfLiteInterpreter* interpreter,
-		TfLiteTensor* input_tensor
+		uint32_t* n_events_sum // number of events in all seen chunks (not including current chunk)
 		) {
 	
 
 	if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
 
-	ri_map_frag(ri, s_len, sig, reg0, b, opt, qname, mean_sum, std_dev_sum, n_events_sum, interpreter, input_tensor);
+	ri_map_frag(ri, s_len, sig, reg0, b, opt, qname, mean_sum, std_dev_sum, n_events_sum, b->interpreter, b->input_tensor);
 
 	int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
 
@@ -651,7 +680,7 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 // 	// see map_worker_pipeline for what is freed and how (memory allocator)
 // 	// reuse buffer and reg for each read
 // 	ri_tbuf_t* b = (ri_tbuf_t*)malloc(sizeof(ri_tbuf_t));
-// 	ri_tb_init(b);
+// 	ri_tbuf_init(b);
 // 	ri_reg1_t* reg = (ri_reg1_t*)malloc(sizeof(ri_reg1_t));
 
 // todo: cannot reuse reg0 due to write out
@@ -661,6 +690,7 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 // 	free(reg)
 // }
 
+// map a single read to a reference sequence, called in parallel
 static void map_worker_for(void *_data,
 						   long i,
 						   int tid) // kt_for() callback
@@ -671,7 +701,6 @@ static void map_worker_for(void *_data,
 	ri_tbuf_t* b = s->buf[tid];
 	ri_reg1_t* reg0 = s->reg[i];
 
-
 	ri_sig_t* sig = s->sig[i];
 
 	// reset reg0
@@ -681,28 +710,7 @@ static void map_worker_for(void *_data,
 	reg0->n_maps = 0;
 	// todo1: reg0 read_id, read_name, maps
 
-	#ifdef INFER_MAP
-	// todo4: why is the interpreter created anew for each read?, could go into ri_t_buf_t struct (needs to be per thread since interpreter not thread-safe)
-	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
-	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
-
-	TfLiteInterpreter* interpreter = TfLiteInterpreterCreate(s->p->map_model, options);
-	if (!interpreter) {
-		fprintf(stderr, "Failed to create interpreter\n");
-		exit(1);
-	}
-
-	if (TfLiteInterpreterAllocateTensors(interpreter) != kTfLiteOk) {
-		fprintf(stderr, "Failed to allocate tensors\n");
-		exit(1);
-	}
-
-	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
-	#else
-	TfLiteInterpreter* interpreter = NULL;
-	TfLiteTensor* input_tensor = NULL;
-	#endif
-
+	
 	double mean_sum = 0, std_dev_sum = 0;
 	uint32_t n_events_sum = 0;
 
@@ -718,7 +726,7 @@ static void map_worker_for(void *_data,
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
 
-		if (continue_mapping_with_new_chunk(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum, interpreter, input_tensor)) {
+		if (continue_mapping_with_new_chunk(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum)) {
 			// mapped
 			break;
 		}
@@ -737,10 +745,6 @@ static void map_worker_for(void *_data,
 	free_most_of_ri_reg1_t(b->km, reg0);
 	km_destroy_and_recreate(&(b->km));
 
-	#ifdef INFER_MAP
-	TfLiteInterpreterDelete(interpreter);
-	TfLiteInterpreterOptionsDelete(options);
-	#endif
 }
 
 void free_most_of_ri_reg1_t(void* km, ri_reg1_t* reg0) {

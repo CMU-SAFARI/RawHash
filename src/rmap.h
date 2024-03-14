@@ -46,6 +46,15 @@ typedef struct ri_reg1_s{
 	int n_cregs;
 } ri_reg1_t;
 
+// memory buffer for thread-local storage during mapping
+typedef struct ri_tbuf_s {
+	void *km;
+	int rep_len, frag_gap; // todo4: these seem to be unused in map_worker_for
+	// for ML predictions
+	TfLiteInterpreter* interpreter;
+	TfLiteTensor* input_tensor;
+}ri_tbuf_t;
+
 typedef struct pipeline_ms{
 	int n_processed, n_threads, n_fp, cur_fp, n_f, cur_f;
 	int64_t mini_batch_size;
