@@ -21,6 +21,9 @@ void *ri_km_init2(void *km_par, size_t min_core_size);
 void ri_km_destroy(void *km);
 void ri_km_stat(const void *_km, ri_km_stat_t *s);
 
+// only recreates if non-null before!
+void km_destroy_and_recreate(void** km);
+
 #ifdef __cplusplus
 }
 #endif

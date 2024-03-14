@@ -204,3 +204,14 @@ void ri_km_stat(const void *_km, ri_km_stat_t *s)
 		s->largest = s->largest > size? s->largest : size;
 	}
 }
+
+// only recreates if non-null before!
+void km_destroy_and_recreate(void** km) {
+	if (*km) {
+		// ri_km_stat_t kmst;
+		// ri_km_stat(*km, &kmst);
+		// assert(kmst.n_blocks == kmst.n_cores);
+		ri_km_destroy(*km);
+		*km = ri_km_init();
+	}
+}

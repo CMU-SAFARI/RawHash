@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+// info about mapping of a (partial) read to a reference sequence
 typedef struct ri_map_s{
 	uint32_t c_id; //chain index
 	uint32_t read_length;
@@ -82,6 +83,16 @@ typedef struct step_ms{
  */
 int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int n_threads);
 
+// compute tag field and mapping info, for later writing out mapping results to stdout
+// this allows to call free_most_of_ri_reg1_t() after this function while guaranteeing it can still be written out
+static void compute_tag_and_mapping_info(uint32_t c_count, uint32_t l_chunk, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, ri_sig_t *sig, step_mt *s);
+
+// if no mapping was found (because several chains mapped, but none with sufficient quality), but the first chain still has sufficient quality (as if only one chain was found), then accept it as a mapping
+static void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt);
+
+// does not free "maps" field which is freed after outputting
+void free_most_of_ri_reg1_t(void* km, ri_reg1_t* reg0);
+
 /**
  * Map raw nanopore signals of many reads to a reference genome
  *
@@ -90,7 +101,7 @@ int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int
  * @param fn		paths to the signal files
  * @param opt		mapping options
  * @param n_threads	number of threads to use in mapping
- * 
+ *
  * @return			returns 0 if mapping is completed with no issues. -1, otherwise.
  */
 int ri_map_file_frag(const ri_idx_t *idx, int n_segs, const char **fn, const ri_mapopt_t *opt, int n_threads);
