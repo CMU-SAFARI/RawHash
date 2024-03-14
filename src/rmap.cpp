@@ -510,7 +510,7 @@ static void normalize_chains(ri_reg1_t* reg, rh_norm_inference_t** norm_vals){
     }
 }
 
-// map new chunk to reference sequence, reusing mapping computations for previous chunks
+// map new chunk to a reference, reusing mapping computations for previous chunks
 // return: true if mapping was successful
 bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 		const uint32_t s_len, // chunk length
@@ -679,30 +679,51 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 // void map_reads_from_ru() {
 // 	// see map_worker_pipeline for what is freed and how (memory allocator)
 // 	// reuse buffer and reg for each read
-// 	ri_tbuf_t* b = (ri_tbuf_t*)malloc(sizeof(ri_tbuf_t));
-// 	ri_tbuf_init(b);
+// 	ri_tbuf_t* b = ri_tbuf_init();
 // 	ri_reg1_t* reg = (ri_reg1_t*)malloc(sizeof(ri_reg1_t));
 
 // todo: cannot reuse reg0 due to write out
 
 // todo: write_out_mappings_and_free(reg0, ri);
-
-// 	ri_tbuf_destroy(b);
-// 	free(reg)
 // }
 
-// map reads from a single channel
-// class ChannelDataMapper {
-// 	public:
-// 		ChannelDataMapper() {
-// 			// initialize buffer and reg
-// 			b = (ri_tbuf_t*)malloc(sizeof(ri_tbuf_t));
-// 			ri_tbuf_init(b);
-// 			reg = (ri_reg1_t*)malloc(sizeof(ri_reg1_t));
-// 		}
-// };
+// map reads from a single channel to a single reference
+class ChannelDataMapper {
+	public:
+		ChannelDataMapper(const ri_idx_t *ri): ri(ri) {
+			b = ri_tbuf_init();
+		}
 
-// map a single read to a reference sequence, called in parallel
+		// called by thread, tries to map current read in channel
+		void map_reads() {
+			ri_reg1_t* reg;
+			reg = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
+
+
+
+			// todo: write to queue instead which writes out reads
+			write_out_mappings_and_free(reg, ri);
+			free(reg);
+		}
+
+		~ChannelDataMapper() {
+			// free buffer and reg
+			ri_tbuf_destroy(b);
+		}
+	private:
+		ri_tbuf_t* b = NULL; // thread-local buffer
+		const ri_idx_t *ri; // reference index
+};
+
+void init_reg1_t(ri_reg1_t* reg0) {
+	// assert(reg0->prev_anchors == NULL && reg0->creg == NULL && reg0->events == NULL); // should have been freed before
+	reg0->prev_anchors = NULL, reg0->creg = NULL, reg0->events = NULL;
+	reg0->offset = 0, reg0->n_prev_anchors = 0, reg0->n_cregs = 0;
+	reg0->n_maps = 0;
+	// reg0 read_id, read_name, maps will be set later
+}
+
+// map a single read to a reference, called in parallel
 static void map_worker_for(void *_data,
 						   long i,
 						   int tid) // kt_for() callback
@@ -715,13 +736,7 @@ static void map_worker_for(void *_data,
 
 	ri_sig_t* sig = s->sig[i];
 
-	// reset reg0
-	assert(reg0->prev_anchors == NULL && reg0->creg == NULL && reg0->events == NULL); // should have been freed before
-	// reg0->prev_anchors = NULL, reg0->creg = NULL, reg0->events = NULL;
-	reg0->offset = 0, reg0->n_prev_anchors = 0, reg0->n_cregs = 0;
-	reg0->n_maps = 0;
-	// todo1: reg0 read_id, read_name, maps
-
+	init_reg1_t(reg0);
 	
 	double mean_sum = 0, std_dev_sum = 0;
 	uint32_t n_events_sum = 0;
@@ -1025,10 +1040,7 @@ static void *map_worker_pipeline(void *shared,
 						write_out_mappings_and_free(reg0, ri, false);
 					}
 				}
-
-				// if(reg0->tags) {free(reg0->tags); reg0->tags = NULL;}
-				if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
-				free(reg0); s->reg[k] = NULL;
+				s->reg[k] = NULL; // was freed
 				fflush(stdout);
 			}
 		}
@@ -1084,6 +1096,9 @@ void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_m
 
 		if(reg0->maps[0].tags) {free(reg0->maps[0].tags); reg0->maps[0].tags = NULL;}
 	}
+
+	if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
+	free(reg0);
 }
 
 int ri_map_file(const ri_idx_t *idx,

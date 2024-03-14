@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-// info about mapping of a (partial) read to a reference sequence
+// info about mapping of a (partial) read to a reference
 typedef struct ri_map_s{
 	uint32_t c_id; //chain index
 	uint32_t read_length;
@@ -23,7 +23,7 @@ typedef struct ri_map_s{
 	char* tags;
 } ri_map_t;
 
-// mapping of (partial) read chunks of one read to one reference, can be used to iteratively add new chunks to check if it maps (reusing mapping attempts from previous chunks of read)
+// mapping of (partial) read chunks of one read to a reference, can be used to iteratively add new chunks to check if it maps (reusing mapping attempts from previous chunks of read)
 typedef struct ri_reg1_s{
 	uint32_t read_id;
 	// uint32_t ref_id;
