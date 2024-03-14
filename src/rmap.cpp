@@ -685,10 +685,22 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 
 // todo: cannot reuse reg0 due to write out
 
+// todo: write_out_mappings_and_free(reg0, ri);
 
 // 	ri_tbuf_destroy(b);
 // 	free(reg)
 // }
+
+// map reads from a single channel
+// class ChannelDataMapper {
+// 	public:
+// 		ChannelDataMapper() {
+// 			// initialize buffer and reg
+// 			b = (ri_tbuf_t*)malloc(sizeof(ri_tbuf_t));
+// 			ri_tbuf_init(b);
+// 			reg = (ri_reg1_t*)malloc(sizeof(ri_reg1_t));
+// 		}
+// };
 
 // map a single read to a reference sequence, called in parallel
 static void map_worker_for(void *_data,
@@ -1007,33 +1019,10 @@ static void *map_worker_pipeline(void *shared,
 				// fprintf(stderr, "%s %d %d\n", reg0->read_name, reg0->n_maps, reg0->maps[0].mapped);
 				
 				if(reg0->read_name){
-					if(reg0->n_maps > 0 && (!p->su_stop || k < p->su_stop)){
-						for(int m = 0; m < reg0->n_maps; ++m){
-							if(reg0->maps[m].ref_id < ri->n_seq)
-								fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%d\t%s\n", 
-												reg0->read_name,
-												reg0->maps[m].read_length,
-												reg0->maps[m].read_start_position,
-												reg0->maps[m].read_end_position, 
-												reg0->maps[m].rev?'-':'+',
-												(ri->flag&RI_I_SIG_TARGET)?ri->sig[reg0->maps[m].ref_id].name:ri->seq[reg0->maps[m].ref_id].name,
-												(ri->flag&RI_I_SIG_TARGET)?ri->sig[reg0->maps[m].ref_id].l_sig:ri->seq[reg0->maps[m].ref_id].len,
-												reg0->maps[m].fragment_start_position,
-												reg0->maps[m].fragment_start_position + reg0->maps[m].fragment_length, 
-												reg0->maps[m].read_end_position-reg0->maps[m].read_start_position-1, 
-												reg0->maps[m].fragment_length,
-												reg0->maps[m].mapq,
-												reg0->maps[m].tags);
-							if(reg0->maps[m].tags) {free(reg0->maps[m].tags); reg0->maps[m].tags = NULL;}
-						}
+					if(!p->su_stop || k < p->su_stop){
+						write_out_mappings_and_free(reg0, ri);
 					}else{
-						fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%d\t%s\n", 
-						reg0->read_name, 
-						reg0->maps[0].read_length, 
-						reg0->maps[0].mapq, 
-						reg0->maps[0].tags);
-
-						if(reg0->maps[0].tags) {free(reg0->maps[0].tags); reg0->maps[0].tags = NULL;}
+						write_out_mappings_and_free(reg0, ri, false);
 					}
 				}
 
@@ -1059,6 +1048,42 @@ static void *map_worker_pipeline(void *shared,
 		free(s); s = NULL;
 	}
     return 0;
+}
+
+void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped) {
+	was_mapped = was_mapped && (reg0->n_maps > 0);
+	if (was_mapped) {
+		for (int m = 0; m < reg0->n_maps; ++m) {
+			if (reg0->maps[m].ref_id < ri->n_seq)
+				fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%d\t%s\n",
+						reg0->read_name,
+						reg0->maps[m].read_length,
+						reg0->maps[m].read_start_position,
+						reg0->maps[m].read_end_position,
+						reg0->maps[m].rev ? '-' : '+',
+						(ri->flag & RI_I_SIG_TARGET) ? ri->sig[reg0->maps[m].ref_id].name : ri->seq[reg0->maps[m].ref_id].name,
+						(ri->flag & RI_I_SIG_TARGET) ? ri->sig[reg0->maps[m].ref_id].l_sig : ri->seq[reg0->maps[m].ref_id].len,
+						reg0->maps[m].fragment_start_position,
+						reg0->maps[m].fragment_start_position + reg0->maps[m].fragment_length,
+						reg0->maps[m].read_end_position - reg0->maps[m].read_start_position - 1,
+						reg0->maps[m].fragment_length,
+						reg0->maps[m].mapq,
+						reg0->maps[m].tags);
+			if (reg0->maps[m].tags) {
+				free(reg0->maps[m].tags);
+				reg0->maps[m].tags = NULL;
+			}
+		}
+	} else {
+		// maps[0] contains all necessary information
+		fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%d\t%s\n", 
+		reg0->read_name, 
+		reg0->maps[0].read_length, 
+		reg0->maps[0].mapq, 
+		reg0->maps[0].tags);
+
+		if(reg0->maps[0].tags) {free(reg0->maps[0].tags); reg0->maps[0].tags = NULL;}
+	}
 }
 
 int ri_map_file(const ri_idx_t *idx,

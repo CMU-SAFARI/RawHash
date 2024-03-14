@@ -92,6 +92,10 @@ typedef struct step_ms{
  */
 int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int n_threads);
 
+// write out relevant mapping results to stdout, then free reg0
+// was_mapped: if false, write out "*" for mapping info even when read was mapped, e.g. when sequence until terminates the pipeline)
+static void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped=true);
+
 // compute tag field and mapping info, for later writing out mapping results to stdout
 // this allows to call free_most_of_ri_reg1_t() after this function while guaranteeing it can still be written out
 static void compute_tag_and_mapping_info(uint32_t c_count, uint32_t l_chunk, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, ri_sig_t *sig, step_mt *s);
