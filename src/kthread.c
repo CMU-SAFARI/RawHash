@@ -78,22 +78,27 @@ void kt_for(int n_threads, void (*func)(void*,long,int), void *data, long n)
 struct ktp_t;
 
 typedef struct {
-	struct ktp_t *pl;
-	int64_t index;
-	int step;
-	void *data;
+	struct ktp_t *pl; // pointer to the pipeline that the worker is part of, can be used to synchronize with other workers
+	int64_t index; // worker index
+	int step; // step of the pipeline that worker should execute
+	void *data; // private data of the worker from previous stage, NULL at step=0
 } ktp_worker_t;
 
+// object to which all workers of a given pipeline have access
 typedef struct ktp_t {
 	void *shared;
 	void *(*func)(void*, int, void*);
-	int64_t index;
+	int64_t index; // number of times the pipeline has been executed, i.e. number of times it was in step 0 (starts at n_workers)
 	int n_workers, n_steps;
 	ktp_worker_t *workers;
+	// to synchronize workers
 	pthread_mutex_t mutex;
 	pthread_cond_t cv;
 } ktp_t;
 
+// worker thread
+// all worker threads synchronize on the pipeline step: only once all workers completed a step, the workers move to the next step
+// some workers may drop out early (in which case their step is set to n_steps)
 static void *ktp_worker(void *data)
 {
 	ktp_worker_t *w = (ktp_worker_t*)data;
@@ -119,6 +124,7 @@ static void *ktp_worker(void *data)
 
 		// update step and let other workers know
 		pthread_mutex_lock(&p->mutex);
+		// continue executing if at the last pipeline step or data was output from the step, otherwise terminate at the next occasion
 		w->step = w->step == p->n_steps - 1 || w->data? (w->step + 1) % p->n_steps : p->n_steps;
 		if (w->step == 0) w->index = p->index++;
 		pthread_cond_broadcast(&p->cv);
@@ -127,6 +133,12 @@ static void *ktp_worker(void *data)
 	pthread_exit(0);
 }
 
+// executes a pipeline consisting of n_steps by using n_threads
+// func is a pointer to a function that takes three arguments: shared_data, step_index, private_data
+// shared_data is shared across all threads and steps (like global variables) 
+// private_data is passed between pipeline stages and can be used to store intermediate results
+// all workers first execute step 0, then step 1, and so on, until step n_steps-1, syncing at each step
+// when a pipeline step (excluding the last) returns NULL, the corresponding worker stops
 void kt_pipeline(int n_threads, void *(*func)(void*, int, void*), void *shared_data, int n_steps)
 {
 	ktp_t aux;

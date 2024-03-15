@@ -300,6 +300,7 @@ int is_dir(const char *A)
 void find_sfiles(const char *A, ri_char_v *fnames)
 {
 	if (!is_dir(A)) {
+		// todo4: adapt this since slow5 creates .slow5.idx in the same directory, so should be "endswith"
 		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".pod") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
 			char** cur_fname;
 			rh_kv_pushp(char*, 0, *fnames, &cur_fname);

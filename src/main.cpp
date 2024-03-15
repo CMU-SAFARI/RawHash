@@ -6,6 +6,31 @@
 #include "rawhash.h"
 #include "ketopt.h"
 
+#ifdef RUCLIENT_ENABLED
+	#include "rawhash_ruclient.hpp"
+
+	#include "ru_client/ru_method.hpp"
+	#include "ru_client/grpc_utils.hpp"
+	#include "ru_client/data_client.hpp"
+	#include "ru_client/ont_device_client.hpp"
+	#include "ru_client/utils.hpp" // for is_big_endian()
+
+	#include "ru_client/spdlog_dropin.hpp"
+	namespace spdlog {
+		namespace level {
+
+			using namespace ru_client::internal::level;
+		}
+	}
+	namespace {
+		void log(const std::string& message, ru_client::internal::level::spdlog_level level = spdlog::level::info) {
+			// std::cout << "Sev" << level << ": " << message << std::endl;
+			fprintf(stderr, ("Sev" + std::to_string(level) + ": " + message).c_str());
+		}
+	}
+	using namespace ru_client;
+#endif
+
 #define RH_VERSION "2.1"
 
 #ifdef __linux__
@@ -88,7 +113,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"rev-query",			ko_no_argument, 		362 },
 	{ (char*)"map-model",			ko_required_argument, 	363 },
 	{ (char*)"version",				ko_no_argument, 	  	364 },
-	{ (char*)"ru-server-port",			ko_no_argument, 	  	365 }, // readuntil for real device
+	{ (char*)"ru-server-port",		ko_required_argument,  	365 }, // readuntil for real device
 	{ 0, 0, 0 }
 };
 
@@ -487,34 +512,153 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	while ((ri = ri_idx_reader_read(idx_rdr, &pore, n_threads)) != 0) {
-		int ret;
-		if (ri_verbose >= 3)
-			fprintf(stderr, "[M::%s::%.3f*%.2f] loaded/built the index for %d target sequence(s)\n",
-					__func__, ri_realtime() - ri_realtime0, ri_cputime() / (ri_realtime() - ri_realtime0), ri->n_seq);
-		if (argc != o.ind + 1) ri_mapopt_update(&opt, ri);
-		if (ri_verbose >= 3) ri_idx_stat(ri);
-		if (argc - (o.ind + 1) == 0) {
-			fprintf(stderr, "[INFO] no files to query index on, just created the index\n");
+	if (ru_server_port == -1) {
+		// offline processing
+		while ((ri = ri_idx_reader_read(idx_rdr, &pore, n_threads)) != 0) {
+			int ret;
+			if (ri_verbose >= 3)
+				fprintf(stderr, "[M::%s::%.3f*%.2f] loaded/built the index for %d target sequence(s)\n",
+						__func__, ri_realtime() - ri_realtime0, ri_cputime() / (ri_realtime() - ri_realtime0), ri->n_seq);
+			if (argc != o.ind + 1) ri_mapopt_update(&opt, ri); // only update the index if it is used for querying later, todo4: can be moved down to before "ret = 0"
+			if (ri_verbose >= 3) ri_idx_stat(ri);
+			if (argc - (o.ind + 1) == 0) {
+				fprintf(stderr, "[INFO] no files to query index on, just created the index\n");
+				ri_idx_destroy(ri);
+				continue; // no query files, just creating the index
+			}
+			ret = 0;
+			// if (!(opt.flag & MM_F_FRAG_MODE)) { //TODO: enable frag mode directly from options
+			// for (i = o.ind + 1; i < argc; ++i) {
+			// 	ret = ri_map_file(ri, argv[i], &opt, n_threads);
+			// 	if (ret < 0) break;
+			// }
+			// }
+			// else { //TODO: enable frag mode directly from options
+				ret = ri_map_file_frag(ri, argc - (o.ind + 1), (const char**)&argv[o.ind + 1], &opt, n_threads);
+			// }
 			ri_idx_destroy(ri);
-			continue; // no query files, just creating the index
+			if (ret < 0) {
+				fprintf(stderr, "ERROR: failed to map the query file\n");
+				exit(EXIT_FAILURE);
+			}
 		}
-		ret = 0;
-		// if (!(opt.flag & MM_F_FRAG_MODE)) { //TODO: enable frag mode directly from options
-		// for (i = o.ind + 1; i < argc; ++i) {
-		// 	ret = ri_map_file(ri, argv[i], &opt, n_threads);
-		// 	if (ret < 0) break;
-		// }
-		// }
-		// else { //TODO: enable frag mode directly from options
-			ret = ri_map_file_frag(ri, argc - (o.ind + 1), (const char**)&argv[o.ind + 1], &opt, n_threads);
-		// }
-		ri_idx_destroy(ri);
-		if (ret < 0) {
-			fprintf(stderr, "ERROR: failed to map the query file\n");
+	} else {
+		// online processing and decision making by connecting to a real device
+		#ifndef RUCLIENT_ENABLED
+			fprintf(stderr, "[ERROR] The --ru-server-port option is not enabled in this build\n");
+			exit(EXIT_FAILURE);
+		#else
+
+		fprintf(stderr, "Connecting to the RU device on port %d\n", ru_server_port);
+		
+		if (argc - (o.ind + 1) > 0) {
+			fprintf(stderr, "[ERROR] The --ru-server-port option cannot be used with query files\n");
 			exit(EXIT_FAILURE);
 		}
+
+		// todo4: using while loop to detect only one index is read because it is unclear what happens if there are several because ri_idx_reader_read does not increment file pointer when loading idx
+		bool read_one = false;
+		while ((ri = ri_idx_reader_read(idx_rdr, &pore, n_threads)) != 0) {
+			if (read_one) {
+				fprintf(stderr, "[ERROR] Only one index file can be read when using the --ru-server-port option\n");
+				exit(EXIT_FAILURE);
+			}
+			read_one = true;
+
+			if (ri_verbose >= 3)
+				fprintf(stderr, "[M::%s::%.3f*%.2f] loaded/built the index for %d target sequence(s)\n",
+						__func__, ri_realtime() - ri_realtime0, ri_cputime() / (ri_realtime() - ri_realtime0), ri->n_seq);
+			ri_mapopt_update(&opt, ri);
+			if (ri_verbose >= 3) ri_idx_stat(ri);
+
+			auto grpc_channel = setup_grpc_channel({.port = ru_server_port});
+    		AcquisitionServiceClient acquisition_client(grpc_channel);
+			
+			DeviceServiceClient device_client(grpc_channel);
+        	uint32_t n_channels = device_client.get_nb_channels();
+
+			fprintf(stderr, "Connected to the device with %d channels\n", n_channels);
+
+			DataServiceClient data_client(grpc_channel);
+
+			auto data_type = data_client.get_data_types()["calibrated"];
+			assert((data_type.number_type == "int"));
+			assert((data_type.n_bytes == sizeof(int16_t)));
+			assert((data_type.big_endian == is_big_endian()));
+
+			auto calibrations = device_client.get_calibration(1, n_channels);
+        	fprintf(stderr, ("Received calibrations: " + calibrations.to_string()).c_str());
+
+			auto start_acquisition = [&acquisition_client] {
+				if (!acquisition_client.start_sequencing()) {
+					fprintf(stderr, "Failed to start sequencing, may already be running");
+				}
+			};
+
+			int first_channel = 1;
+    		int last_channel = n_channels;
+			ReportNumSamplesBehindCallback report_num_samples_behind_cb(acquisition_client, 10); // todo1: n_channels instead of 10
+
+			auto create_decision_maker = [&report_num_samples_behind_cb, &ri, &opt, &calibrations, &first_channel](uint32_t channel) -> std::shared_ptr<DecisionMaker> {
+            	std::unique_ptr<DecisionMaker> dec_maker;
+				dec_maker = std::make_unique<RawHashDecisionMaker>(ri, &opt, SingleChannelCalibration {
+					.range = calibrations.ranges[channel-first_channel],
+					.digitisation = calibrations.digitisation,
+					.offset = calibrations.offsets[channel-first_channel]
+				});
+				return std::make_unique<CombinedDecisionMaker>(std::vector<std::shared_ptr<DecisionMaker>> {
+					std::make_shared<ReportChunkSampleStartDecisionMaker>(report_num_samples_behind_cb),
+					std::move(dec_maker)
+				});
+			};
+
+			DataServiceClient::ReadUntilSetup setup = {
+				.first_channel = (uint32_t)first_channel, .last_channel = (uint32_t)last_channel, .calibrated = true, 
+				.sample_minimum_chunk_size = 100, .max_unblock_read_length_samples = 1000, 
+				.accepted_first_chunk_classifications = {} // all
+			};
+			if (!data_client.start_read_until(setup)) {
+				log("Failed to start read-until", spdlog::level::err);
+				exit(EXIT_FAILURE);
+			}
+
+			start_acquisition();
+			uint32_t num_monitored_channels = (uint32_t)(last_channel - first_channel + 1);
+			auto decision_maker_stats = start_decision_maker_threads(data_client, create_decision_maker, first_channel, last_channel);
+
+			// todo1: remove
+			int run_time = 2000; // todo
+        	wait_until_elapsed_or_interrupted(run_time);
+			log("Stopping readuntil");
+			if (!data_client.stop_read_until()) {
+				log("Failed to stop read-until", spdlog::level::err);
+				exit(EXIT_FAILURE);
+			} 
+			// signals threads to stop
+
+			log("Waiting for decision maker threads to finish");
+			DecisionStats decision_stats;
+			decision_stats.num_channels = 0;
+			for (size_t i(0); i < decision_maker_stats.size(); ++i) {
+				decision_stats += decision_maker_stats[i].get();
+				log("Joined ru thread for channel " + std::to_string(i+1) + " / " + std::to_string(decision_maker_stats.size()));
+			}
+			log("Decision maker threads finished");
+			log("Decision stats: " + decision_stats.to_string());
+
+			if ((uint32_t)decision_stats.num_channels != num_monitored_channels) {
+				log("Not all channels received data: " + std::to_string(decision_stats.num_channels) + " / " + std::to_string(num_monitored_channels), spdlog::level::warn);
+			}
+
+			if (!acquisition_client.stop_sequencing()) {
+				log("Failed to stop sequencing, may already be stopped", spdlog::level::warn);
+			}
+
+			ri_idx_destroy(ri);
+		}
+		#endif
 	}
+
 	// n_parts = idx_rdr->n_parts;
 	ri_idx_reader_close(idx_rdr);
 	if(pore.pore_vals)free(pore.pore_vals);

@@ -14,6 +14,7 @@
 #include <float.h>  // for FLT_MAX
 
 #ifdef PROFILERH
+// total counts across all reads
 double ri_filereadtime = 0.0;
 double ri_signaltime = 0.0;
 double ri_sketchtime = 0.0;
@@ -33,7 +34,7 @@ typedef struct rh_norm_inference_s{
 // INFER_MAP: to use ML model for inference
 // #define INFER_MAP
 
-static ri_tbuf_t *ri_tbuf_init(void)
+ri_tbuf_t *ri_tbuf_init(void)
 {
 	ri_tbuf_t *b;
 	b = (ri_tbuf_t*)calloc(1, sizeof(ri_tbuf_t));
@@ -67,7 +68,7 @@ static ri_tbuf_t *ri_tbuf_init(void)
 	return b;
 }
 
-static void ri_tbuf_destroy(ri_tbuf_t *b)
+void ri_tbuf_destroy(ri_tbuf_t *b)
 {
 	if (b == 0) return;
 	ri_km_destroy(b->km);
@@ -518,8 +519,6 @@ static void normalize_chains(ri_reg1_t* reg, rh_norm_inference_t** norm_vals){
     }
 }
 
-// map new chunk to a reference, reusing mapping computations for previous chunks
-// return: true if mapping was successful
 bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 		const uint32_t s_len, // chunk length
 		const float *sig, // raw signal for chunk
@@ -683,121 +682,6 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 	return false;
 }
 
-// // map reads coming from readuntil
-// void map_reads_from_ru() {
-// 	// see map_worker_pipeline for what is freed and how (memory allocator)
-// 	// reuse buffer and reg for each read
-// 	ri_tbuf_t* b = ri_tbuf_init();
-// 	ri_reg1_t* reg = (ri_reg1_t*)malloc(sizeof(ri_reg1_t));
-
-// todo: cannot reuse reg0 due to write out
-
-// todo: write_out_mappings_and_free(reg0, ri);
-// }
-
-// map reads from a single channel to a single reference
-class ChannelDataMapper {
-	public:
-		ChannelDataMapper(const ri_idx_t *ri, const ri_mapopt_t *opt): ri(ri), opt(opt) {
-			b = ri_tbuf_init();
-		}
-
-		// called by thread, tries to map current read in channel
-		void map_reads() {
-
-			{
-				ri_reg1_t* reg0 = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
-				// start new read
-				init_reg1_t(reg0);
-
-				uint32_t c_count = 0;
-				double mean_sum = 0, std_dev_sum = 0;
-				uint32_t n_events_sum = 0;
-				double t = ri_realtime();
-
-				// todo
-				uint32_t l_chunk = 10;
-				ri_sig_t* sig = NULL;
-				uint32_t qlen = 100;
-				
-				// process chunks
-
-				double mapping_time = ri_realtime() - t;
-				#ifdef PROFILERH
-				ri_maptime += mapping_time;
-				#endif
-
-				try_mapping_if_none_found(reg0, opt);
-				compute_tag_and_mapping_info(c_count + 1, l_chunk, reg0, opt, mapping_time, qlen, sig, ri);
-				free_most_of_ri_reg1_t(b->km, reg0);
-				km_destroy_and_recreate(&(b->km));
-
-				// todo: write to queue instead which writes out reads
-				write_out_mappings_and_free(reg0, ri);
-
-				// wait until read has ended
-			}
-
-		}
-
-		~ChannelDataMapper() {
-			// free buffer and reg
-			ri_tbuf_destroy(b);
-		}
-	private:
-		ri_tbuf_t* b = NULL; // thread-local buffer
-		const ri_idx_t *ri; // reference index
-		const ri_mapopt_t *opt; // mapping options
-};
-
-// class RawHashDecisionMaker : public DecisionMaker {
-// public:
-// 	RawHashDecisionMaker(const ri_idx_t *ri): ri(ri) {
-// 		b = ri_tbuf_init();
-// 	}
-// 	~RawHashDecisionMaker() {
-// 		// free buffer and reg
-// 		ri_tbuf_destroy(b);
-// 	}
-// 	Decision decide(ReadIdentifier const& read_ident, ChunkType const& chunk, bool is_first_chunk) override {
-// 		// check if it maps
-// 		if (is_first_chunk) {
-// 			mean_sum = 0;
-// 			std_dev_sum = 0;
-// 			reg0 = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
-// 			// start new read
-// 			init_reg1_t(reg0);
-// 		}
-
-// 		try_mapping_if_none_found(reg0, opt);
-// 		if (reg0->n_maps == 0) {
-//         	// no map
-// 			return Decision::STOP_RECEIVING;
-// 		} else {
-// 			// mapped
-// 			return Decision::REJECT;
-// 		}
-// 		// return decision;
-// 	}
-
-// 	void mark_final_decision(ReadIdentifier const& read_ident, Decision const& decision) {
-// 		// write to file
-
-// 		compute_tag_and_mapping_info(c_count, l_chunk, reg0, opt, mapping_time, qlen, sig, ri);
-// 		free_most_of_ri_reg1_t(b->km, reg0);
-// 		km_destroy_and_recreate(&(b->km));
-
-// 		// todo: write to queue instead which writes out reads
-// 		write_out_mappings_and_free(reg0, ri);
-// 	}
-// private:
-// 	ri_tbuf_t* b = NULL; // thread-local buffer
-// 	const ri_idx_t *ri; // reference index
-
-// 	// per read
-// 	ri_reg1_t* reg0;
-// 	double mean_sum, std_dev_sum;
-// };
 
 // map a single read to a reference, called in parallel
 static void map_worker_for(void *_data,
@@ -840,11 +724,11 @@ static void map_worker_for(void *_data,
 	ri_maptime += mapping_time;
 	#endif
 
-	// correct for c_count in for-loop incremented once too much, todo4: could be solved more elegantly/robustly
+	// correct for c_count in for-loop incremented once too much, todo4: could be solved more elegantly/robustly, also correct +1 below
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
 	try_mapping_if_none_found(reg0, opt);
-	compute_tag_and_mapping_info(c_count + 1, l_chunk, reg0, opt, mapping_time, qlen, sig, s->p->ri);
+	compute_tag_and_mapping_info(c_count + 1, (c_count + 1) * l_chunk, reg0, opt, mapping_time, qlen, sig->name, s->p->ri);
 	free_most_of_ri_reg1_t(b->km, reg0);
 	km_destroy_and_recreate(&(b->km));
 
@@ -864,11 +748,16 @@ void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt) {
     }
 }
 
-// l_chunk: length of each chunk
-// qlen: total length of read (all received raw signals)
-void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t l_chunk, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, ri_sig_t *sig, const ri_idx_t* ri) {
-    float read_position_scale = ((float)num_chunks * l_chunk / reg0->offset) / opt->sample_per_base; // todo4: what is this doing? what is offset?
-    mm_reg1_t *chains = reg0->creg;
+// todo1: remove or replace by MappingInfo
+// struct SimpleReadIdentifier {
+// 	uint32_t read_nb; // read number, corresponds to ri_sig_s.rid
+// 	char* read_id; // read id, corresponds to ri_sig_s.name
+// };
+
+void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, char* read_id, const ri_idx_t* ri) {
+    float read_position_scale = ((float)processed_len / reg0->offset) / opt->sample_per_base; // avg num_bps/num_events of processed signal
+
+	mm_reg1_t *chains = reg0->creg;
     if (!chains) {
         reg0->n_cregs = 0;
     }
@@ -910,8 +799,9 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t l_chunk, ri_reg1
             strcat(tags, buffer);
         }
 
-        reg0->read_id = sig->rid;
-        reg0->read_name = sig->name;
+        // reg0->read_id = sig->rid;
+        // reg0->read_name = sig->name;
+		reg0->read_name = read_id;
         reg0->maps[0].read_length = (ri->flag & RI_I_SIG_TARGET) ? reg0->offset : (uint32_t)(read_position_scale * reg0->offset);
         reg0->maps[0].tags = tags;
 		// write invalid fields since no mapping
@@ -948,8 +838,9 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t l_chunk, ri_reg1
             sprintf(buffer, "\tsm:f:%.2f", mean_chain_score);
             strcat(tags, buffer);
 
-            reg0->read_id = sig->rid;
-            reg0->read_name = sig->name;
+            // reg0->read_id = sig->rid;
+            // reg0->read_name = sig->name;
+			reg0->read_name = read_id;
             reg0->maps[m].read_length = (ri->flag & RI_I_SIG_TARGET) ? (reg0->offset) : (uint32_t)(read_position_scale * chains[c_id].qe);
             reg0->maps[m].tags = tags;
             reg0->maps[m].ref_id = chains[c_id].rid;
@@ -1140,6 +1031,7 @@ static void *map_worker_pipeline(void *shared,
     return 0;
 }
 
+// todo4, todo1: refactor out reg0->maps,read_name into new structure so reg0 can be freed
 void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped) {
 	was_mapped = was_mapped && (reg0->n_maps > 0);
 	if (was_mapped) {

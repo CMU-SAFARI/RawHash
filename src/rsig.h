@@ -17,8 +17,8 @@ extern "C" {
 #endif
 
 typedef struct ri_sig_s{
-	uint32_t rid, l_sig; //read id and length of the signal values
-	char *name; //name of the read
+	uint32_t rid, l_sig; //read number, and length of the signal values
+	char *name; //read id (name of the read, typically a UUID)
 
 	uint64_t offset; // offset in ri_idx_t::S
 

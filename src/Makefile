@@ -1,4 +1,5 @@
-DEBUG_OPTS=-O2
+DEBUG_OPTS=-O2 -fsanitize=address
+CPP_STANDARD=c++11
 # DEBUG=0
 
 # get hostname
@@ -9,7 +10,6 @@ ifeq ($(HOSTNAME),mikado)
 # todo: remove this section again
 # disable debug for index creation because there is a segfault (address sanitizer)
 DEBUG=1 #todo
-DEBUG_OPTS=-O0
 # HDF5_COMPILE=0
 HDF5_INCLUDE_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/include
 HDF5_LIB_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/lib
@@ -17,27 +17,37 @@ POD5_DOWNLOAD=0
 # NOHDF5=1
 NOPOD5=1
 # also disable fsanitize in debug (cflags etc) below!
-asan=
 # asan=1
 tsan=
+RUCLIENT_ENABLED=1
+
+asan= # disable because grpc does not support it well, see cmakelists in readuntil_client
+DEBUG_OPTS=-O0 # -fsanitize=address # not supported for grpc
+
 endif
 
 # copied from makefile_readuntil, todo: hardcoded paths
-# LIBS += -L /home/mmordig/rawhash_project/readuntil_fake/build/
-# LIBS += /home/mmordig/rawhash_project/readuntil_fake/build/libont_device_client_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libgrpc_utils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libutils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libru_method_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libdata_client_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libgrpc_utils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libreaduntil_grpc_proto.a /home/mmordig/.local/lib/libgrpc++_reflection.a /home/mmordig/.local/lib/libgrpc++.a /home/mmordig/.local/lib/libgrpc.a /home/mmordig/.local/lib/libre2.a /home/mmordig/.local/lib/libupb_json_lib.a /home/mmordig/.local/lib/libupb_textformat_lib.a /home/mmordig/.local/lib/libupb_collections_lib.a /home/mmordig/.local/lib/libupb.a /home/mmordig/.local/lib/libutf8_range_lib.a /home/mmordig/.local/lib/libz.a /home/mmordig/.local/lib/libcares.a /home/mmordig/.local/lib/libgpr.a /home/mmordig/.local/lib/libabsl_random_distributions.a /home/mmordig/.local/lib/libabsl_random_seed_sequences.a /home/mmordig/.local/lib/libabsl_random_internal_pool_urbg.a /home/mmordig/.local/lib/libabsl_random_internal_randen.a /home/mmordig/.local/lib/libabsl_random_internal_randen_hwaes.a /home/mmordig/.local/lib/libabsl_random_internal_randen_hwaes_impl.a /home/mmordig/.local/lib/libabsl_random_internal_randen_slow.a /home/mmordig/.local/lib/libabsl_random_internal_platform.a /home/mmordig/.local/lib/libabsl_random_internal_seed_material.a /home/mmordig/.local/lib/libabsl_random_seed_gen_exception.a /home/mmordig/.local/lib/libssl.a /home/mmordig/.local/lib/libcrypto.a /home/mmordig/.local/lib/libaddress_sorting.a -ldl -lm -lrt /home/mmordig/.local/lib/libprotobuf.a /home/mmordig/.local/lib/libabsl_log_internal_check_op.a /home/mmordig/.local/lib/libabsl_leak_check.a /home/mmordig/.local/lib/libabsl_die_if_null.a /home/mmordig/.local/lib/libabsl_log_internal_conditions.a /home/mmordig/.local/lib/libabsl_log_internal_message.a /home/mmordig/.local/lib/libabsl_log_internal_nullguard.a /home/mmordig/.local/lib/libabsl_examine_stack.a /home/mmordig/.local/lib/libabsl_log_internal_format.a /home/mmordig/.local/lib/libabsl_log_internal_proto.a /home/mmordig/.local/lib/libabsl_log_internal_log_sink_set.a /home/mmordig/.local/lib/libabsl_log_sink.a /home/mmordig/.local/lib/libabsl_log_entry.a /home/mmordig/.local/lib/libabsl_flags.a /home/mmordig/.local/lib/libabsl_flags_internal.a /home/mmordig/.local/lib/libabsl_flags_marshalling.a /home/mmordig/.local/lib/libabsl_flags_reflection.a /home/mmordig/.local/lib/libabsl_flags_config.a /home/mmordig/.local/lib/libabsl_flags_program_name.a /home/mmordig/.local/lib/libabsl_flags_private_handle_accessor.a /home/mmordig/.local/lib/libabsl_flags_commandlineflag.a /home/mmordig/.local/lib/libabsl_flags_commandlineflag_internal.a /home/mmordig/.local/lib/libabsl_log_initialize.a /home/mmordig/.local/lib/libabsl_log_globals.a /home/mmordig/.local/lib/libabsl_log_internal_globals.a /home/mmordig/.local/lib/libabsl_raw_hash_set.a /home/mmordig/.local/lib/libabsl_hash.a /home/mmordig/.local/lib/libabsl_city.a /home/mmordig/.local/lib/libabsl_low_level_hash.a /home/mmordig/.local/lib/libabsl_hashtablez_sampler.a /home/mmordig/.local/lib/libabsl_statusor.a /home/mmordig/.local/lib/libabsl_status.a /home/mmordig/.local/lib/libabsl_cord.a /home/mmordig/.local/lib/libabsl_cordz_info.a /home/mmordig/.local/lib/libabsl_cord_internal.a /home/mmordig/.local/lib/libabsl_cordz_functions.a /home/mmordig/.local/lib/libabsl_exponential_biased.a /home/mmordig/.local/lib/libabsl_cordz_handle.a /home/mmordig/.local/lib/libabsl_crc_cord_state.a /home/mmordig/.local/lib/libabsl_crc32c.a /home/mmordig/.local/lib/libabsl_crc_internal.a /home/mmordig/.local/lib/libabsl_crc_cpu_detect.a /home/mmordig/.local/lib/libabsl_bad_optional_access.a /home/mmordig/.local/lib/libabsl_str_format_internal.a /home/mmordig/.local/lib/libabsl_strerror.a /home/mmordig/.local/lib/libabsl_synchronization.a /home/mmordig/.local/lib/libabsl_stacktrace.a /home/mmordig/.local/lib/libabsl_symbolize.a /home/mmordig/.local/lib/libabsl_debugging_internal.a /home/mmordig/.local/lib/libabsl_demangle_internal.a /home/mmordig/.local/lib/libabsl_graphcycles_internal.a /home/mmordig/.local/lib/libabsl_kernel_timeout_internal.a /home/mmordig/.local/lib/libabsl_malloc_internal.a /home/mmordig/.local/lib/libabsl_time.a /home/mmordig/.local/lib/libabsl_civil_time.a /home/mmordig/.local/lib/libabsl_time_zone.a /home/mmordig/.local/lib/libabsl_bad_variant_access.a /home/mmordig/.local/lib/libutf8_validity.a /home/mmordig/.local/lib/libabsl_strings.a /home/mmordig/.local/lib/libabsl_int128.a /home/mmordig/.local/lib/libabsl_string_view.a /home/mmordig/.local/lib/libabsl_throw_delegate.a /home/mmordig/.local/lib/libabsl_strings_internal.a /home/mmordig/.local/lib/libabsl_base.a /home/mmordig/.local/lib/libabsl_raw_logging_internal.a /home/mmordig/.local/lib/libabsl_log_severity.a /home/mmordig/.local/lib/libabsl_spinlock_wait.a -lrt /home/mmordig/rawhash_project/readuntil_fake/build/libchannel_data_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libcurrent_read_data_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libchannel_stats_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libutils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libthreadsafe_queue_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/external/spdlog/libspdlogd.a
-# INCLUDES += -I/home/mmordig/rawhash_project/readuntil_fake/external/spdlog/include \
-# 	-I/home/mmordig/rawhash_project/readuntil_fake/include/
-
+ifdef RUCLIENT_ENABLED
+    $(info ruclient enabled)
+	CPP_STANDARD=c++20
+	# todo4: add -Werror -DDEBUG
+	LIBS += -L /home/mmordig/rawhash_project/readuntil_fake/build/
+	LIBS += /home/mmordig/rawhash_project/readuntil_fake/build/libont_device_client_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libgrpc_utils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libutils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libru_method_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libdata_client_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libgrpc_utils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libreaduntil_grpc_proto.a /home/mmordig/.local/lib/libgrpc++_reflection.a /home/mmordig/.local/lib/libgrpc++.a /home/mmordig/.local/lib/libgrpc.a /home/mmordig/.local/lib/libre2.a /home/mmordig/.local/lib/libupb_json_lib.a /home/mmordig/.local/lib/libupb_textformat_lib.a /home/mmordig/.local/lib/libupb_collections_lib.a /home/mmordig/.local/lib/libupb.a /home/mmordig/.local/lib/libutf8_range_lib.a /home/mmordig/.local/lib/libz.a /home/mmordig/.local/lib/libcares.a /home/mmordig/.local/lib/libgpr.a /home/mmordig/.local/lib/libabsl_random_distributions.a /home/mmordig/.local/lib/libabsl_random_seed_sequences.a /home/mmordig/.local/lib/libabsl_random_internal_pool_urbg.a /home/mmordig/.local/lib/libabsl_random_internal_randen.a /home/mmordig/.local/lib/libabsl_random_internal_randen_hwaes.a /home/mmordig/.local/lib/libabsl_random_internal_randen_hwaes_impl.a /home/mmordig/.local/lib/libabsl_random_internal_randen_slow.a /home/mmordig/.local/lib/libabsl_random_internal_platform.a /home/mmordig/.local/lib/libabsl_random_internal_seed_material.a /home/mmordig/.local/lib/libabsl_random_seed_gen_exception.a /home/mmordig/.local/lib/libssl.a /home/mmordig/.local/lib/libcrypto.a /home/mmordig/.local/lib/libaddress_sorting.a -ldl -lm -lrt /home/mmordig/.local/lib/libprotobuf.a /home/mmordig/.local/lib/libabsl_log_internal_check_op.a /home/mmordig/.local/lib/libabsl_leak_check.a /home/mmordig/.local/lib/libabsl_die_if_null.a /home/mmordig/.local/lib/libabsl_log_internal_conditions.a /home/mmordig/.local/lib/libabsl_log_internal_message.a /home/mmordig/.local/lib/libabsl_log_internal_nullguard.a /home/mmordig/.local/lib/libabsl_examine_stack.a /home/mmordig/.local/lib/libabsl_log_internal_format.a /home/mmordig/.local/lib/libabsl_log_internal_proto.a /home/mmordig/.local/lib/libabsl_log_internal_log_sink_set.a /home/mmordig/.local/lib/libabsl_log_sink.a /home/mmordig/.local/lib/libabsl_log_entry.a /home/mmordig/.local/lib/libabsl_flags.a /home/mmordig/.local/lib/libabsl_flags_internal.a /home/mmordig/.local/lib/libabsl_flags_marshalling.a /home/mmordig/.local/lib/libabsl_flags_reflection.a /home/mmordig/.local/lib/libabsl_flags_config.a /home/mmordig/.local/lib/libabsl_flags_program_name.a /home/mmordig/.local/lib/libabsl_flags_private_handle_accessor.a /home/mmordig/.local/lib/libabsl_flags_commandlineflag.a /home/mmordig/.local/lib/libabsl_flags_commandlineflag_internal.a /home/mmordig/.local/lib/libabsl_log_initialize.a /home/mmordig/.local/lib/libabsl_log_globals.a /home/mmordig/.local/lib/libabsl_log_internal_globals.a /home/mmordig/.local/lib/libabsl_raw_hash_set.a /home/mmordig/.local/lib/libabsl_hash.a /home/mmordig/.local/lib/libabsl_city.a /home/mmordig/.local/lib/libabsl_low_level_hash.a /home/mmordig/.local/lib/libabsl_hashtablez_sampler.a /home/mmordig/.local/lib/libabsl_statusor.a /home/mmordig/.local/lib/libabsl_status.a /home/mmordig/.local/lib/libabsl_cord.a /home/mmordig/.local/lib/libabsl_cordz_info.a /home/mmordig/.local/lib/libabsl_cord_internal.a /home/mmordig/.local/lib/libabsl_cordz_functions.a /home/mmordig/.local/lib/libabsl_exponential_biased.a /home/mmordig/.local/lib/libabsl_cordz_handle.a /home/mmordig/.local/lib/libabsl_crc_cord_state.a /home/mmordig/.local/lib/libabsl_crc32c.a /home/mmordig/.local/lib/libabsl_crc_internal.a /home/mmordig/.local/lib/libabsl_crc_cpu_detect.a /home/mmordig/.local/lib/libabsl_bad_optional_access.a /home/mmordig/.local/lib/libabsl_str_format_internal.a /home/mmordig/.local/lib/libabsl_strerror.a /home/mmordig/.local/lib/libabsl_synchronization.a /home/mmordig/.local/lib/libabsl_stacktrace.a /home/mmordig/.local/lib/libabsl_symbolize.a /home/mmordig/.local/lib/libabsl_debugging_internal.a /home/mmordig/.local/lib/libabsl_demangle_internal.a /home/mmordig/.local/lib/libabsl_graphcycles_internal.a /home/mmordig/.local/lib/libabsl_kernel_timeout_internal.a /home/mmordig/.local/lib/libabsl_malloc_internal.a /home/mmordig/.local/lib/libabsl_time.a /home/mmordig/.local/lib/libabsl_civil_time.a /home/mmordig/.local/lib/libabsl_time_zone.a /home/mmordig/.local/lib/libabsl_bad_variant_access.a /home/mmordig/.local/lib/libutf8_validity.a /home/mmordig/.local/lib/libabsl_strings.a /home/mmordig/.local/lib/libabsl_int128.a /home/mmordig/.local/lib/libabsl_string_view.a /home/mmordig/.local/lib/libabsl_throw_delegate.a /home/mmordig/.local/lib/libabsl_strings_internal.a /home/mmordig/.local/lib/libabsl_base.a /home/mmordig/.local/lib/libabsl_raw_logging_internal.a /home/mmordig/.local/lib/libabsl_log_severity.a /home/mmordig/.local/lib/libabsl_spinlock_wait.a -lrt /home/mmordig/rawhash_project/readuntil_fake/build/libchannel_data_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libcurrent_read_data_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libchannel_stats_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libutils_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/libthreadsafe_queue_LIB.a /home/mmordig/rawhash_project/readuntil_fake/build/external/spdlog/libspdlogd.a
+	INCLUDES += -I/home/mmordig/rawhash_project/readuntil_fake/external/spdlog/include \
+		-I/home/mmordig/rawhash_project/readuntil_fake/include/
+	CFLAGS += -DRUCLIENT_ENABLED
+	CPPFLAGS += -DRUCLIENT_ENABLED
+else
+    $(info ruclient disabled)
+endif
 
 #pass DEBUG=1 to make to enable debugging
 ifdef DEBUG
-	CFLAGS=-Wall ${DEBUG_OPTS} -fsanitize=address -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=--std=c++11 -Wall ${DEBUG_OPTS} -fsanitize=address -g -fopenmp -march=native -pthread -DHAVE_KALLOC
-#	CFLAGS=-Wall ${DEBUG_OPTS} -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-#	CPPFLAGS=--std=c++11 -Wall ${DEBUG_OPTS} -g -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS += -Wall ${DEBUG_OPTS} -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CPPFLAGS += --std=${CPP_STANDARD} -Wall ${DEBUG_OPTS} -g -fopenmp -march=native -pthread -DHAVE_KALLOC
 else
-	CFLAGS=-Wall -O3 -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS += -Wall -O3 -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CPPFLAGS += -std=${CPP_STANDARD} -Wall -O3 -fopenmp -march=native -pthread -DHAVE_KALLOC
 endif
 
 #pass PROFILE=1 to make to enable profiling
@@ -47,6 +57,10 @@ ifdef PROFILE
 endif
 
 OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rindex.o lchain.o rseed.o rmap.o dtw.o hit.o main.o
+
+ifdef RUCLIENT_ENABLED
+	OBJS += rawhash_ruclient.o
+endif
 
 # check if ccache is available
 CCACHE := $(shell command -v ccache 2> /dev/null)

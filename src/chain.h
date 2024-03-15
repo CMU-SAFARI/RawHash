@@ -29,7 +29,7 @@ typedef struct {
 	int32_t cnt;            // number of minimizers; if on the reverse strand
 	int32_t rid;            // reference index; if this is an alignment from inversion rescue
 	int32_t score;          // DP alignment score
-	int32_t qs, qe, rs, re; // query start and end; reference start and end
+	int32_t qs, qe, rs, re; // query start and end; reference start and end, in terms of samples (not basepairs)
 	int32_t parent, subsc;  // parent==id if primary; best alternate mapping score
 	int32_t as;             // offset in the a[] array (for internal uses only)
 	int32_t mlen, blen;     // seeded exact match length; seeded alignment block length
