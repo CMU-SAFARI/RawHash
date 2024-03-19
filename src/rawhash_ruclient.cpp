@@ -37,59 +37,55 @@ float* convert_to_float_signal_with_outliers_removed(int16_t* int_raw_signal, ui
 	return sigF;
 }
 
-RawHashDecisionMaker::RawHashDecisionMaker(const ri_idx_t *ri, const ri_mapopt_t *opt, SingleChannelCalibration calibration): ri(ri), opt(opt), calibration(calibration) {
-	b = ri_tbuf_init();
-}
-RawHashDecisionMaker::~RawHashDecisionMaker() {
-	// free buffer and reg
-	ri_tbuf_destroy(b);
-}
-
-Decision RawHashDecisionMaker::decide(ReadIdentifier const& read_ident, ChunkType const& chunk, uint32_t chunk_idx) {
-	// check if it maps
-	if (chunk_idx == 0) {
-		mean_sum = 0;
-		std_dev_sum = 0;
-		n_events_sum = 0;
-		c_count = 0;
-		mapping_time = 0;
-		qlen = 0; // received signal length
-		reg0 = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
-		init_reg1_t(reg0);
-	}
-
-	bool unmapped;
-	if (c_count < opt->max_num_chunk) {
-		double t = ri_realtime();
-
-		uint32_t l_sig = 0; // actual chunk length after removing outliers
-		float* signal_with_outliers_removed = convert_to_float_signal_with_outliers_removed(
-			(int16_t*)chunk.raw_data.get(), // from bytes to int16
-			chunk.chunk_length(), &l_sig,
-			calibration.range, calibration.digitisation, calibration.offset
-		);
-
-		unmapped = !continue_mapping_with_new_chunk(ri, l_sig, signal_with_outliers_removed, reg0, b, opt, read_ident.read_id.c_str(), &mean_sum, &std_dev_sum, &n_events_sum);
-		mapping_time += ri_realtime() - t;
+Decision ChannelReadMapper::try_mapping_new_chunk(ReadIdentifier const& read_ident, ChunkType const& chunk, uint32_t chunk_idx) {
+	assert(c_count == chunk_idx);
+	assert(c_count < opt->max_num_chunk);
 	
-		c_count += 1;
-		qlen += l_sig;
-	} else {
+	double t = ri_realtime();
+	uint32_t l_sig = 0; // actual chunk length after removing outliers
+	float* signal_with_outliers_removed = convert_to_float_signal_with_outliers_removed(
+		(int16_t*)chunk.raw_data.get(), // from bytes to int16, todo1: use .release()
+		chunk.chunk_length(), &l_sig,
+		calibration.range, calibration.digitisation, calibration.offset
+	);
+
+	bool mapped = continue_mapping_with_new_chunk(ri, l_sig, signal_with_outliers_removed, reg0, b, opt, read_ident.read_id.c_str(), &mean_sum, &std_dev_sum, &n_events_sum);
+	mapping_time += ri_realtime() - t;
+
+	c_count += 1;
+	qlen += l_sig;
+
+	// try mapping with less stringent criteria
+	if (c_count == opt->max_num_chunk) {
 		try_mapping_if_none_found(reg0, opt);
-		unmapped = (reg0->n_maps == 0);
+		mapped = (reg0->n_maps != 0);
 	}
-	
 
-	if (unmapped) {
+	// mapping strategy
+	if ((c_count == opt->max_num_chunk) && !mapped) {
 		return Decision::STOP_RECEIVING;
+	} else if (!mapped) {
+		return Decision::UNDECIDED;
 	} else {
 		return Decision::REJECT;
 	}
 }
 
-void RawHashDecisionMaker::mark_final_decision(ReadIdentifier const& read_ident, Decision const& decision) {
-	// write to file
+ChannelReadMapper::ChannelReadMapper(const ri_idx_t *ri, const ri_mapopt_t *opt, 
+		SingleChannelCalibration calibration, ri_tbuf_t* b, std::string read_id) :
+		ri(ri), opt(opt), calibration(calibration), b(b), read_id(read_id) {
+	
+	mean_sum = 0;
+	std_dev_sum = 0;
+	n_events_sum = 0;
+	c_count = 0;
+	mapping_time = 0;
+	qlen = 0; // received signal length
+	reg0 = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
+	init_reg1_t(reg0);
+}
 
+void ChannelReadMapper::mark_final_decision(ReadIdentifier const& read_ident, Decision const& decision) {
 	#ifdef PROFILERH
 	ri_maptime += mapping_time;
 	#endif
@@ -107,6 +103,28 @@ void RawHashDecisionMaker::mark_final_decision(ReadIdentifier const& read_ident,
 	free(reg0);
 }
 
+RawHashDecisionMaker::RawHashDecisionMaker(const ri_idx_t *ri, const ri_mapopt_t *opt, SingleChannelCalibration calibration): 
+	b(ri_tbuf_init()), ri(ri), opt(opt), calibration(calibration), channel_read_mapper(ri, opt, calibration, b, "") {
+}
+RawHashDecisionMaker::~RawHashDecisionMaker() {
+	// free buffer and reg
+	ri_tbuf_destroy(b);
+}
+
+Decision RawHashDecisionMaker::decide(ReadIdentifier const& read_ident, ChunkType const& chunk, uint32_t chunk_idx) {
+	// check if it maps
+	if (chunk_idx == 0) {
+		channel_read_mapper = ChannelReadMapper(ri, opt, calibration, b, read_ident.read_id);
+	}
+
+	return channel_read_mapper.try_mapping_new_chunk(read_ident, chunk, chunk_idx);
+}
+
+void RawHashDecisionMaker::mark_final_decision(ReadIdentifier const& read_ident, Decision const& decision) {
+	channel_read_mapper.mark_final_decision(read_ident, decision);
+}
+
+// todo1: remove
 // // map reads coming from readuntil
 // void map_reads_from_ru() {
 // 	// see map_worker_pipeline for what is freed and how (memory allocator)
