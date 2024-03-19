@@ -4,7 +4,7 @@ CPP_STANDARD=c++11
 
 # get hostname
 HOSTNAME := $(shell hostname)
-ifeq ($(HOSTNAME),mikado)
+ifeq ($(HOSTNAME),mikado1)
 # Max' specific config
 
 # todo: remove this section again
@@ -24,6 +24,15 @@ RUCLIENT_ENABLED=1
 asan= # disable because grpc does not support it well, see cmakelists in readuntil_client
 DEBUG_OPTS=-O0 # -fsanitize=address # not supported for grpc
 
+PYBINDING=1
+else ifeq ($(HOSTNAME),mikado)
+# DEBUG=1 #todo
+# HDF5_COMPILE=0
+HDF5_INCLUDE_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/include
+HDF5_LIB_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/lib
+POD5_DOWNLOAD=0
+# NOHDF5=1
+NOPOD5=1
 endif
 
 # copied from makefile_readuntil, todo: hardcoded paths
@@ -56,7 +65,15 @@ ifdef PROFILE
 	CPPFLAGS+=-g -fno-omit-frame-pointer -march=native -DPROFILERH=1
 endif
 
-OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rindex.o lchain.o rseed.o rmap.o dtw.o hit.o main.o
+OBJS= kthread.o kalloc.o bseq.o roptions.o sequence_until.o rutils.o rsig.o revent.o rsketch.o rindex.o lchain.o rseed.o rmap.o dtw.o hit.o 
+ifdef PYBINDING
+    $(info building pybinding)
+	OBJS += rawhash_mapper.o
+	PROG=rawhash_pybinding
+else
+	OBJS += main.o
+	PROG=rawhash2
+endif
 
 ifdef RUCLIENT_ENABLED
 	OBJS += rawhash_ruclient.o
@@ -172,8 +189,6 @@ endif
 
 INCLUDES+=-I${WORKDIR}/tensorflow/
 LIBS+=-lm -lz -ldl -ltensorflowlite_c
-
-PROG=rawhash2
 
 ifneq ($(aarch64),)
 	arm_neon=1

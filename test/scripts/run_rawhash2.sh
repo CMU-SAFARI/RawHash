@@ -13,5 +13,9 @@ THREAD=$7 #Number of threads to use
 PARAMS=$8 #(optional -- you can keep it empty) custom parameters to set on top of the default parameters
 
 # todo: enable indexing again when running with server via extra port arg
-# /usr/bin/time -vpo "${OUTDIR}/${PREFIX}_rawhash2_index_${PRESETX}.time" rawhash2 -x ${PRESETX} -t ${THREAD} -p "${PORE}" -d "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${PARAMS} ${REF}
+# index
+/usr/bin/time -vpo "${OUTDIR}/${PREFIX}_rawhash2_index_${PRESETX}.time" rawhash2 -x ${PRESETX} -t ${THREAD} -p "${PORE}" -d "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${PARAMS} ${REF}
+# map
 /usr/bin/time -vpo "${OUTDIR}/${PREFIX}_rawhash2_map_${PRESETX}.time" rawhash2 -x ${PRESETX} -t ${THREAD} -o "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.paf" ${PARAMS} "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${SIGNALS}
+# rawhash_pybinding
+# /usr/bin/time -vpo "${OUTDIR}/${PREFIX}_rawhash2_map_${PRESETX}.time" rawhash_pybinding -x ${PRESETX} -t ${THREAD} -o "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.paf" ${PARAMS} "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${SIGNALS}
