@@ -3,6 +3,11 @@
 
 #include "kalloc.h"
 
+#ifdef PROFILERH
+// total counts across all reads
+double ri_maptime = 0.0;
+#endif
+
 
 // convert to float and remove outliers
 // we receive int16 (checked in main.cpp) which we convert to float similar to ri_read_sig_slow5
@@ -39,6 +44,7 @@ RawHashDecisionMaker::~RawHashDecisionMaker() {
 	// free buffer and reg
 	ri_tbuf_destroy(b);
 }
+
 Decision RawHashDecisionMaker::decide(ReadIdentifier const& read_ident, ChunkType const& chunk, uint32_t chunk_idx) {
 	// check if it maps
 	if (chunk_idx == 0) {
@@ -49,7 +55,6 @@ Decision RawHashDecisionMaker::decide(ReadIdentifier const& read_ident, ChunkTyp
 		mapping_time = 0;
 		qlen = 0; // received signal length
 		reg0 = (ri_reg1_t*)malloc(sizeof(ri_reg1_t)); // todo: calloc and push to queue
-		// start new read
 		init_reg1_t(reg0);
 	}
 
