@@ -34,8 +34,8 @@ typedef struct {
 	ri_idx_t* ri;
 
 	int n_f, cur_f; //number of files, index of the current file (in sf)
-	ri_sig_file_t *sfp; //pointer to the current fast5 file
-	char **sf; //fast5 file names (multi if directory is given, single if single file is given)
+	ri_sig_file_t *sfp; //pointer to the current signal file
+	char **sf; //signal file names (multi if directory is given, single if single file is given)
 } pipeline_t;
 
 typedef struct {

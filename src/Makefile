@@ -190,13 +190,13 @@ pod5: check_zstd
 		cd $(WORKDIR) && mkdir -p $(POD5_URLDIR); cd $(POD5_URLDIR); wget -qO- $(POD5_URL) | tar -xzv; \
 	fi
 
-ifeq ($(NOHDF5),1)
-FASTDEPCOM=${CC}
-FASTDEPCOM_FLAGS=$(CFLAGS)
-else
+# ifeq ($(NOHDF5),1)
+# FASTDEPCOM=${CC}
+# FASTDEPCOM_FLAGS=$(CFLAGS)
+# else
 FASTDEPCOM=${CXX}
 FASTDEPCOM_FLAGS=$(CPPFLAGS)
-endif
+# endif
 
 # $(PROG): $(OBJS)
 # 	${FASTDEPCOM} $(FASTDEPCOM_FLAGS) $(OBJS) -o $(PROG) $(LIBS)

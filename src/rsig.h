@@ -49,7 +49,6 @@ typedef struct ri_sig_file_s {
 	unsigned long int pod5_row;
 	#ifndef NPOD5RH
 	Pod5ReadRecordBatch_t* batch;
-	
 	Pod5FileReader_t* pp; //POD5 file pointer
 	#endif
 
