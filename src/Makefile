@@ -4,7 +4,7 @@ CPP_STANDARD=c++11
 
 # get hostname
 HOSTNAME := $(shell hostname)
-ifeq ($(HOSTNAME),mikado1)
+ifeq ($(HOSTNAME),mikado)
 # Max' specific config
 
 # todo: remove this section again
@@ -24,9 +24,10 @@ RUCLIENT_ENABLED=1
 asan= # disable because grpc does not support it well, see cmakelists in readuntil_client
 DEBUG_OPTS=-O0 # -fsanitize=address # not supported for grpc
 
-PYBINDING=1
-else ifeq ($(HOSTNAME),mikado)
-# DEBUG=1 #todo
+# PYBINDING=1
+else ifeq ($(HOSTNAME),mikado1)
+# for Oleksandr
+DEBUG=1 #todo
 # HDF5_COMPILE=0
 HDF5_INCLUDE_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/include
 HDF5_LIB_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/lib

@@ -205,7 +205,6 @@ CLIParsedArgs parse_args(int argc, char *argv[]) {
 	ri_mapopt_t& opt = parsed_args.opt;
   	ri_idxopt_t& ipt = parsed_args.ipt;
 	int& n_threads = parsed_args.n_threads;
-	// int n_parts;
 	char*& idx_out_filename = parsed_args.idx_out_filename;
 	char*& fpore = parsed_args.fpore;
 	FILE*& fp_help = parsed_args.fp_help;
@@ -350,7 +349,7 @@ CLIParsedArgs parse_args(int argc, char *argv[]) {
 		else if (c == 362) {ipt.flag |= RI_I_REV_QUERY;}// --rev-query
 		else if (c == 363) {opt.model_map_path = o.arg;}// --map-model
 		else if (c == 364) {puts(RH_VERSION); exit(EXIT_SUCCESS);}// --version
-		else if (c == 365) {ru_server_port = atoi(o.arg); assert(ru_server_port > 0); }// --ru-server-port
+		else if (c == 365) {ru_server_port = atoi(o.arg); assert(ru_server_port >= 0); }// --ru-server-port
 		else if (c == 'V') {puts(RH_VERSION); exit(EXIT_SUCCESS);}
 	}
 

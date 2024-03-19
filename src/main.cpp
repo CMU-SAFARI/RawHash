@@ -29,20 +29,6 @@
 	using namespace ru_client;
 #endif
 
-#ifdef __linux__
-#include <sys/resource.h>
-#include <sys/time.h>
-void liftrlimit()
-{
-	struct rlimit r;
-	getrlimit(RLIMIT_AS, &r);
-	r.rlim_cur = r.rlim_max;
-	setrlimit(RLIMIT_AS, &r);
-}
-#else
-void liftrlimit() {}
-#endif
-
 int main(int argc, char *argv[])
 {
 	liftrlimit();
@@ -91,6 +77,22 @@ int main(int argc, char *argv[])
 			exit(EXIT_FAILURE);
 		}
 	}
+
+	// todo1: remove
+	int& port = ru_server_port;
+	if (port == 0) {
+        std::ifstream port_file("/home/mmordig/rawhash_project/ru_python/example_run/server_run/ont_device_server_port.txt");
+        if (!port_file.is_open()) {
+            log("Could not open port file", spdlog::level::err);
+            return EXIT_FAILURE;
+        }
+        port_file >> port;
+    }
+    if (port <= 0) {
+        log("Invalid port " + std::to_string(port), spdlog::level::err);
+        return EXIT_FAILURE;
+    }
+	log("Using port " + std::to_string(port));
 
 	if (ru_server_port == -1) {
 		// offline processing
@@ -167,7 +169,7 @@ int main(int argc, char *argv[])
 			assert((data_type.big_endian == is_big_endian()));
 
 			auto calibrations = device_client.get_calibration(1, n_channels);
-        	fprintf(stderr, ("Received calibrations: " + calibrations.to_string()).c_str());
+        	log("Received calibrations: " + calibrations.to_string(), spdlog::level::info);
 
 			auto start_acquisition = [&acquisition_client] {
 				if (!acquisition_client.start_sequencing()) {

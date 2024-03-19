@@ -172,6 +172,9 @@ static inline float* gen_events(void *km,
 	return events;
 }
 
+// sig: events
+// return values:
+// n_sig: will be assigned the number of events detected in the signal
 static inline float* normalize_signal(void *km,
 									  const float* sig,
 									  uint32_t s_len,
@@ -227,6 +230,7 @@ float* detect_events(void *km,
 
 	//Normalize the signal
 	events = normalize_signal(km, sig, s_len, mean_sum, std_dev_sum, n_events_sum, n);
+	if (*n == 0) return NULL;
 	comp_prefix_prefixsq(events, (*n), prefix_sum, prefix_sum_square);
 	
 	float* tstat1 = comp_tstat(km, prefix_sum, prefix_sum_square, (*n), window_length1);
