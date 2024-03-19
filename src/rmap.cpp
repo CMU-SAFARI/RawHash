@@ -1006,10 +1006,12 @@ static void *map_worker_pipeline(void *shared,
 				
 				if(reg0->read_name){
 					if(!p->su_stop || k < p->su_stop){
-						write_out_mappings_and_free(reg0, ri);
+						write_out_mappings_to_stdout(reg0, ri);
 					}else{
-						write_out_mappings_and_free(reg0, ri, false);
+						write_out_mappings_to_stdout(reg0, ri, false);
 					}
+					free_mappings_ri_reg1_t(reg0);
+					free(reg0);
 				}
 				s->reg[k] = NULL; // was freed
 				fflush(stdout);
@@ -1034,7 +1036,7 @@ static void *map_worker_pipeline(void *shared,
 }
 
 // todo4, todo1: refactor out reg0->maps,read_name into new structure so reg0 can be freed
-void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped) {
+void write_out_mappings_to_stdout(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped) {
 	was_mapped = was_mapped && (reg0->n_maps > 0);
 	if (was_mapped) {
 		for (int m = 0; m < reg0->n_maps; ++m) {
@@ -1053,10 +1055,10 @@ void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_m
 						reg0->maps[m].fragment_length,
 						reg0->maps[m].mapq,
 						reg0->maps[m].tags);
-			if (reg0->maps[m].tags) {
-				free(reg0->maps[m].tags);
-				reg0->maps[m].tags = NULL;
-			}
+			// if (reg0->maps[m].tags) {
+				// 	free(reg0->maps[m].tags);
+				// 	reg0->maps[m].tags = NULL;
+			// }
 		}
 	} else {
 		// maps[0] contains all necessary information
@@ -1066,11 +1068,21 @@ void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_m
 		reg0->maps[0].mapq, 
 		reg0->maps[0].tags);
 
-		if(reg0->maps[0].tags) {free(reg0->maps[0].tags); reg0->maps[0].tags = NULL;}
+		// if(reg0->maps[0].tags) {free(reg0->maps[0].tags); reg0->maps[0].tags = NULL;}
 	}
 
+// if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
+	// free(reg0);
+}
+
+void free_mappings_ri_reg1_t(ri_reg1_t *reg0) {
+	for (int m = 0; m < reg0->n_maps; ++m) {
+		if (reg0->maps[m].tags) {
+			free(reg0->maps[m].tags);
+			reg0->maps[m].tags = NULL;
+		}
+	}
 	if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
-	free(reg0);
 }
 
 int ri_map_file(const ri_idx_t *idx,

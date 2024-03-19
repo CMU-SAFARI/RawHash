@@ -120,8 +120,7 @@ void init_reg1_t(ri_reg1_t* reg0);
 
 // write out relevant mapping results to stdout, then free reg0
 // was_mapped: if false, write out "*" for mapping info even when read was mapped, e.g. when sequence until terminates the pipeline)
-// frees things not freed by "free_most_of_ri_reg1_t" and reg0 itself
-void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped=true);
+void write_out_mappings_to_stdout(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped=true);
 
 // compute tag field and mapping info, for later writing out mapping results to stdout
 // this allows to call free_most_of_ri_reg1_t() after this function while guaranteeing it can still be written out
@@ -135,6 +134,9 @@ void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt);
 
 // does not free "maps" field which is freed after outputting
 void free_most_of_ri_reg1_t(void* km, ri_reg1_t* reg0);
+// frees mappings (works even if no mappings were set), which is not freed by "free_most_of_ri_reg1_t" and reg0 itself
+void free_mappings_ri_reg1_t(ri_reg1_t* reg0);
+// finally need to call free(reg0)
 
 // map new chunk to a reference, reusing mapping computations for previous chunks
 // return: true if mapping was successful

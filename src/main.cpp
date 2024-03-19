@@ -23,7 +23,7 @@
 	namespace {
 		void log(const std::string& message, ru_client::internal::level::spdlog_level level = spdlog::level::info) {
 			// std::cout << "Sev" << level << ": " << message << std::endl;
-			fprintf(stderr, "%s", ("Sev" + std::to_string(level) + ": " + message).c_str());
+			fprintf(stderr, "%s\n", ("Sev" + std::to_string(level) + ": " + message).c_str());
 		}
 	}
 	using namespace ru_client;

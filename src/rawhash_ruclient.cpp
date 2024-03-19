@@ -97,7 +97,9 @@ void RawHashDecisionMaker::mark_final_decision(ReadIdentifier const& read_ident,
 	km_destroy_and_recreate(&(b->km));
 
 	// todo: write to queue instead which writes out reads
-	write_out_mappings_and_free(reg0, ri);
+	write_out_mappings_to_stdout(reg0, ri);
+	free_mappings_ri_reg1_t(reg0);
+	free(reg0);
 }
 
 // // map reads coming from readuntil
