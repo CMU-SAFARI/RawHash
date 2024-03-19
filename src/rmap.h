@@ -30,7 +30,7 @@ typedef struct ri_map_s{
 typedef struct ri_reg1_s{
 	uint32_t read_id;
 	// uint32_t ref_id;
-	const char* read_name;
+	const char* read_name; // assigned for outputting the mapping only, not owned, so pointer should remain valid during the lifetime of this object
 	// uint32_t read_start_position;
 	// uint32_t read_end_position;
 	// uint32_t fragment_start_position;
@@ -128,7 +128,7 @@ void write_out_mappings_and_free(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_m
 // num_chunks: number of processed chunks
 // processed_len: length of processed signal in terms of samples
 // qlen: total length of read (all received raw signals)
-void compute_tag_and_mapping_info(uint32_t c_count, uint32_t processed_len, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, char* read_id, const ri_idx_t* ri);
+void compute_tag_and_mapping_info(uint32_t c_count, uint32_t processed_len, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, const ri_idx_t* ri);
 
 // if no mapping was found (because several chains mapped, but none with sufficient quality), but the first chain still has sufficient quality (as if only one chain was found), then accept it as a mapping
 void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt);

@@ -85,7 +85,8 @@ void init_reg1_t(ri_reg1_t* reg0) {
 	// assert(reg0->prev_anchors == NULL && reg0->creg == NULL && reg0->events == NULL); // should have been freed before
 	reg0->prev_anchors = NULL, reg0->creg = NULL, reg0->events = NULL;
 	reg0->offset = 0, reg0->n_prev_anchors = 0, reg0->n_cregs = 0;
-	reg0->n_maps = 0;
+	reg0->n_maps = 0; reg0->maps = NULL;
+	reg0->read_name = NULL; reg0->read_id = 0;
 	// reg0 read_id, read_name, maps will be set later
 }
 
@@ -697,6 +698,7 @@ static void map_worker_for(void *_data,
 	ri_sig_t* sig = s->sig[i];
 
 	init_reg1_t(reg0);
+	reg0->read_name = sig->name;
 	
 	double mean_sum = 0, std_dev_sum = 0;
 	uint32_t n_events_sum = 0;
@@ -728,7 +730,7 @@ static void map_worker_for(void *_data,
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
 	try_mapping_if_none_found(reg0, opt);
-	compute_tag_and_mapping_info(c_count + 1, (c_count + 1) * l_chunk, reg0, opt, mapping_time, qlen, sig->name, s->p->ri);
+	compute_tag_and_mapping_info(c_count + 1, (c_count + 1) * l_chunk, reg0, opt, mapping_time, qlen, s->p->ri);
 	free_most_of_ri_reg1_t(b->km, reg0);
 	km_destroy_and_recreate(&(b->km));
 
@@ -754,7 +756,7 @@ void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt) {
 // 	char* read_id; // read id, corresponds to ri_sig_s.name
 // };
 
-void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, char* read_id, const ri_idx_t* ri) {
+void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, const ri_idx_t* ri) {
     float read_position_scale = ((float)processed_len / reg0->offset) / opt->sample_per_base; // avg num_bps/num_events of processed signal
 
 	mm_reg1_t *chains = reg0->creg;
@@ -801,7 +803,7 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, r
 
         // reg0->read_id = sig->rid;
         // reg0->read_name = sig->name;
-		reg0->read_name = read_id;
+		// reg0->read_name = read_id;
         reg0->maps[0].read_length = (ri->flag & RI_I_SIG_TARGET) ? reg0->offset : (uint32_t)(read_position_scale * reg0->offset);
         reg0->maps[0].tags = tags;
 		// write invalid fields since no mapping
@@ -840,7 +842,7 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, r
 
             // reg0->read_id = sig->rid;
             // reg0->read_name = sig->name;
-			reg0->read_name = read_id;
+			// reg0->read_name = read_id;
             reg0->maps[m].read_length = (ri->flag & RI_I_SIG_TARGET) ? (reg0->offset) : (uint32_t)(read_position_scale * chains[c_id].qe);
             reg0->maps[m].tags = tags;
             reg0->maps[m].ref_id = chains[c_id].rid;

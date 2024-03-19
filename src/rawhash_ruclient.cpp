@@ -91,7 +91,8 @@ void RawHashDecisionMaker::mark_final_decision(ReadIdentifier const& read_ident,
 
 	// todo4: c_count or c_count + 1?
 	// passing 0 for the full read length as well because we only know for sure at the end of sequencing (e.g. for stop_receiving)
-	compute_tag_and_mapping_info(c_count, qlen, reg0, opt, mapping_time, 0, (char*)read_ident.read_id.c_str(), ri); // need to use strdup when not using cast and free read_id at the end
+	reg0->read_name = read_ident.read_id.c_str();
+	compute_tag_and_mapping_info(c_count, qlen, reg0, opt, mapping_time, 0, ri); // need to use strdup when not using cast and free read_id at the end
 	free_most_of_ri_reg1_t(b->km, reg0);
 	km_destroy_and_recreate(&(b->km));
 
