@@ -6,11 +6,11 @@ We compare RawHash2 with [UNCALLED](https://github.com/skovaka/UNCALLED), [Sigma
 
 We list the links to download and compile each tool for comparison below:
 
-* [UNCALLED](https://github.com/skovaka/UNCALLED/tree/74a5d4e5b5d02fb31d6e88926e8a0896dc3475cb)
-* [Sigmap](https://github.com/haowenz/sigmap/commit/c9a40483264c9514587a36555b5af48d3f054f6f)
+* [UNCALLED v2.3](https://github.com/skovaka/UNCALLED/tree/58dbec69f625e0343739d821788d536b578ea41d)
+* [Sigmap v0.1](https://github.com/haowenz/sigmap/tree/c9a40483264c9514587a36555b5af48d3f054f6f)
 * [RawHash v1](https://github.com/CMU-SAFARI/RawHash/releases/tag/v1.0)
 
-We use minimap2 to generate the ground truth mapping information by mapping basecalled seqeunces to their corresponding reference genomes. We use the following minimap2 version:
+We use minimap2 (v2.24) to generate the ground truth mapping information by mapping basecalled seqeunces to their corresponding reference genomes. We use the following minimap2 version:
 
 * [Minimap2 v2.24](https://github.com/lh3/minimap2/releases/tag/v2.24)
 
@@ -55,13 +55,13 @@ git clone --recursive https://github.com/CMU-SAFARI/RawHash.git rawhash2 && cd r
 #Cloning and compiling RawHash
 wget -qO- https://github.com/CMU-SAFARI/RawHash/releases/download/v1.0/RawHash-1.0.tar.gz | tar -xzv && cd rawhash && make && cp ./bin/rawhash ../bin/ && cd ..
 
-#Cloning and compiling Sigmap
-git clone --recursive https://github.com/haowenz/sigmap.git sigmap && cd sigmap && make && cp sigmap ../bin/ && cd ..
+#Cloning and compiling Sigmap v0.1 commit c9a40483264c9514587a36555b5af48d3f054f6f
+git clone --recursive https://github.com/haowenz/sigmap.git sigmap && cd sigmap && git checkout c9a40483264c9514587a36555b5af48d3f054f6f && make && cp sigmap ../bin/ && cd ..
 
-#Cloning and compiling UNCALLED
-git clone --recursive https://github.com/skovaka/UNCALLED.git uncalled && cd uncalled/submods/bwa && git pull origin master && cd ../../ && pip3 install . && cd ..
+#Cloning and compiling UNCALLED v2.1 commit 58dbec69f625e0343739d821788d536b578ea41d
+git clone --recursive https://github.com/skovaka/UNCALLED.git uncalled && cd uncalled && git checkout 58dbec69f625e0343739d821788d536b578ea41d && cd submods/bwa && git pull origin master && cd ../../ && pip3 install . && cd ..
 
-#Downloading and compiling minimap2
+#Downloading and compiling minimap2 v2.24
 wget https://github.com/lh3/minimap2/releases/download/v2.24/minimap2-2.24.tar.bz2; tar -xf minimap2-2.24.tar.bz2; rm minimap2-2.24.tar.bz2; mv minimap2-2.24 minimap2; cd minimap2 && make && cp minimap2 ../bin/ && cd ..
 
 #Step 2 Adding binaries to PATH

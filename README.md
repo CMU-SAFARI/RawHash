@@ -20,6 +20,8 @@ RawHash performs real-time mapping of nanopore raw signals. When the prefix of r
 
 # Recent changes
 
+* We came up with a better and more accurate quantization mechanism in RawHash2. The new quantization mechanism dynamically arranges the bucket sizes that each signal value is quantized depending on the normalized distribution of the signal values. **This provides significant improvements in both accuracy and performance.**
+
 * We have integrated the signal alignment functionality with DTW as proposed in RawAlign (see the citation below). The parameters may still not be highly optimized as this is still in experimental stage. Use it with caution.
 
 * Offline overlapping functionality is integrated.

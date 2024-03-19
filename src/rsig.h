@@ -92,13 +92,19 @@ ri_sig_file_t **open_sigs(int n, const char **fn);
  *
  * @param str		sequence to convert to its expected event values
  * @param len		length of the $str
- * @param pore_vals	expected event values for each possible k-mer
+ * @param pore		a pore model including expected event values for each possible k-mer
  * @param pore_kmer	k-mer size of each event
  * @param strand	directin of strand. 1 is forward, 0 is reverse direction.
  * @param s_len		length of $s_values
  * @param s_values	expected event values of each k-mer in $str
  */
-void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int pore_kmer, const int strand, uint32_t* s_len, float* s_values);
+void ri_seq_to_sig(const char *str,
+				   int len,
+				   const ri_pore_t* pore,
+				   const int pore_kmer,
+				   const int strand,
+				   uint32_t* s_len,
+				   float* s_values);
 
 /**
  * Reads the entire signal values of the next read from a file

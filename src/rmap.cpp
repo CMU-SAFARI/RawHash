@@ -188,21 +188,24 @@ void align_chain(mm_reg1_t *chain, mm128_t* anchors, const ri_idx_t *ri, const f
 	}
 }
 
-//returns n_regs // currently we report one mapping
 void ri_map_frag(const ri_idx_t *ri,
 				const uint32_t s_len,
 				const float *sig,
 				ri_reg1_t* reg,
 				ri_tbuf_t *b,
 				const ri_mapopt_t *opt,
-				const char *qname)
+				const char *qname,
+				double* mean_sum,
+				double* std_dev_sum,
+				uint32_t* n_events_sum,
+				const uint32_t c_count = 0)
 {	
 	uint32_t n_events = 0;
 
 	#ifdef PROFILERH
 	double signal_t = ri_realtime();
 	#endif
-	float* events = detect_events(b->km, s_len, sig, opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height, &n_events);
+	float* events = detect_events(b->km, s_len, sig, opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height, mean_sum, std_dev_sum, n_events_sum, &n_events);
 	#ifdef PROFILERH
 	ri_signaltime += ri_realtime() - signal_t;
 	#endif
@@ -213,8 +216,10 @@ void ri_map_frag(const ri_idx_t *ri,
 	}
 
 	//Copy events to the end of reg->events with ri_krealloc
-	reg->events = (float*)ri_krealloc(b->km, reg->events, (reg->offset+n_events) * sizeof(float));
-	memcpy(reg->events + reg->offset, events, n_events * sizeof(float));
+	if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+		reg->events = (float*)ri_krealloc(b->km, reg->events, (reg->offset+n_events) * sizeof(float));
+		memcpy(reg->events + reg->offset, events, n_events * sizeof(float));
+	}
 
 	#ifdef PROFILERH
 	double sketch_t = ri_realtime();
@@ -222,7 +227,8 @@ void ri_map_frag(const ri_idx_t *ri,
 
 	//Sketching
 	mm128_v riv = {0,0,0};
-	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
+	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv);
+	
 	if(events){ri_kfree(b->km, events); events = NULL;}
 	// if (opt->q_occ_frac > 0.0f) ri_seed_mz_flt(b->km, &riv, opt->mid_occ, opt->q_occ_frac);
 
@@ -310,32 +316,6 @@ void ri_map_frag(const ri_idx_t *ri,
 	//Set MAPQ TODO: integrate alignment score within mapq
 	mm_set_mapq(b->km, reg->n_cregs, reg->creg, opt->min_chaining_score, rep_len, (opt->flag&RI_M_DTW_EVALUATE_CHAINS)?1:0);
 
-	// for(int i = 0; i < reg->n_cregs; ++i){
-
-	// 	int rid = reg->creg[i].rid;
-	// 	int rs = reg->creg[i].rev?(uint32_t)(ri->seq[rid].len+1-reg->creg[i].re):reg->creg[i].rs;
-	// 	float* ref = (reg->creg[i].rev)?ri->R[rid]:ri->F[rid];
-	// 	uint32_t r_len = (reg->creg[i].rev)?ri->r_l_sig[rid]:ri->f_l_sig[rid];
-
-	// 	fprintf(stderr, "Chain: %d rid: %d mapq: %d score: %d align: %f cnt: %d s: %c rs: %d qs: %d qe: %d p?: %c\n", i, rid, reg->creg[i].mapq, reg->creg[i].score, reg->creg[i].alignment_score, reg->creg[i].cnt, "+-"[reg->creg[i].rev], rs, reg->creg[i].qs, reg->creg[i].qe, "01"[reg->creg[i].parent == i]);
-
-	// 	// float* revents = ref + reg->creg[i].rs;
-	// 	// uint32_t rlen = reg->creg[i].re - reg->creg[i].rs + 1;
-
-	// 	//print ref starting from rs until re - rs + 1
-	// 	// for(int j = 0; j < rlen; ++j){
-	// 	// 	fprintf(stderr, "%f ", revents[j]);
-	// 	// } fprintf(stderr, " 1\n");
-
-	// 	// float* qevents = reg->events + reg->creg[i].qs;
-	// 	// uint32_t qlen = reg->creg[i].qe - reg->creg[i].qs + 1;
-
-	// 	//print reg->Events from qs until qe - qs + 1
-	// 	// for(int j = 0; j < qlen; ++j){
-	// 	// 	fprintf(stderr, "%f ", qevents[j]);
-	// 	// } fprintf(stderr, " 2\n");
-	// }
-
 	if(seed_hits){ri_kfree(b->km, seed_hits); seed_hits = NULL;}
 	if(u){ri_kfree(b->km, u); u = NULL;}
 
@@ -359,9 +339,9 @@ static void map_worker_for(void *_data,
 
 	ri_sig_t* sig = s->sig[i];
 
-	uint32_t max_chunk =  opt->max_num_chunk;
 	uint32_t qlen = sig->l_sig;
 	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
+	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk;
 	uint32_t s_qs, s_qe = l_chunk;
 
 	uint32_t c_count = 0;
@@ -369,14 +349,18 @@ static void map_worker_for(void *_data,
 
 	double t = ri_realtime();
 
-	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk && reg0->n_maps == 0; s_qs += l_chunk, ++c_count) {
-		// fprintf(stderr, "%s %d\n", sig->name, c_count);
+	double mean_sum = 0, std_dev_sum = 0;
+	uint32_t n_events_sum = 0;
+
+	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
 
 		if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
 
-		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name);
+		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum);
+
+		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
 
 		if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
 			reg0->n_maps++;
@@ -386,7 +370,6 @@ static void map_worker_for(void *_data,
 		}
 
 		//TODO make n_cregs a parameter of best n mappings
-		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
 		float meanC = 0, meanQ = 0;
 		// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
 		// 	uint32_t chain_cnt = 0;
@@ -451,6 +434,7 @@ static void map_worker_for(void *_data,
 				// fprintf(stderr, "Aligned ic: %d\n", ic);
 			}
 		}
+
 		if(reg0->n_maps > 0) break;
 	} double mapping_time = ri_realtime() - t;
 
@@ -465,9 +449,6 @@ static void map_worker_for(void *_data,
 
 	if(!chains) {reg0->n_cregs = 0;}
 	float mean_chain_score = 0;
-	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind)
-		mean_chain_score += chains[c_ind].score;
-	if(reg0->n_cregs > 0) mean_chain_score /= reg0->n_cregs;
 
 	if(reg0->n_maps == 0 && reg0->creg && reg0->creg[0].mapq > opt->min_mapq){
 		reg0->n_maps++;
@@ -500,7 +481,7 @@ static void map_worker_for(void *_data,
 
 		reg0->read_id = sig->rid;
 		reg0->read_name = sig->name;
-		reg0->maps[0].read_length = (uint32_t)(read_position_scale * reg0->offset);
+		reg0->maps[0].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->offset:(uint32_t)(read_position_scale * reg0->offset);
 		reg0->maps[0].c_id = 0;
 		reg0->maps[0].ref_id = 0;
 		reg0->maps[0].read_start_position = 0;
@@ -528,10 +509,10 @@ static void map_worker_for(void *_data,
 
 			reg0->read_id = sig->rid;
 			reg0->read_name = sig->name;
-			reg0->maps[m].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?(read_position_scale*reg0->offset):(uint32_t)(read_position_scale*chains[c_id].qe);
+			reg0->maps[m].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?(reg0->offset):(uint32_t)(read_position_scale*chains[c_id].qe);
 			reg0->maps[m].ref_id = chains[c_id].rid;
-			reg0->maps[m].read_start_position = (uint32_t)(read_position_scale*chains[c_id].qs);
-			reg0->maps[m].read_end_position = (uint32_t)(read_position_scale*chains[c_id].qe);
+			reg0->maps[m].read_start_position = (s->p->ri->flag&RI_I_SIG_TARGET)?chains[c_id].qs:(uint32_t)(read_position_scale*chains[c_id].qs);
+			reg0->maps[m].read_end_position = (s->p->ri->flag&RI_I_SIG_TARGET)?chains[c_id].qe:(uint32_t)(read_position_scale*chains[c_id].qe);
 			if(s->p->ri->flag&RI_I_SIG_TARGET) reg0->maps[m].fragment_start_position = chains[c_id].rev?(uint32_t)(s->p->ri->sig[chains[c_id].rid].l_sig+1-chains[c_id].re):chains[c_id].rs;
 			else reg0->maps[m].fragment_start_position = chains[c_id].rev?(uint32_t)(s->p->ri->seq[chains[c_id].rid].len+1-chains[c_id].re):chains[c_id].rs;
 			reg0->maps[m].fragment_length = (uint32_t)(chains[c_id].re - chains[c_id].rs + 1);
@@ -558,16 +539,15 @@ static void map_worker_for(void *_data,
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 							int64_t chunk_size,
 							int *n_)
-{
-	int64_t size = 0;
-	rhsig_v rsigv = {0,0,0};
-	
+{	
 	*n_ = 0;
 	if (pl->n_fp < 1) return 0;
 
 	//Debugging for sweeping purposes
-	// if(pl->su_nreads >= 2000) return 0;
+	// if(pl->su_nreads >= 1000) return 0;
 
+	int64_t size = 0;
+	rhsig_v rsigv = {0,0,0};
 	rh_kv_resize(ri_sig_t*, 0, rsigv, 4000);
 
 	while (pl->fp) {
@@ -605,11 +585,12 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 		
 		//Debugging for sweeping purposes
 		// pl->su_nreads++;
-		// if(pl->su_nreads >= 2000) break;
+		// if(pl->su_nreads >= 1000) break;
 	}
 
 	ri_sig_t** a = 0;
 	if(rsigv.n) a = rsigv.a;
+	else rh_kv_destroy(rsigv);
 	*n_ = rsigv.n;
 
 	return a;
@@ -658,7 +639,7 @@ static void *map_worker_pipeline(void *shared,
 		#endif
 
 		//Debugging for sweeping purposes
-		// if(p->su_nreads >= 2000) p->su_stop = p->su_nreads;
+		// if(p->su_nreads >= 1000) p->su_stop = p->su_nreads;
 
 		if(p->opt->flag & RI_M_SEQUENCEUNTIL && !p->su_stop){
 			const ri_idx_t *ri = p->ri;
@@ -733,6 +714,7 @@ static void *map_worker_pipeline(void *shared,
 				// if(reg0->tags) {free(reg0->tags); reg0->tags = NULL;}
 				if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
 				free(reg0); s->reg[k] = NULL;
+				fflush(stdout);
 			}
 		}
 
@@ -777,8 +759,8 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	rh_kv_resize(char*, 0, fnames, 256);
 	find_sfiles(fn[0], &fnames);
 	pl.f =  fnames.a;
-	if(!fnames.n || ((pl.fp = open_sig(pl.f[0])) == 0)) return -1;
-	if (pl.fp == 0) return -1;
+	if(!fnames.n || ((pl.fp = open_sig(pl.f[0])) == 0)){rh_kv_destroy(fnames); return -1;}
+	if (pl.fp == 0){rh_kv_destroy(fnames); return -1;}
 	pl.fn = fn;
 	pl.n_f = fnames.n;
 	pl.cur_fp = 1;
@@ -818,6 +800,8 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	#ifdef PROFILERH
 	fprintf(stderr, "\n[M::%s] File read: %.6f sec; Signal-to-event: %.6f sec; Sketching: %.6f sec; Seeding: %.6f sec; Chaining: %.6f sec; Mapping: %.6f sec; Mapping (multi-threaded): %.6f sec\n", __func__, ri_filereadtime, ri_signaltime, ri_sketchtime, ri_seedtime, ri_chaintime, ri_maptime, ri_maptime_multithread);
 	#endif
+
+	rh_kv_destroy(fnames);
 
 	return 0;
 }

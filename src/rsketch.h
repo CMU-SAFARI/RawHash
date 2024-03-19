@@ -4,11 +4,6 @@
 #include <string.h> //for memset
 #include "rutils.h"
 
-//A large float value can be used for masking if needed
-// #define RI_MASK_SIGNAL 3.402823466e+32F
-
-// #define LAST_SIG_DIFF 0.3F
-
 //To store sketches in vectors
 #define RI_HASH_SHIFT 6
 #define RI_ID_SHIFT 32
@@ -43,7 +38,21 @@ extern "C" {
  *                 and strand indicates whether the seed comes from the top or the bottom $strand.
  *                 Callers may want to set "p->n = 0"; otherwise results are appended to p
  */
-void ri_sketch(void *km, const float* s_values, uint32_t id, int strand, int len, float diff, int w, int e, int n, int q, int lq, int k, mm128_v *p);
+void ri_sketch(void *km,
+               const float* s_values,
+               uint32_t id,
+               int strand,
+               int len,
+               float diff,
+               int w,
+               int e,
+               int n,
+               uint32_t quant_bit,
+               int k,
+               float fine_min,
+               float fine_max,
+               float fine_range,
+               mm128_v *p);
 
 #ifdef __cplusplus
 }

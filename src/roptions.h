@@ -11,6 +11,7 @@
 #define RI_I_SYNCMER	0x8
 #define RI_I_STORE_SIG	0x10
 #define RI_I_SIG_TARGET	0x20
+#define RI_I_REV_QUERY	0x40
 
 #define RI_M_SEQUENCEUNTIL	0x1
 #define RI_M_RMQ			0x2
@@ -29,6 +30,9 @@
 //Overlapping related
 #define RI_M_ALL_CHAINS			0x2000
 
+//Characterization related
+#define RI_M_OUT_ALL_CHAINS 0x4000
+
 //DTW related
 #define RI_M_DTW_BORDER_CONSTRAINT_GLOBAL	0
 #define RI_M_DTW_BORDER_CONSTRAINT_SPARSE	1
@@ -42,11 +46,12 @@ extern "C" {
 
 // indexing and mapping options
 typedef struct ri_idxopt_s{
-	short b, w, e, n, q, lq, k, flag, lev_col;
+	short b, w, e, n, q, k, flag, lev_col;
 	int64_t mini_batch_size;
 	uint64_t batch_size;
 
 	float diff;
+	float fine_min, fine_max, fine_range;
 
 	uint32_t window_length1;
 	uint32_t window_length2;
@@ -96,6 +101,8 @@ typedef struct ri_mapopt_s{
 	int mask_len;
 	float pri_ratio;
 	int best_n;
+
+	int top_n_mean;
 
 	float alt_drop;
 

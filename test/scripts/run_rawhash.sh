@@ -11,5 +11,5 @@ PRESETX=$6 #Default preset of rawhash for the run (e.g., viral)
 THREAD=$7 #Number of threads to use
 PARAMS=$8 #(optional -- you can keep it empty) custom parameters to set on top of the default parameters
 
-# /usr/bin/time -vpo "${OUTDIR}/${PREFIX}_rawhash_index_${PRESETX}.time" rawhash -x ${PRESETX} -t ${THREAD} ${PARAMS} -p "${PORE}" -d "${OUTDIR}/${PREFIX}_rawhash_${PRESETX}.ind" ${REF}
+/usr/bin/time -vpo "${OUTDIR}/${PREFIX}_rawhash_index_${PRESETX}.time" rawhash -x ${PRESETX} -t ${THREAD} ${PARAMS} -p "${PORE}" -d "${OUTDIR}/${PREFIX}_rawhash_${PRESETX}.ind" ${REF}
 /usr/bin/time -vpo "${OUTDIR}/${PREFIX}_rawhash_map_${PRESETX}.time" rawhash -x ${PRESETX} -t ${THREAD} ${PARAMS} -o "${OUTDIR}/${PREFIX}_rawhash_${PRESETX}.paf" "${OUTDIR}/${PREFIX}_rawhash_${PRESETX}.ind" ${SIGNALS}

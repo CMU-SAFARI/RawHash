@@ -41,8 +41,6 @@ typedef struct ri_reg1_s{
 	uint32_t n_prev_anchors;
 	mm_reg1_t* creg; // This is for transition purposes.
 	int n_cregs;
-
-	uint32_t n_chains;
 } ri_reg1_t;
 
 typedef struct pipeline_ms{

@@ -10,7 +10,13 @@
 #include <sys/stat.h>
 #include <dirent.h>
 
-void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k, const int strand, uint32_t* s_len, float* s_values){
+void ri_seq_to_sig(const char *str,
+				   int len,
+				   const ri_pore_t* pore,
+				   const int k,
+				   const int strand, 
+				   uint32_t* s_len,
+				   float* s_values){
 
 	int i, j, l, pos, n = 0;
 	// uint64_t shift1 = 2 * (k - 1);
@@ -18,20 +24,18 @@ void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k
 	double mean = 0, std_dev = 0, sum = 0, sum2 = 0, curval = 0;
 
 	for (i = l = j = n = 0; i < len; ++i) {
-		if(strand) pos = len - i -1;
+		if(strand) pos = len-i-1;
 		else pos = i;
 		int c = seq_nt4_table[(uint8_t)str[pos]];
 		if (c < 4) { // not an ambiguous base
 			if(!strand) kmer = (kmer << 2 | c) & mask;    // forward k-mer
 			// else kmer = (kmer >> 2) | (3ULL^c) << shift1; // reverse k-mer
-			//TODO: this is currently based on the ordering in the original ordering in the sigmap implementation. Change later to above
 			else kmer = ((kmer << 2) | (3ULL^c)) & mask; // reverse k-mer
-		}else
-      		kmer = (kmer << 2) & mask; //TODO: This is not the best approach. We are basically inserting 00 (A?) to kmer whenever c >= 4. Mask it instead
+		}
 
 		if(i+1 < k) continue;
 
-		curval = pore_vals[kmer];
+		curval = pore->pore_vals[kmer];
 		s_values[j++] = curval;
 		sum += curval;
 		sum2 += curval*curval;
@@ -40,8 +44,7 @@ void ri_seq_to_sig(const char *str, int len, const float* pore_vals, const int k
 	mean = sum/j;
 	std_dev = sqrt(sum2/j - (mean)*(mean));
 
-	for(i = 0; i < j; ++i)
-		s_values[i] = (s_values[i]-mean)/std_dev;
+	for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
 
 	*s_len = j;
 }
@@ -298,7 +301,9 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".pod") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
 			char** cur_fname;
 			rh_kv_pushp(char*, 0, *fnames, &cur_fname);
-			(*cur_fname) = strdup(A);
+			(*cur_fname) = 
+			strdup(A)
+			;
 		}
 		return;
 	}

@@ -4,8 +4,8 @@ THREAD=$1
 
 #relative_abundance
 OUTDIR="./uncalled/"
-# FAST5="../../data/relative_abundance/fast5_files/"
-FAST5="../../data/relative_abundance/test_fast5_files/"
+FAST5="../../data/relative_abundance/fast5_files/"
+# FAST5="../../data/relative_abundance/test_fast5_files/"
 REF="../../data/relative_abundance/ref.fa"
 PREFIX="relative_abundance"
 mkdir -p ${OUTDIR}

@@ -4,11 +4,15 @@
 void ri_idxopt_init(ri_idxopt_t *opt)
 {
 	memset(opt, 0, sizeof(ri_idxopt_t));
-	opt->e = 6; opt->w = 0; opt->q = 9; opt->lq = 3; opt->n = 0; opt->k = 6, opt->lev_col = 1;
+	opt->e = 8; opt->w = 0; opt->q = 4; opt->n = 0; opt->k = 6, opt->lev_col = 1;
 	opt->b = 14;
-	opt->diff = 0.3f;
+	opt->diff = 0.35f;
 	opt->mini_batch_size = 50000000;
 	opt->batch_size = 4000000000ULL;
+
+	opt->fine_min = -2.0f;
+	opt->fine_max = 2.0f;
+	opt->fine_range = 0.4;
 
 	opt->window_length1 = 3; //--seg-window-length1
     opt->window_length2 = 6; //--seg-window-length2
@@ -31,7 +35,9 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->sample_per_base = (float)opt->sample_rate / opt->bp_per_sec;
 
 	//seeding
-	opt->mid_occ_frac = 5e-3f; //--mid-occ-frac
+	// opt->mid_occ_frac = 75e-4f; //--mid-occ-frac
+	opt->mid_occ_frac = 1e-2f; //--mid-occ-frac
+	// opt->mid_occ_frac = 5e-3f; //--mid-occ-frac
 	opt->q_occ_frac = 1e-2f; //--q-occ-frac
 	opt->min_mid_occ = 50; //--q-mid-occ [I1, I2]
 	opt->max_mid_occ = 500000; //--q-mid-occ [I1, I2]
@@ -60,6 +66,8 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->pri_ratio = 0.3f;
 	opt->best_n = 0;
 
+	opt->top_n_mean = 0; //--top-n-mean
+
 	opt->alt_drop = 0.15f; //--alt-drop
 
 	opt->w_bestmq=0.05f; //--w-bestmq
@@ -72,10 +80,9 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 
 	opt->mini_batch_size = 500000000; //-K
 
-	opt->step_size = 1; //read_seeding_step_size
+	opt->step_size = 1;
 	opt->min_events = 50; //--min-events
 	opt->max_num_chunk = 10;//--max-chunks
-	// opt->min_chain_anchor = 10;
 
 	opt->min_mapq = 2; //--min-mapq
 
