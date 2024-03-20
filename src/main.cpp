@@ -179,7 +179,7 @@ int main(int argc, char *argv[])
 
 			int first_channel = 1;
     		int last_channel = n_channels;
-			ReportNumSamplesBehindCallback report_num_samples_behind_cb(acquisition_client, 10); // todo1: n_channels instead of 10
+			ReportNumSamplesBehindCallback report_num_samples_behind_cb(acquisition_client, 1); // todo1: n_channels instead of 10
 
 			auto create_decision_maker = [&report_num_samples_behind_cb, &ri, &opt, &calibrations, &first_channel](uint32_t channel) -> std::shared_ptr<DecisionMaker> {
             	std::unique_ptr<DecisionMaker> dec_maker;
@@ -196,7 +196,7 @@ int main(int argc, char *argv[])
 
 			DataServiceClient::ReadUntilSetup setup = {
 				.first_channel = (uint32_t)first_channel, .last_channel = (uint32_t)last_channel, .calibrated = true, 
-				.sample_minimum_chunk_size = 100, .max_unblock_read_length_samples = 1000, 
+				.sample_minimum_chunk_size = 1600,
 				.accepted_first_chunk_classifications = {} // all
 			};
 			if (!data_client.start_read_until(setup)) {

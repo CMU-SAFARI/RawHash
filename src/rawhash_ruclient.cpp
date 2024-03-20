@@ -85,22 +85,35 @@ ChannelReadMapper::ChannelReadMapper(const ri_idx_t *ri, const ri_mapopt_t *opt,
 	init_reg1_t(reg0);
 }
 
-void ChannelReadMapper::mark_final_decision(ReadIdentifier const& read_ident, Decision const& decision) {
+void ChannelReadMapper::populate_mappings() {
 	#ifdef PROFILERH
 	ri_maptime += mapping_time;
 	#endif
-
 	// todo4: c_count or c_count + 1?
 	// passing 0 for the full read length as well because we only know for sure at the end of sequencing (e.g. for stop_receiving)
-	reg0->read_name = read_ident.read_id.c_str();
+	reg0->read_name = read_id.c_str(); // todo4: does not work if put into constructor
 	compute_tag_and_mapping_info(c_count, qlen, reg0, opt, mapping_time, 0, ri); // need to use strdup when not using cast and free read_id at the end
+
 	free_most_of_ri_reg1_t(b->km, reg0);
 	km_destroy_and_recreate(&(b->km));
+}
+
+void ChannelReadMapper::write_out_mappings() {
 
 	// todo: write to queue instead which writes out reads
 	write_out_mappings_to_stdout(reg0, ri);
-	free_mappings_ri_reg1_t(reg0);
-	free(reg0);
+}
+
+void ChannelReadMapper::free_mappings() {
+	if (reg0 != NULL) {
+		free_mappings_ri_reg1_t(reg0);
+		free(reg0);
+		reg0 = NULL;
+	}
+}
+
+ChannelReadMapper::~ChannelReadMapper() {
+	// free_mappings(); // todo4: why can't this be called again?? if(reg0 != NULL) should prevent it appropriately
 }
 
 RawHashDecisionMaker::RawHashDecisionMaker(const ri_idx_t *ri, const ri_mapopt_t *opt, SingleChannelCalibration calibration): 
@@ -121,7 +134,10 @@ Decision RawHashDecisionMaker::decide(ReadIdentifier const& read_ident, ChunkTyp
 }
 
 void RawHashDecisionMaker::mark_final_decision(ReadIdentifier const& read_ident, Decision const& decision) {
-	channel_read_mapper.mark_final_decision(read_ident, decision);
+	// channel_read_mapper.mark_final_decision(read_ident, decision);
+	channel_read_mapper.populate_mappings();
+	channel_read_mapper.write_out_mappings();
+	channel_read_mapper.free_mappings();
 }
 
 // todo1: remove

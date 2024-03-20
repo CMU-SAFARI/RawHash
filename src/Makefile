@@ -17,7 +17,7 @@ POD5_DOWNLOAD=0
 # NOHDF5=1
 NOPOD5=1
 # also disable fsanitize in debug (cflags etc) below!
-# asan=1
+asan=1
 tsan=
 RUCLIENT_ENABLED=1
 
