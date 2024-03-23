@@ -218,6 +218,9 @@ static inline float* gen_events(void *km,
 	return events;
 }
 
+// sig: events
+// return values:
+// n_sig: will be assigned the number of events detected in the signal
 static inline float* normalize_signal(void *km,
 									  const float* sig,
 									  const uint32_t s_len,

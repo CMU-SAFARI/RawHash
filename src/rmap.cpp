@@ -14,6 +14,7 @@
 #include <float.h>  // for FLT_MAX
 
 #ifdef PROFILERH
+// total counts across all reads
 double ri_filereadtime = 0.0;
 double ri_signaltime = 0.0;
 double ri_sketchtime = 0.0;
@@ -33,19 +34,60 @@ typedef struct rh_norm_inference_s{
 // INFER_MAP: to use ML model for inference
 // #define INFER_MAP
 
-static ri_tbuf_t *ri_tbuf_init(void)
+ri_tbuf_t *ri_tbuf_init(void)
 {
 	ri_tbuf_t *b;
 	b = (ri_tbuf_t*)calloc(1, sizeof(ri_tbuf_t));
 	b->km = ri_km_init();
+
+	#ifdef INFER_MAP
+	// tflite not thread-safe
+	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
+	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
+
+	TfLiteInterpreter* interpreter = TfLiteInterpreterCreate(s->p->map_model, options);
+	if (!interpreter) {
+		fprintf(stderr, "Failed to create interpreter\n");
+		exit(1);
+	}
+
+	if (TfLiteInterpreterAllocateTensors(interpreter) != kTfLiteOk) {
+		fprintf(stderr, "Failed to allocate tensors\n");
+		exit(1);
+	}
+
+	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
+	#else
+	TfLiteInterpreter* interpreter = NULL;
+	TfLiteTensor* input_tensor = NULL;
+	#endif
+
+	b->interpreter = interpreter;
+	b->input_tensor = input_tensor;
+	
 	return b;
 }
 
-static void ri_tbuf_destroy(ri_tbuf_t *b)
+void ri_tbuf_destroy(ri_tbuf_t *b)
 {
 	if (b == 0) return;
 	ri_km_destroy(b->km);
+
+	#ifdef INFER_MAP
+	TfLiteInterpreterDelete(b->interpreter);
+	TfLiteInterpreterOptionsDelete(b->options);
+	#endif
+
 	free(b);
+}
+
+void init_reg1_t(ri_reg1_t* reg0) {
+	// assert(reg0->prev_anchors == NULL && reg0->creg == NULL && reg0->events == NULL); // should have been freed before
+	reg0->prev_anchors = NULL, reg0->creg = NULL, reg0->events = NULL;
+	reg0->offset = 0, reg0->n_prev_anchors = 0, reg0->n_cregs = 0;
+	reg0->n_maps = 0; reg0->maps = NULL;
+	reg0->read_name = NULL; reg0->read_id = 0;
+	// reg0 read_id, read_name, maps will be set later
 }
 
 /**
@@ -236,7 +278,8 @@ void ri_map_frag(const ri_idx_t *ri,
 				uint32_t* n_events_sum,
 				TfLiteInterpreter* interpreter,
 				TfLiteTensor* input_tensor,
-				const uint32_t c_count = 0) // interpreter, input_tensor only needed for reverse query if RI_I_REV_QUERY flag is set
+				const uint32_t c_count = 0 // todo4: seems to be unused
+				) // interpreter, input_tensor only needed for reverse query if RI_I_REV_QUERY flag is set
 {	
 	uint32_t n_events = 0;
 
@@ -477,306 +520,344 @@ void ri_map_frag(const ri_idx_t *ri,
 //     }
 // }
 
+bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
+		const uint32_t s_len, // chunk length
+		const float *sig, // raw signal for chunk
+		ri_reg1_t* reg0, // to store mapping results, reuse previous computations
+		ri_tbuf_t *b,
+		const ri_mapopt_t *opt,
+		const char *qname, // read id
+		double* mean_sum, // for raw signal normalization, reused from old chunks and updated with new chunk
+		double* std_dev_sum, // see mean_sum arg
+		uint32_t* n_events_sum // number of events in all seen chunks (not including current chunk)
+		) {
+	
+
+	if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
+
+	ri_map_frag(ri, s_len, sig, reg0, b, opt, qname, mean_sum, std_dev_sum, n_events_sum, b->interpreter, b->input_tensor);
+
+	int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
+
+	#ifndef INFER_MAP
+	if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
+		reg0->n_maps++;
+		reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+		reg0->maps[reg0->n_maps-1].c_id = 0;
+		return true;
+	}
+
+	//TODO make n_cregs a parameter of best n mappings
+	
+	float meanC = 0, meanQ = 0; // mean score and quality of chains
+	// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+	// 	uint32_t chain_cnt = 0;
+	// 	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
+	// 		if(reg0->creg[c_ind].alignment_score < opt->dtw_min_score) continue;
+	// 		chain_cnt++;
+	// 		meanC += reg0->creg[c_ind].score;
+	// 		meanQ += reg0->creg[c_ind].mapq;
+	// 		// meanA += reg0->creg[c_ind].alignment_score;
+	// 	}
+	// 	if(chain_cnt){meanC /= chain_cnt; meanQ /= chain_cnt;}
+	// }
+	// else{
+	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
+		meanC += reg0->creg[c_ind].score;
+		meanQ += reg0->creg[c_ind].mapq;
+	}
+	if(reg0->n_cregs > 0){meanC /= reg0->n_cregs; meanQ /= reg0->n_cregs;}
+	// }
+	
+	for(int ic = 0; ic < n_chains; ++ic){
+		float r_bestma = 0.0f, r_bestmq = 0.0f, r_bestmc = 0.0f, r_bestq = 0.0f;
+		float bestQ = 0.0f, bestC = 0.0f, bestA = 0.0f, weighted_sum = 0.0f;
+		bestQ = reg0->creg[ic].mapq;
+		bestC = reg0->creg[ic].score;
+
+		if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+			bestA = reg0->creg[ic].alignment_score;
+			if(n_chains == 1){ //no all-vs-all overlap mod
+				uint32_t best_ind = 0;
+				for(int i = 1; i < reg0->n_cregs; ++i){
+					if(reg0->creg[i].alignment_score > bestA){
+						bestA = reg0->creg[i].alignment_score;
+						best_ind = i;
+					}
+				}
+				ic = best_ind;
+				bestQ = reg0->creg[ic].mapq;
+				bestC = reg0->creg[ic].score;
+			}
+			if(bestA >= opt->dtw_min_score){
+				// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+				r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+				r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
+				r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
+
+				weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+			}
+		}else{
+			r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
+			r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
+			r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
+
+			weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+		}
+		
+		#ifndef TRAIN_MAP
+		// Compare the weighted sum against a threshold to make the decision
+		if (weighted_sum >= opt->w_threshold) {
+			reg0->n_maps++;
+			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+			reg0->maps[reg0->n_maps-1].c_id = ic;
+			// fprintf(stderr, "Aligned ic: %d\n", ic);
+		}
+		#endif
+	}
+	#endif
+
+	#ifdef INFER_MAP
+	rh_norm_inference_t* norm_vals;
+	if(reg0->n_cregs > 0){
+		norm_vals = (rh_norm_inference_t*)ri_kmalloc(b->km, reg0->n_cregs * sizeof(rh_norm_inference_t));
+		normalize_chains(reg0, &norm_vals);
+	}
+	#endif
+
+	// print
+	#ifdef TRAIN_MAP
+	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset)/opt->sample_per_base;
+	for (int ic = 0; ic < reg0->n_cregs; ++ic) {
+		int qs = (ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qs:(int)(read_position_scale*reg0->creg[ic].qs);
+		int qe = (ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qe:(int)(read_position_scale*reg0->creg[ic].qe);
+
+		int rid = reg0->creg[ic].rid;
+		int rs = reg0->creg[ic].rev?(uint32_t)(ri->seq[rid].len+1-reg0->creg[ic].re):reg0->creg[ic].rs;
+		int rl = (uint32_t)(reg0->creg[ic].re - reg0->creg[ic].rs + 1);
+		int re = rs + rl;
+		char* rname = (ri->flag&RI_I_SIG_TARGET)?ri->sig[rid].name:ri->seq[rid].name;
+
+		fprintf(stderr, "%d\t%d\t%s\t%d\t%d\t%s\t%d\t%d\t%c\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", c_count, ic, sig->name, qs, qe, rname, rs, re, "+-"[reg0->creg[ic].rev], norm_vals[ic].is_prim, norm_vals[ic].qlen, norm_vals[ic].mapq, norm_vals[ic].alignment_score, norm_vals[ic].score, norm_vals[ic].cnt, norm_vals[ic].mlen, norm_vals[ic].blen, norm_vals[ic].n_sub);
+	}
+	#endif
+
+	#ifdef INFER_MAP
+	float* weighted_sums = NULL;
+	if(reg0->n_cregs > 0) weighted_sums = (float*)ri_kcalloc(b->km, reg0->n_cregs, sizeof(float));
+	
+	for(int ic = 0; ic < reg0->n_cregs; ++ic){
+		TfLiteTensorCopyFromBuffer(input_tensor, &norm_vals[ic], sizeof(rh_norm_inference_t));
+		TfLiteInterpreterInvoke(interpreter);
+		const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
+		TfLiteTensorCopyToBuffer(output_tensor, &weighted_sums[ic], sizeof(float));
+	}
+
+	// Find the best chain
+	float max_weighted_sum = -2;
+	int best_chain = -1;
+	for(int ic = 0; ic < reg0->n_cregs; ++ic){
+		if(weighted_sums[ic] > max_weighted_sum){
+			max_weighted_sum = weighted_sums[ic];
+			best_chain = ic;
+		}
+	}
+
+	// Compare the weighted sum against a threshold to make the decision
+	#ifndef TRAIN_MAP
+	if (max_weighted_sum >= opt->w_threshold) {
+		reg0->n_maps++;
+		reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
+		reg0->maps[reg0->n_maps-1].c_id = best_chain;
+		// fprintf(stderr, "Aligned ic: %d\n", ic);
+	}
+	#endif
+
+	if(reg0->n_cregs > 0) {ri_kfree(b->km, norm_vals); ri_kfree(b->km, weighted_sums);}
+	#endif
+
+	#ifndef TRAIN_MAP
+	if(reg0->n_maps > 0) return true;
+	#endif
+
+	return false;
+}
+
+
+// map a single read to a reference, called in parallel
 static void map_worker_for(void *_data,
 						   long i,
 						   int tid) // kt_for() callback
 {
     step_mt *s = (step_mt*)_data; //s->sig and s->n_sig (signals read in this step and num of them)
 	const ri_mapopt_t *opt = s->p->opt;
+	
 	ri_tbuf_t* b = s->buf[tid];
 	ri_reg1_t* reg0 = s->reg[i];
-	reg0->prev_anchors = NULL, reg0->creg = NULL, reg0->events = NULL;
-	reg0->offset = 0, reg0->n_prev_anchors = 0, reg0->n_cregs = 0;
 
 	ri_sig_t* sig = s->sig[i];
 
-	uint32_t qlen = sig->l_sig;
-	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
-	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk;
-	uint32_t s_qs, s_qe = l_chunk;
-
-	uint32_t c_count = 0;
-	reg0->n_maps = 0;
-
-	double t = ri_realtime();
-
-	#ifdef INFER_MAP
-	TfLiteInterpreterOptions* options = TfLiteInterpreterOptionsCreate();
-	TfLiteInterpreterOptionsSetNumThreads(options, 1); // One thread for inference
-
-	TfLiteInterpreter* interpreter = TfLiteInterpreterCreate(s->p->map_model, options);
-	if (!interpreter) {
-		fprintf(stderr, "Failed to create interpreter\n");
-		exit(1);
-	}
-
-	if (TfLiteInterpreterAllocateTensors(interpreter) != kTfLiteOk) {
-		fprintf(stderr, "Failed to allocate tensors\n");
-		exit(1);
-	}
-
-	TfLiteTensor* input_tensor = TfLiteInterpreterGetInputTensor(interpreter, 0);
-	#else
-	TfLiteInterpreter* interpreter = NULL;
-	TfLiteTensor* input_tensor = NULL;
-	#endif
-
+	init_reg1_t(reg0);
+	reg0->read_name = sig->name;
+	
 	double mean_sum = 0, std_dev_sum = 0;
 	uint32_t n_events_sum = 0;
+
+	uint32_t qlen = sig->l_sig;
+	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
+	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk; //todo4: why ((qlen-1)/l_chunk)+1
+	uint32_t s_qs, s_qe = l_chunk;
+	uint32_t c_count = 0;
+
+	double t = ri_realtime();
 
 	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
 
-		if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
-
-		ri_map_frag(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum, interpreter, input_tensor);
-
-		int n_chains = (opt->flag&RI_M_ALL_CHAINS || reg0->n_cregs < 1)?reg0->n_cregs:1;
-
-		#ifndef INFER_MAP
-		if (reg0->n_cregs == 1 && ((reg0->creg[0].mapq >= opt->min_mapq) || (opt->flag&RI_M_DTW_EVALUATE_CHAINS && reg0->creg[0].alignment_score >= opt->dtw_min_score))) {
-			reg0->n_maps++;
-			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-			reg0->maps[reg0->n_maps-1].c_id = 0;
+		if (continue_mapping_with_new_chunk(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum)) {
+			// mapped
 			break;
 		}
 
-		//TODO make n_cregs a parameter of best n mappings
-		
-		float meanC = 0, meanQ = 0;
-		// if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
-		// 	uint32_t chain_cnt = 0;
-		// 	for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
-		// 		if(reg0->creg[c_ind].alignment_score < opt->dtw_min_score) continue;
-		// 		chain_cnt++;
-		// 		meanC += reg0->creg[c_ind].score;
-		// 		meanQ += reg0->creg[c_ind].mapq;
-		// 		// meanA += reg0->creg[c_ind].alignment_score;
-		// 	}
-		// 	if(chain_cnt){meanC /= chain_cnt; meanQ /= chain_cnt;}
-		// }
-		// else{
-		for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
-			meanC += reg0->creg[c_ind].score;
-			meanQ += reg0->creg[c_ind].mapq;
-		}
-		if(reg0->n_cregs > 0){meanC /= reg0->n_cregs; meanQ /= reg0->n_cregs;}
-		// }
-		
-		for(int ic = 0; ic < n_chains; ++ic){
-			float r_bestma = 0.0f, r_bestmq = 0.0f, r_bestmc = 0.0f, r_bestq = 0.0f;
-			float bestQ = 0.0f, bestC = 0.0f, bestA = 0.0f, weighted_sum = 0.0f;
-			bestQ = reg0->creg[ic].mapq;
-			bestC = reg0->creg[ic].score;
-
-			if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
-				bestA = reg0->creg[ic].alignment_score;
-				if(n_chains == 1){ //no all-vs-all overlap mod
-					uint32_t best_ind = 0;
-					for(int i = 1; i < reg0->n_cregs; ++i){
-						if(reg0->creg[i].alignment_score > bestA){
-							bestA = reg0->creg[i].alignment_score;
-							best_ind = i;
-						}
-					}
-					ic = best_ind;
-					bestQ = reg0->creg[ic].mapq;
-					bestC = reg0->creg[ic].score;
-				}
-				if(bestA >= opt->dtw_min_score){
-					// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
-					r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
-					r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
-					r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
-
-					weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
-				}
-			}else{
-				r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
-				r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
-				r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
-
-				weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
-			}
-			
-			#ifndef TRAIN_MAP
-			// Compare the weighted sum against a threshold to make the decision
-			if (weighted_sum >= opt->w_threshold) {
-				reg0->n_maps++;
-				reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-				reg0->maps[reg0->n_maps-1].c_id = ic;
-				// fprintf(stderr, "Aligned ic: %d\n", ic);
-			}
-			#endif
-		}
-		#endif
-
-		#ifdef INFER_MAP
-		rh_norm_inference_t* norm_vals;
-		if(reg0->n_cregs > 0){
-			norm_vals = (rh_norm_inference_t*)ri_kmalloc(b->km, reg0->n_cregs * sizeof(rh_norm_inference_t));
-			normalize_chains(reg0, &norm_vals);
-		}
-		#endif
-
-		// print
-		#ifdef TRAIN_MAP
-		float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset)/opt->sample_per_base;
-		for (int ic = 0; ic < reg0->n_cregs; ++ic) {
-			int qs = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qs:(int)(read_position_scale*reg0->creg[ic].qs);
-			int qe = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->creg[ic].qe:(int)(read_position_scale*reg0->creg[ic].qe);
-
-			int rid = reg0->creg[ic].rid;
-			int rs = reg0->creg[ic].rev?(uint32_t)(s->p->ri->seq[rid].len+1-reg0->creg[ic].re):reg0->creg[ic].rs;
-			int rl = (uint32_t)(reg0->creg[ic].re - reg0->creg[ic].rs + 1);
-			int re = rs + rl;
-			char* rname = (s->p->ri->flag&RI_I_SIG_TARGET)?s->p->ri->sig[rid].name:s->p->ri->seq[rid].name;
-
-			fprintf(stderr, "%d\t%d\t%s\t%d\t%d\t%s\t%d\t%d\t%c\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n", c_count, ic, sig->name, qs, qe, rname, rs, re, "+-"[reg0->creg[ic].rev], norm_vals[ic].is_prim, norm_vals[ic].qlen, norm_vals[ic].mapq, norm_vals[ic].alignment_score, norm_vals[ic].score, norm_vals[ic].cnt, norm_vals[ic].mlen, norm_vals[ic].blen, norm_vals[ic].n_sub);
-		}
-		#endif
-
-		#ifdef INFER_MAP
-		float* weighted_sums = NULL;
-		if(reg0->n_cregs > 0) weighted_sums = (float*)ri_kcalloc(b->km, reg0->n_cregs, sizeof(float));
-		
-		for(int ic = 0; ic < reg0->n_cregs; ++ic){
-			TfLiteTensorCopyFromBuffer(input_tensor, &norm_vals[ic], sizeof(rh_norm_inference_t));
-			TfLiteInterpreterInvoke(interpreter);
-			const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
-			TfLiteTensorCopyToBuffer(output_tensor, &weighted_sums[ic], sizeof(float));
-		}
-
-		// Find the best chain
-		float max_weighted_sum = -2;
-		int best_chain = -1;
-		for(int ic = 0; ic < reg0->n_cregs; ++ic){
-			if(weighted_sums[ic] > max_weighted_sum){
-				max_weighted_sum = weighted_sums[ic];
-				best_chain = ic;
-			}
-		}
-
-		// Compare the weighted sum against a threshold to make the decision
-		#ifndef TRAIN_MAP
-		if (max_weighted_sum >= opt->w_threshold) {
-			reg0->n_maps++;
-			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-			reg0->maps[reg0->n_maps-1].c_id = best_chain;
-			// fprintf(stderr, "Aligned ic: %d\n", ic);
-		}
-		#endif
-
-		if(reg0->n_cregs > 0) {ri_kfree(b->km, norm_vals); ri_kfree(b->km, weighted_sums);}
-		#endif
-
-		#ifndef TRAIN_MAP
-		if(reg0->n_maps > 0) break;
-		#endif
-	} double mapping_time = ri_realtime() - t;
-
+	} 
+	double mapping_time = ri_realtime() - t;
 	#ifdef PROFILERH
 	ri_maptime += mapping_time;
 	#endif
 
+	// correct for c_count in for-loop incremented once too much, todo4: could be solved more elegantly/robustly, also correct +1 below
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
-	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset) / opt->sample_per_base;
-	mm_reg1_t* chains = reg0->creg;
+	try_mapping_if_none_found(reg0, opt);
+	compute_tag_and_mapping_info(c_count + 1, (c_count + 1) * l_chunk, reg0, opt, mapping_time, qlen, s->p->ri);
+	free_most_of_ri_reg1_t(b->km, reg0);
+	km_destroy_and_recreate(&(b->km));
 
-	if(!chains) {reg0->n_cregs = 0;}
-	float mean_chain_score = 0;
+}
 
-	if(reg0->n_maps == 0 && reg0->creg && reg0->creg[0].mapq > opt->min_mapq){
-		reg0->n_maps++;
-		reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
-		reg0->maps[reg0->n_maps-1].c_id = 0;
-	}
-
-	if (reg0->n_maps == 0){
-		reg0->maps = (ri_map_t*)ri_kcalloc(0, 1, sizeof(ri_map_t));
-		char *tags = (char *)malloc(1024 * sizeof(char));
-		tags[0] = '\0'; // make it an empty string
-		char buffer[256]; // temporary buffer
-
-		sprintf(buffer, "mt:f:%.6f", mapping_time * 1000); strcat(tags, buffer);
-		sprintf(buffer, "\tci:i:%d", c_count + 1); strcat(tags, buffer);
-		sprintf(buffer, "\tsl:i:%d", qlen); strcat(tags, buffer);
-		if (reg0->n_cregs >= 1) {
-			sprintf(buffer, "\tcm:i:%d", chains[0].cnt); strcat(tags, buffer);
-			sprintf(buffer, "\tnc:i:%d", reg0->n_cregs); strcat(tags, buffer);
-			sprintf(buffer, "\ts1:i:%d", chains[0].score); strcat(tags, buffer);
-			// sprintf(buffer, "\ts2:i:%d", reg0->n_cregs > 1 ? chains[1].score : 0); strcat(tags, buffer);
-			sprintf(buffer, "\tsm:f:%.2f", mean_chain_score); strcat(tags, buffer);
-		}else {
-			sprintf(buffer, "\tcm:i:0"); strcat(tags, buffer);
-			sprintf(buffer, "\tnc:i:0"); strcat(tags, buffer);
-			sprintf(buffer, "\ts1:i:0"); strcat(tags, buffer);
-			// sprintf(buffer, "\ts2:i:0"); strcat(tags, buffer);
-			sprintf(buffer, "\tsm:f:0"); strcat(tags, buffer);
-		}
-
-		reg0->read_id = sig->rid;
-		reg0->read_name = sig->name;
-		reg0->maps[0].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?reg0->offset:(uint32_t)(read_position_scale * reg0->offset);
-		reg0->maps[0].c_id = 0;
-		reg0->maps[0].ref_id = 0;
-		reg0->maps[0].read_start_position = 0;
-		reg0->maps[0].read_end_position = 0;
-		reg0->maps[0].fragment_start_position = 0;
-		reg0->maps[0].fragment_length = 0;
-		reg0->maps[0].mapq = 0;
-		reg0->maps[0].rev = 0;
-		reg0->maps[0].mapped = 0;
-		reg0->maps[0].tags = tags;
-	}else{
-		for(int m = 0; m < reg0->n_maps; ++m){
-			char *tags = (char *)malloc(1024 * sizeof(char));
-			uint32_t c_id = reg0->maps[m].c_id;
-			tags[0] = '\0'; // make it an empty string
-			char buffer[256]; // temporary buffer
-			sprintf(buffer, "mt:f:%.6f", mapping_time * 1000); strcat(tags, buffer);
-			sprintf(buffer, "\tci:i:%d", c_count + 1); strcat(tags, buffer);
-			sprintf(buffer, "\tsl:i:%d", qlen); strcat(tags, buffer);
-			sprintf(buffer, "\tcm:i:%d", chains[c_id].cnt); strcat(tags, buffer);
-			sprintf(buffer, "\tnc:i:%d", reg0->n_cregs); strcat(tags, buffer);
-			sprintf(buffer, "\ts1:i:%d", chains[c_id].score); strcat(tags, buffer);
-			// sprintf(buffer, "\ts2:i:%d", reg0->n_cregs > 1 ? chains[1].score : 0); strcat(tags, buffer);
-			sprintf(buffer, "\tsm:f:%.2f", mean_chain_score); strcat(tags, buffer);
-
-			reg0->read_id = sig->rid;
-			reg0->read_name = sig->name;
-			reg0->maps[m].read_length = (s->p->ri->flag&RI_I_SIG_TARGET)?(reg0->offset):(uint32_t)(read_position_scale*chains[c_id].qe);
-			reg0->maps[m].ref_id = chains[c_id].rid;
-			reg0->maps[m].read_start_position = (s->p->ri->flag&RI_I_SIG_TARGET)?chains[c_id].qs:(uint32_t)(read_position_scale*chains[c_id].qs);
-			reg0->maps[m].read_end_position = (s->p->ri->flag&RI_I_SIG_TARGET)?chains[c_id].qe:(uint32_t)(read_position_scale*chains[c_id].qe);
-			if(s->p->ri->flag&RI_I_SIG_TARGET) reg0->maps[m].fragment_start_position = chains[c_id].rev?(uint32_t)(s->p->ri->sig[chains[c_id].rid].l_sig+1-chains[c_id].re):chains[c_id].rs;
-			else reg0->maps[m].fragment_start_position = chains[c_id].rev?(uint32_t)(s->p->ri->seq[chains[c_id].rid].len+1-chains[c_id].re):chains[c_id].rs;
-			reg0->maps[m].fragment_length = (uint32_t)(chains[c_id].re - chains[c_id].rs + 1);
-			reg0->maps[m].mapq = chains[c_id].mapq;
-			reg0->maps[m].rev = (chains[c_id].rev == 1)?1:0;
-			reg0->maps[m].mapped = 1; 
-			reg0->maps[m].tags = tags;
-		}
-	}
-
-	if(reg0->prev_anchors) {ri_kfree(b->km, reg0->prev_anchors); reg0->prev_anchors = NULL; reg0->n_prev_anchors = 0;}
+void free_most_of_ri_reg1_t(void* km, ri_reg1_t* reg0) {
+	if(reg0->prev_anchors) {ri_kfree(km, reg0->prev_anchors); reg0->prev_anchors = NULL; reg0->n_prev_anchors = 0;}
 	if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
-	if(reg0->events){ri_kfree(b->km, reg0->events); reg0->events = NULL; reg0->offset = 0;}
+	if(reg0->events){ri_kfree(km, reg0->events); reg0->events = NULL; reg0->offset = 0;}
+}
 
-	if (b->km) {
-		ri_km_stat_t kmst;
-		ri_km_stat(b->km, &kmst);
-		// assert(kmst.n_blocks == kmst.n_cores);
-		ri_km_destroy(b->km);
-		b->km = ri_km_init();
-	}
+void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt) {
+    if (reg0->n_maps == 0 && reg0->creg && reg0->creg[0].mapq > opt->min_mapq) {
+        reg0->n_maps++;
+        reg0->maps = (ri_map_t *)ri_krealloc(0, reg0->maps, reg0->n_maps * sizeof(ri_map_t));
+        reg0->maps[reg0->n_maps - 1].c_id = 0;
+    }
+}
 
-	#ifdef INFER_MAP
-	TfLiteInterpreterDelete(interpreter);
-	TfLiteInterpreterOptionsDelete(options);
-	#endif
+// todo1: remove or replace by MappingInfo
+// struct SimpleReadIdentifier {
+// 	uint32_t read_nb; // read number, corresponds to ri_sig_s.rid
+// 	char* read_id; // read id, corresponds to ri_sig_s.name
+// };
+
+void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, const ri_idx_t* ri) {
+    float read_position_scale = ((float)processed_len / reg0->offset) / opt->sample_per_base; // avg num_bps/num_events of processed signal
+
+	mm_reg1_t *chains = reg0->creg;
+    if (!chains) {
+        reg0->n_cregs = 0;
+    }
+    float mean_chain_score = 0;  // todo4: this is never modified
+
+    if (reg0->n_maps == 0) {
+        // no map
+
+        reg0->maps = (ri_map_t *)ri_kcalloc(0, 1, sizeof(ri_map_t));
+        char *tags = (char *)malloc(1024 * sizeof(char));
+        tags[0] = '\0';    // make it an empty string
+        char buffer[256];  // temporary buffer
+
+        sprintf(buffer, "mt:f:%.6f", mapping_time * 1000);
+        strcat(tags, buffer);
+        sprintf(buffer, "\tci:i:%d", num_chunks);
+        strcat(tags, buffer);
+        sprintf(buffer, "\tsl:i:%d", qlen);
+        strcat(tags, buffer);
+        if (reg0->n_cregs >= 1) {
+            sprintf(buffer, "\tcm:i:%d", chains[0].cnt);
+            strcat(tags, buffer);
+            sprintf(buffer, "\tnc:i:%d", reg0->n_cregs);
+            strcat(tags, buffer);
+            sprintf(buffer, "\ts1:i:%d", chains[0].score);
+            strcat(tags, buffer);
+            // sprintf(buffer, "\ts2:i:%d", reg0->n_cregs > 1 ? chains[1].score : 0); strcat(tags, buffer);
+            sprintf(buffer, "\tsm:f:%.2f", mean_chain_score);
+            strcat(tags, buffer);
+        } else {
+            sprintf(buffer, "\tcm:i:0");
+            strcat(tags, buffer);
+            sprintf(buffer, "\tnc:i:0");
+            strcat(tags, buffer);
+            sprintf(buffer, "\ts1:i:0");
+            strcat(tags, buffer);
+            // sprintf(buffer, "\ts2:i:0"); strcat(tags, buffer);
+            sprintf(buffer, "\tsm:f:0");
+            strcat(tags, buffer);
+        }
+
+        // reg0->read_id = sig->rid;
+        // reg0->read_name = sig->name;
+		// reg0->read_name = read_id;
+        reg0->maps[0].read_length = (ri->flag & RI_I_SIG_TARGET) ? reg0->offset : (uint32_t)(read_position_scale * reg0->offset);
+        reg0->maps[0].tags = tags;
+		// write invalid fields since no mapping
+        reg0->maps[0].c_id = 0;
+        reg0->maps[0].ref_id = 0;
+        reg0->maps[0].read_start_position = 0;
+        reg0->maps[0].read_end_position = 0;
+        reg0->maps[0].fragment_start_position = 0;
+        reg0->maps[0].fragment_length = 0;
+        reg0->maps[0].mapq = 0;
+        reg0->maps[0].rev = 0;
+        reg0->maps[0].mapped = 0;
+    } else {
+        // mapped
+
+        for (int m = 0; m < reg0->n_maps; ++m) {
+            char *tags = (char *)malloc(1024 * sizeof(char));
+            uint32_t c_id = reg0->maps[m].c_id;
+            tags[0] = '\0';    // make it an empty string
+            char buffer[256];  // temporary buffer
+            sprintf(buffer, "mt:f:%.6f", mapping_time * 1000);
+            strcat(tags, buffer);
+            sprintf(buffer, "\tci:i:%d", num_chunks);
+            strcat(tags, buffer);
+            sprintf(buffer, "\tsl:i:%d", qlen);
+            strcat(tags, buffer);
+            sprintf(buffer, "\tcm:i:%d", chains[c_id].cnt);
+            strcat(tags, buffer);
+            sprintf(buffer, "\tnc:i:%d", reg0->n_cregs);
+            strcat(tags, buffer);
+            sprintf(buffer, "\ts1:i:%d", chains[c_id].score);
+            strcat(tags, buffer);
+            // sprintf(buffer, "\ts2:i:%d", reg0->n_cregs > 1 ? chains[1].score : 0); strcat(tags, buffer);
+            sprintf(buffer, "\tsm:f:%.2f", mean_chain_score);
+            strcat(tags, buffer);
+
+            // reg0->read_id = sig->rid;
+            // reg0->read_name = sig->name;
+			// reg0->read_name = read_id;
+            reg0->maps[m].read_length = (ri->flag & RI_I_SIG_TARGET) ? (reg0->offset) : (uint32_t)(read_position_scale * chains[c_id].qe);
+            reg0->maps[m].tags = tags;
+            reg0->maps[m].ref_id = chains[c_id].rid;
+            reg0->maps[m].read_start_position = (ri->flag & RI_I_SIG_TARGET) ? chains[c_id].qs : (uint32_t)(read_position_scale * chains[c_id].qs);
+            reg0->maps[m].read_end_position = (ri->flag & RI_I_SIG_TARGET) ? chains[c_id].qe : (uint32_t)(read_position_scale * chains[c_id].qe);
+            if (ri->flag & RI_I_SIG_TARGET)
+                reg0->maps[m].fragment_start_position = chains[c_id].rev ? (uint32_t)(ri->sig[chains[c_id].rid].l_sig + 1 - chains[c_id].re) : chains[c_id].rs;
+            else
+                reg0->maps[m].fragment_start_position = chains[c_id].rev ? (uint32_t)(ri->seq[chains[c_id].rid].len + 1 - chains[c_id].re) : chains[c_id].rs;
+            reg0->maps[m].fragment_length = (uint32_t)(chains[c_id].re - chains[c_id].rs + 1);
+            reg0->maps[m].mapq = chains[c_id].mapq;
+            reg0->maps[m].rev = (chains[c_id].rev == 1) ? 1 : 0;
+            reg0->maps[m].mapped = 1;
+        }
+    }
 }
 
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
@@ -924,39 +1005,15 @@ static void *map_worker_pipeline(void *shared,
 				// fprintf(stderr, "%s %d %d\n", reg0->read_name, reg0->n_maps, reg0->maps[0].mapped);
 				
 				if(reg0->read_name){
-					if(reg0->n_maps > 0 && (!p->su_stop || k < p->su_stop)){
-						for(int m = 0; m < reg0->n_maps; ++m){
-							if(reg0->maps[m].ref_id < ri->n_seq)
-								fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%d\t%s\n", 
-												reg0->read_name,
-												reg0->maps[m].read_length,
-												reg0->maps[m].read_start_position,
-												reg0->maps[m].read_end_position, 
-												reg0->maps[m].rev?'-':'+',
-												(ri->flag&RI_I_SIG_TARGET)?ri->sig[reg0->maps[m].ref_id].name:ri->seq[reg0->maps[m].ref_id].name,
-												(ri->flag&RI_I_SIG_TARGET)?ri->sig[reg0->maps[m].ref_id].l_sig:ri->seq[reg0->maps[m].ref_id].len,
-												reg0->maps[m].fragment_start_position,
-												reg0->maps[m].fragment_start_position + reg0->maps[m].fragment_length, 
-												reg0->maps[m].read_end_position-reg0->maps[m].read_start_position-1, 
-												reg0->maps[m].fragment_length,
-												reg0->maps[m].mapq,
-												reg0->maps[m].tags);
-							if(reg0->maps[m].tags) {free(reg0->maps[m].tags); reg0->maps[m].tags = NULL;}
-						}
+					if(!p->su_stop || k < p->su_stop){
+						write_out_mappings_to_stdout(reg0, ri);
 					}else{
-						fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%d\t%s\n", 
-						reg0->read_name, 
-						reg0->maps[0].read_length, 
-						reg0->maps[0].mapq, 
-						reg0->maps[0].tags);
-
-						if(reg0->maps[0].tags) {free(reg0->maps[0].tags); reg0->maps[0].tags = NULL;}
+						write_out_mappings_to_stdout(reg0, ri, false);
 					}
+					free_mappings_ri_reg1_t(reg0);
+					free(reg0);
 				}
-
-				// if(reg0->tags) {free(reg0->tags); reg0->tags = NULL;}
-				if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
-				free(reg0); s->reg[k] = NULL;
+				s->reg[k] = NULL; // was freed
 				fflush(stdout);
 			}
 		}
@@ -976,6 +1033,56 @@ static void *map_worker_pipeline(void *shared,
 		free(s); s = NULL;
 	}
     return 0;
+}
+
+// todo4, todo1: refactor out reg0->maps,read_name into new structure so reg0 can be freed
+void write_out_mappings_to_stdout(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped) {
+	was_mapped = was_mapped && (reg0->n_maps > 0);
+	if (was_mapped) {
+		for (int m = 0; m < reg0->n_maps; ++m) {
+			if (reg0->maps[m].ref_id < ri->n_seq)
+				fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%d\t%s\n",
+						reg0->read_name,
+						reg0->maps[m].read_length,
+						reg0->maps[m].read_start_position,
+						reg0->maps[m].read_end_position,
+						reg0->maps[m].rev ? '-' : '+',
+						(ri->flag & RI_I_SIG_TARGET) ? ri->sig[reg0->maps[m].ref_id].name : ri->seq[reg0->maps[m].ref_id].name,
+						(ri->flag & RI_I_SIG_TARGET) ? ri->sig[reg0->maps[m].ref_id].l_sig : ri->seq[reg0->maps[m].ref_id].len,
+						reg0->maps[m].fragment_start_position,
+						reg0->maps[m].fragment_start_position + reg0->maps[m].fragment_length,
+						reg0->maps[m].read_end_position - reg0->maps[m].read_start_position - 1,
+						reg0->maps[m].fragment_length,
+						reg0->maps[m].mapq,
+						reg0->maps[m].tags);
+			// if (reg0->maps[m].tags) {
+				// 	free(reg0->maps[m].tags);
+				// 	reg0->maps[m].tags = NULL;
+			// }
+		}
+	} else {
+		// maps[0] contains all necessary information
+		fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%d\t%s\n", 
+		reg0->read_name, 
+		reg0->maps[0].read_length, 
+		reg0->maps[0].mapq, 
+		reg0->maps[0].tags);
+
+		// if(reg0->maps[0].tags) {free(reg0->maps[0].tags); reg0->maps[0].tags = NULL;}
+	}
+
+// if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
+	// free(reg0);
+}
+
+void free_mappings_ri_reg1_t(ri_reg1_t *reg0) {
+	for (int m = 0; m < reg0->n_maps; ++m) {
+		if (reg0->maps[m].tags) {
+			free(reg0->maps[m].tags);
+			reg0->maps[m].tags = NULL;
+		}
+	}
+	if(reg0->maps){free(reg0->maps); reg0->maps = NULL;}
 }
 
 int ri_map_file(const ri_idx_t *idx,

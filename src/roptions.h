@@ -58,12 +58,13 @@ typedef struct ri_idxopt_s{
 	float threshold1;
 	float threshold2;
 	float peak_height;
-	float sample_per_base;
+	float sample_per_base; // number of samples per base, roughly 9 = 4000/450
 	uint32_t bp_per_sec;
 	uint32_t sample_rate;
 
 } ri_idxopt_t;
 
+// mapping options for a reference
 typedef struct ri_mapopt_s{
 
 	//ONT Device specific parameters

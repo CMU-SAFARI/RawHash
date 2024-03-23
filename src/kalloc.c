@@ -164,6 +164,7 @@ void *ri_kcalloc(void *_km, size_t count, size_t size)
 	return p;
 }
 
+// realloc to new size, copies old content (up to n_bytes) to new memory, and frees old memory (or in-place)
 void *ri_krealloc(void *_km, void *ap, size_t n_bytes) // TODO: this can be made more efficient in principle
 {
 	ri_kmem_t *km = (ri_kmem_t*)_km;
@@ -201,5 +202,16 @@ void ri_km_stat(const void *_km, ri_km_stat_t *s)
 		++s->n_cores;
 		s->capacity += size;
 		s->largest = s->largest > size? s->largest : size;
+	}
+}
+
+// only recreates if non-null before!
+void km_destroy_and_recreate(void** km) {
+	if (*km) {
+		// ri_km_stat_t kmst;
+		// ri_km_stat(*km, &kmst);
+		// assert(kmst.n_blocks == kmst.n_cores);
+		ri_km_destroy(*km);
+		*km = ri_km_init();
 	}
 }
