@@ -265,11 +265,11 @@ void ri_map_frag(const ri_idx_t *ri,
 
 	//Sketching
 	mm128_v riv = {0,0,0};
-	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
+	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv);
 
 	if(ri->flag&RI_I_REV_QUERY){
 
-		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv, interpreter, input_tensor);
+		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, interpreter, input_tensor);
 
 		// float* rev_events = (float*)ri_kmalloc(b->km, n_events * sizeof(float));
 
@@ -280,7 +280,7 @@ void ri_map_frag(const ri_idx_t *ri,
 		// 	//if needed, normalize the event value here. By defauly, pore_vals should have the normalized values below.
 		// 	rev_events[i] = ri->pore_vals[rev_ind];
 		// }
-		// ri_sketch(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->lq, ri->k, &riv);
+		// ri_sketch(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv);
 		// if(rev_events){ri_kfree(b->km, rev_events); rev_events = NULL;}
 	}
 	
@@ -412,70 +412,70 @@ void ri_map_frag(const ri_idx_t *ri,
 	reg->offset += n_events;
 }
 
-static void calculate_mean_std(ri_reg1_t* reg, const int n_chains, float* mean, float* std_dev) {
-    int ic;
-    // Initialize mean and std_dev arrays
-    for (ic = 0; ic < N_FEATURES; ++ic) {mean[ic] = 0; std_dev[ic] = 0;}
+// static void calculate_mean_std(ri_reg1_t* reg, const int n_chains, float* mean, float* std_dev) {
+//     int ic;
+//     // Initialize mean and std_dev arrays
+//     for (ic = 0; ic < N_FEATURES; ++ic) {mean[ic] = 0; std_dev[ic] = 0;}
 
-    // Calculate sums for mean
-    for (ic = 0; ic < n_chains; ++ic) {
-        // Add sums for other fields
-		mean[0] += ((reg->creg[ic].parent == ic)?1:0);
-		mean[1] += (reg->creg[ic].qe - reg->creg[ic].qs);
-		mean[2] += reg->creg[ic].mapq;
-		mean[3] += reg->creg[ic].alignment_score;
-		mean[4] += reg->creg[ic].score;
-		mean[5] += reg->creg[ic].cnt;
-		mean[6] += reg->creg[ic].mlen;
-		mean[7] += reg->creg[ic].blen;
-		mean[8] += reg->creg[ic].n_sub;
-    }
+//     // Calculate sums for mean
+//     for (ic = 0; ic < n_chains; ++ic) {
+//         // Add sums for other fields
+// 		mean[0] += ((reg->creg[ic].parent == ic)?1:0);
+// 		mean[1] += (reg->creg[ic].qe - reg->creg[ic].qs);
+// 		mean[2] += reg->creg[ic].mapq;
+// 		mean[3] += reg->creg[ic].alignment_score;
+// 		mean[4] += reg->creg[ic].score;
+// 		mean[5] += reg->creg[ic].cnt;
+// 		mean[6] += reg->creg[ic].mlen;
+// 		mean[7] += reg->creg[ic].blen;
+// 		mean[8] += reg->creg[ic].n_sub;
+//     }
 
-    // Finalize mean calculation
-    for (ic = 0; ic < N_FEATURES; ++ic) {mean[ic] /= n_chains;}
+//     // Finalize mean calculation
+//     for (ic = 0; ic < N_FEATURES; ++ic) {mean[ic] /= n_chains;}
 
-    // Calculate sums for standard deviation
-    for (ic = 0; ic < n_chains; ++ic) {
-        // Add sums for other fields
-		std_dev[0] += pow(((reg->creg[ic].parent == ic)?1:0) - mean[0], 2);
-		std_dev[1] += pow((reg->creg[ic].qe - reg->creg[ic].qs) - mean[1], 2);
-		std_dev[2] += pow(reg->creg[ic].mapq - mean[2], 2);
-		std_dev[3] += pow(reg->creg[ic].alignment_score - mean[3], 2);
-		std_dev[4] += pow(reg->creg[ic].score - mean[4], 2);
-		std_dev[5] += pow(reg->creg[ic].cnt - mean[5], 2);
-		std_dev[6] += pow(reg->creg[ic].mlen - mean[6], 2);
-		std_dev[7] += pow(reg->creg[ic].blen - mean[7], 2);
-		std_dev[8] += pow(reg->creg[ic].n_sub - mean[8], 2);
-    }
+//     // Calculate sums for standard deviation
+//     for (ic = 0; ic < n_chains; ++ic) {
+//         // Add sums for other fields
+// 		std_dev[0] += pow(((reg->creg[ic].parent == ic)?1:0) - mean[0], 2);
+// 		std_dev[1] += pow((reg->creg[ic].qe - reg->creg[ic].qs) - mean[1], 2);
+// 		std_dev[2] += pow(reg->creg[ic].mapq - mean[2], 2);
+// 		std_dev[3] += pow(reg->creg[ic].alignment_score - mean[3], 2);
+// 		std_dev[4] += pow(reg->creg[ic].score - mean[4], 2);
+// 		std_dev[5] += pow(reg->creg[ic].cnt - mean[5], 2);
+// 		std_dev[6] += pow(reg->creg[ic].mlen - mean[6], 2);
+// 		std_dev[7] += pow(reg->creg[ic].blen - mean[7], 2);
+// 		std_dev[8] += pow(reg->creg[ic].n_sub - mean[8], 2);
+//     }
 
-    // Finalize std_dev calculation
-    for (ic = 0; ic < N_FEATURES; ++ic) {std_dev[ic] = sqrt(std_dev[ic] / n_chains);}
-}
+//     // Finalize std_dev calculation
+//     for (ic = 0; ic < N_FEATURES; ++ic) {std_dev[ic] = sqrt(std_dev[ic] / n_chains);}
+// }
 
-static void normalize_chains(ri_reg1_t* reg, rh_norm_inference_t** norm_vals){
-	float mean[N_FEATURES] = {0};
-    float std_dev[N_FEATURES] = {0};
+// static void normalize_chains(ri_reg1_t* reg, rh_norm_inference_t** norm_vals){
+// 	float mean[N_FEATURES] = {0};
+//     float std_dev[N_FEATURES] = {0};
     
-    // Assuming norm_vals is already allocated with n_chains elements
-    rh_norm_inference_t* norm_vals_ptr = *norm_vals;
+//     // Assuming norm_vals is already allocated with n_chains elements
+//     rh_norm_inference_t* norm_vals_ptr = *norm_vals;
     
-    // Calculate mean and std_dev
-    calculate_mean_std(reg, reg->n_cregs, mean, std_dev);
+//     // Calculate mean and std_dev
+//     calculate_mean_std(reg, reg->n_cregs, mean, std_dev);
 
-    // Normalize and store in norm_vals
-    for (int ic = 0; ic < reg->n_cregs; ++ic) {
-        // Normalize other fields similarly
-        norm_vals_ptr[ic].is_prim = (std_dev[0] == 0)?0:(((reg->creg[ic].parent == ic)?1:0) - mean[0])/std_dev[0];
-		norm_vals_ptr[ic].qlen = (std_dev[1] == 0)?0:((reg->creg[ic].qe - reg->creg[ic].qs) - mean[1])/std_dev[1];
-		norm_vals_ptr[ic].mapq = (std_dev[2] == 0)?0:(reg->creg[ic].mapq - mean[2])/std_dev[2];
-		norm_vals_ptr[ic].alignment_score = (std_dev[3] == 0)?0:(reg->creg[ic].alignment_score - mean[3])/std_dev[3];
-		norm_vals_ptr[ic].score = (std_dev[4] == 0)?0:(reg->creg[ic].score - mean[4])/std_dev[4];
-		norm_vals_ptr[ic].cnt = (std_dev[5] == 0)?0:(reg->creg[ic].cnt - mean[5])/std_dev[5];
-		norm_vals_ptr[ic].mlen = (std_dev[6] == 0)?0:(reg->creg[ic].mlen - mean[6])/std_dev[6];
-		norm_vals_ptr[ic].blen = (std_dev[7] == 0)?0:(reg->creg[ic].blen - mean[7])/std_dev[7];
-		norm_vals_ptr[ic].n_sub = (std_dev[8] == 0)?0:(reg->creg[ic].n_sub - mean[8])/std_dev[8];
-    }
-}
+//     // Normalize and store in norm_vals
+//     for (int ic = 0; ic < reg->n_cregs; ++ic) {
+//         // Normalize other fields similarly
+//         norm_vals_ptr[ic].is_prim = (std_dev[0] == 0)?0:(((reg->creg[ic].parent == ic)?1:0) - mean[0])/std_dev[0];
+// 		norm_vals_ptr[ic].qlen = (std_dev[1] == 0)?0:((reg->creg[ic].qe - reg->creg[ic].qs) - mean[1])/std_dev[1];
+// 		norm_vals_ptr[ic].mapq = (std_dev[2] == 0)?0:(reg->creg[ic].mapq - mean[2])/std_dev[2];
+// 		norm_vals_ptr[ic].alignment_score = (std_dev[3] == 0)?0:(reg->creg[ic].alignment_score - mean[3])/std_dev[3];
+// 		norm_vals_ptr[ic].score = (std_dev[4] == 0)?0:(reg->creg[ic].score - mean[4])/std_dev[4];
+// 		norm_vals_ptr[ic].cnt = (std_dev[5] == 0)?0:(reg->creg[ic].cnt - mean[5])/std_dev[5];
+// 		norm_vals_ptr[ic].mlen = (std_dev[6] == 0)?0:(reg->creg[ic].mlen - mean[6])/std_dev[6];
+// 		norm_vals_ptr[ic].blen = (std_dev[7] == 0)?0:(reg->creg[ic].blen - mean[7])/std_dev[7];
+// 		norm_vals_ptr[ic].n_sub = (std_dev[8] == 0)?0:(reg->creg[ic].n_sub - mean[8])/std_dev[8];
+//     }
+// }
 
 static void map_worker_for(void *_data,
 						   long i,
@@ -782,16 +782,15 @@ static void map_worker_for(void *_data,
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 							int64_t chunk_size,
 							int *n_)
-{
-	int64_t size = 0;
-	rhsig_v rsigv = {0,0,0};
-	
+{	
 	*n_ = 0;
 	if (pl->n_fp < 1) return 0;
 
 	//Debugging for sweeping purposes
-	// if(pl->su_nreads >= 2000) return 0;
+	// if(pl->su_nreads >= 1000) return 0;
 
+	int64_t size = 0;
+	rhsig_v rsigv = {0,0,0};
 	rh_kv_resize(ri_sig_t*, 0, rsigv, 4000);
 
 	while (pl->fp) {
@@ -829,11 +828,12 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 		
 		//Debugging for sweeping purposes
 		// pl->su_nreads++;
-		// if(pl->su_nreads >= 2000) break;
+		// if(pl->su_nreads >= 1000) break;
 	}
 
 	ri_sig_t** a = 0;
 	if(rsigv.n) a = rsigv.a;
+	else rh_kv_destroy(rsigv);
 	*n_ = rsigv.n;
 
 	return a;
@@ -882,7 +882,7 @@ static void *map_worker_pipeline(void *shared,
 		#endif
 
 		//Debugging for sweeping purposes
-		// if(p->su_nreads >= 2000) p->su_stop = p->su_nreads;
+		// if(p->su_nreads >= 1000) p->su_stop = p->su_nreads;
 
 		if(p->opt->flag & RI_M_SEQUENCEUNTIL && !p->su_stop){
 			const ri_idx_t *ri = p->ri;
@@ -1002,8 +1002,8 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	rh_kv_resize(char*, 0, fnames, 256);
 	find_sfiles(fn[0], &fnames);
 	pl.f =  fnames.a;
-	if(!fnames.n || ((pl.fp = open_sig(pl.f[0])) == 0)) return -1;
-	if (pl.fp == 0) return -1;
+	if(!fnames.n || ((pl.fp = open_sig(pl.f[0])) == 0)){rh_kv_destroy(fnames); return -1;}
+	if (pl.fp == 0){rh_kv_destroy(fnames); return -1;}
 	pl.fn = fn;
 	pl.n_f = fnames.n;
 	pl.cur_fp = 1;
@@ -1054,6 +1054,8 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	#ifdef INFER_MAP
 	TfLiteModelDelete(pl.map_model);
 	#endif
+
+	rh_kv_destroy(fnames);
 
 	return 0;
 }

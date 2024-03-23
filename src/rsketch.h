@@ -5,15 +5,13 @@
 #include "rutils.h"
 #include "tensorflow/lite/core/c/c_api.h"
 
-//A large float value can be used for masking if needed
-// #define RI_MASK_SIGNAL 3.402823466e+32F
-
-// #define LAST_SIG_DIFF 0.3F
-
 //To store sketches in vectors
 #define RI_HASH_SHIFT 6
 #define RI_ID_SHIFT 32
 #define RI_POS_SHIFT 1
+
+// #define TRAIN_REVERSE
+// #define TRAIN_MAP
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,9 +42,51 @@ extern "C" {
  *                 and strand indicates whether the seed comes from the top or the bottom $strand.
  *                 Callers may want to set "p->n = 0"; otherwise results are appended to p
  */
-void ri_sketch(void *km, const float* s_values, uint32_t id, int strand, int len, float diff, int w, int e, int n, int q, int lq, int k, mm128_v *p);
+void ri_sketch(void *km,
+               const float* s_values,
+               uint32_t id,
+               int strand,
+               int len,
+               float diff,
+               int w,
+               int e,
+               int n,
+               uint32_t quant_bit,
+               int k,
+               float fine_min,
+               float fine_max,
+               float fine_range,
+               mm128_v *p);
 
-void ri_sketch_rev(void *km, const float* s_values, uint32_t id, int strand, int len, float diff, int w, int e, int n, int q, int lq, int k, mm128_v *p, TfLiteInterpreter* interpreter, TfLiteTensor* input_tensor);
+void ri_sketch_rev(void *km,
+                   const float* s_values,
+                   uint32_t id,
+                   int strand,
+                   int len,
+                   float diff,
+                   int w,
+                   int e,
+                   int n,
+                   uint32_t quant_bit,
+                   int k,
+                   float fine_min,
+                   float fine_max,
+                   float fine_range,
+                   mm128_v *p,
+                   TfLiteInterpreter* interpreter,
+                   TfLiteTensor* input_tensor);
+
+#ifdef TRAIN_REVERSE
+void train_reverse(const float* f_values,
+                   const float* r_values,
+                   int len,
+                   float diff,
+                   int rev_span,
+                   uint32_t quant_bit,
+                   float fine_min,
+                   float fine_max,
+                   float fine_range);
+#endif
 
 #ifdef __cplusplus
 }

@@ -87,7 +87,10 @@ static ko_longopt_t long_options[] = {
 	// { (char*)"top-n-mean",			ko_required_argument, 	361 },
 	{ (char*)"rev-query",			ko_no_argument, 		362 },
 	{ (char*)"map-model",			ko_required_argument, 	363 },
-	{ (char*)"version",				ko_no_argument, 	  	364 },
+	{ (char*)"fine-min",			ko_required_argument, 	364 },
+	{ (char*)"fine-max",			ko_required_argument, 	365 },
+	{ (char*)"fine-range",			ko_required_argument, 	366 },
+	{ (char*)"version",				ko_no_argument, 	  	367 },
 	{ 0, 0, 0 }
 };
 
@@ -121,9 +124,9 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 		ri_idxopt_init(io);
 		ri_mapopt_init(mo);
 	} else if (strcmp(preset, "sensitive") == 0) {
-		io->e = 6; io->w = 0; io->n = 0;
+		io->e = 8; io->w = 0; io->n = 0;
 	} else if (strcmp(preset, "r10sensitive") == 0) {
-		io->k = 9; io->e = 8; io->q = 8; io->lq = 2; io->w = 0; io->n = 0;
+		io->k = 9; io->e = 8; io->w = 0; io->n = 0;
 		mo->window_length1 = 5; mo->window_length2 = 12;
 		mo->threshold1 = 4.20265f; mo->threshold2 = 3.67058f;  
 		mo->peak_height = 0.2f;
@@ -136,24 +139,21 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 		io->bp_per_sec = 400;
 		io->sample_per_base = (float)io->sample_rate / io->bp_per_sec;
 
-		// mo->w_best2q = 0.0f; mo->w_best2c = 0.1f; mo->w_bestmq = 0.4f; mo->w_bestmc = 0.5f; mo->w_threshold = 0.7f;
-
-		mo->max_num_chunk = 15, mo->min_mapq = 2, mo->min_num_anchors = 2, mo->min_chaining_score = 15, mo->chain_gap_scale = 1.2f, mo->chain_skip_scale = 0.0f;
+		mo->max_num_chunk = 10, mo->min_mapq = 2, mo->min_num_anchors = 2, mo->min_chaining_score = 15, mo->chain_gap_scale = 1.2f, mo->chain_skip_scale = 0.0f;
 	} else if (strcmp(preset, "fast") == 0) {
-		io->e = 8; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
-
-		mo->max_num_chunk = 15, mo->min_mapq = 5, mo->min_num_anchors = 2, mo->min_chaining_score = 10, mo->chain_gap_scale = 0.6f, mo->chain_skip_scale = 0.0f;
+		io->e = 11; io->w = 0; io->n = 0;
+		io->fine_range = 0.6;
+		mo->max_num_chunk = 10, mo->min_mapq = 5, mo->min_num_anchors = 2, mo->min_chaining_score = 10, mo->chain_gap_scale = 0.6f, mo->chain_skip_scale = 0.0f;
 	} else if (strcmp(preset, "faster") == 0) {
-		io->e = 8; io->w = 3; io->n = 0; mo->mini_batch_size = 1000000000;
+		io->e = 11; io->w = 3; io->n = 0;
+		io->fine_range = 0.6;
+		mo->max_num_chunk = 5; mo->min_mapq = 5, mo->min_num_anchors = 2, mo->min_chaining_score = 10, mo->chain_gap_scale = 0.6f, mo->chain_skip_scale = 0.0f;
 	} else if (strcmp(preset, "viral") == 0) {
-		io->e = 5; io->w = 0; io->n = 0;
+		io->e = 6; io->w = 0; io->n = 0;
 		mo->bw = 100; mo->max_target_gap_length = 500; mo->max_query_gap_length = 500;
-
-		// mo->w_best2q = 0.1f; mo->w_best2c = 0.7f; mo->w_bestmq = 0.0f; mo->w_bestmc = 0.2f; mo->w_threshold = 0.3f;
-
 		mo->max_num_chunk = 5, mo->min_mapq = 2, mo->min_num_anchors = 2, mo->min_chaining_score = 10; mo->chain_gap_scale = 1.2f; mo->chain_skip_scale = 0.3f;
 	} else if (strcmp(preset, "sequence-until") == 0) {
-		io->e = 7; io->w = 0; io->n = 0; mo->mini_batch_size = 750000000;
+		io->e = 8; io->w = 0; io->n = 0;
 	} else return -1;
 	return 0;
 }
@@ -203,15 +203,15 @@ const char* ri_maptopt_dtw_mode_to_string(uint32_t dtw_border_constraint){
 
 int main(int argc, char *argv[])
 {
-	fprintf(stderr, "Using RawHash version 2.1\n");
-	// print args
-	fprintf(stderr, "Received the following args: ");
-	for (int i = 0; i < argc; i++) {
-		fprintf(stderr, "%s ", argv[i]);
-	}
-	fprintf(stderr, "\n");
+	// fprintf(stderr, "Using RawHash version 2.1\n");
+	// // print args
+	// fprintf(stderr, "Received the following args: ");
+	// for (int i = 0; i < argc; i++) {
+	// 	fprintf(stderr, "%s ", argv[i]);
+	// }
+	// fprintf(stderr, "\n");
 
-	const char *opt_str = "k:d:p:e:q:l:w:n:o:t:K:x:";
+	const char *opt_str = "k:d:p:e:q:w:n:o:t:K:x:";
 	ketopt_t o = KETOPT_INIT;
 	ri_mapopt_t opt;
   	ri_idxopt_t ipt;
@@ -222,7 +222,7 @@ int main(int argc, char *argv[])
 	ri_idx_reader_t *idx_rdr;
 	ri_idx_t *ri;
 
-	ri_verbose = 3;
+	ri_verbose = 2;
 	liftrlimit();
 	ri_realtime0 = ri_realtime();
 	ri_set_opt(0, &ipt, &opt);
@@ -250,7 +250,6 @@ int main(int argc, char *argv[])
 		else if (c == 'k') ipt.k = atoi(o.arg);
 		else if (c == 'e') ipt.e = atoi(o.arg);
 		else if (c == 'q') ipt.q = atoi(o.arg);
-		else if (c == 'l') ipt.lq = atoi(o.arg);
 		else if (c == 'w') ipt.w = atoi(o.arg);
 		else if (c == 'n') ipt.n = atoi(o.arg);
 		else if (c == 't') n_threads = atoi(o.arg);
@@ -349,7 +348,10 @@ int main(int argc, char *argv[])
 		// else if (c == 361) {opt.top_n_mean = atoi(o.arg);}// --top-n-mean
 		else if (c == 362) {ipt.flag |= RI_I_REV_QUERY;}// --rev-query
 		else if (c == 363) {opt.model_map_path = o.arg;}// --map-model
-		else if (c == 364) {puts(RH_VERSION); return 0;}// --version
+		else if (c == 364) {ipt.fine_min = atof(o.arg);}// --fine-min
+		else if (c == 365) {ipt.fine_max = atof(o.arg);}// --fine-max
+		else if (c == 366) {ipt.fine_range = atof(o.arg);}// --fine-range
+		else if (c == 367) {puts(RH_VERSION); return 0;}// --version
 		else if (c == 'V') {puts(RH_VERSION); return 0;}
 	}
 
@@ -365,8 +367,7 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "\n  Indexing:\n");
 		fprintf(fp_help, "    -d FILE     [Strongly recommended to create before mapping] dump index to FILE [].\n");
 		fprintf(fp_help, "    -e INT     number of events concatanated in a single hash (usually no larger than 10). Also applies during mapping [%d].\n", ipt.e);
-		fprintf(fp_help, "    -q INT     most significant bits of signal values to process [%d]. Signal values are assumed to be in the IEEE standard for floating-point arithmetic.\n", ipt.q);
-		fprintf(fp_help, "    -l INT     least significant bits of the q bits to quantize along with the most signficant 2 bits of the q bits [%d].\n", ipt.lq);
+		fprintf(fp_help, "    -q INT     Number of bits to use for quantization [%d]. Number of quantized buckets are created accordingly (2^INT).\n", ipt.q);
 		fprintf(fp_help, "    -w INT     minimizer window size [%d]. Enables minimizer-based seeding in indexing and mapping (may reduce accuracy but improves the performance and memory space efficiency).\n", ipt.w);
 		fprintf(fp_help, "    --store-sig      Stores the target signal in the index file.\n");
 		fprintf(fp_help, "    --sig-target     The target sequence (reference) contains signals rather than base characters.\n");
@@ -492,7 +493,7 @@ int main(int argc, char *argv[])
 		if (argc != o.ind + 1) ri_mapopt_update(&opt, ri);
 		if (ri_verbose >= 3) ri_idx_stat(ri);
 		if (argc - (o.ind + 1) == 0) {
-			fprintf(stderr, "[INFO] no files to query index on, just created the index\n");
+			// fprintf(stderr, "[INFO] no files to query index on, just created the index\n");
 			ri_idx_destroy(ri);
 			continue; // no query files, just creating the index
 		}

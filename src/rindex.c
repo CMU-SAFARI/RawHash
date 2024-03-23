@@ -24,8 +24,6 @@ KHASH_MAP_INIT_STR(str, uint32_t)
 #define kroundup64(x) (--(x), (x)|=(x)>>1, (x)|=(x)>>2, (x)|=(x)>>4, (x)|=(x)>>8, (x)|=(x)>>16, (x)|=(x)>>32, ++(x))
 #define mm_seq4_set(s, i, c) ((s)[(i)>>3] |= (uint32_t)(c) << (((i)&7)<<2))
 
-// #define TRAIN_REVERSE
-
 double ri_realtime0;
 int ri_verbose = 1;
 
@@ -49,14 +47,15 @@ typedef struct {
 
 void ri_idx_stat(const ri_idx_t *ri)
 {
-	fprintf(stderr, "[M::%s] pore kmer size: %d; concatanated events: %d; quantization method (most sig. Q/least sig. lq): %d/%d; w: %d; n: %d; #seq: %d\n", __func__, ri->k, ri->e, ri->q, ri->lq, ri->w, ri->n, ri->n_seq);
+	fprintf(stderr, "[M::%s] pore kmer size: %d; concatanated events: %d; quantization bits: %d; w: %d; n: %d; #seq: %d\n", __func__, ri->k, ri->e, ri->q, ri->w, ri->n, ri->n_seq);
 }
 
-ri_idx_t* ri_idx_init(float diff, int b, int w, int e, int n, int q, int lq, int k, int flag){
+ri_idx_t* ri_idx_init(float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, int flag){
 	ri_idx_t* ri;
 	ri = (ri_idx_t*)calloc(1, sizeof(ri_idx_t));
-  	ri->b = b, ri->w = w; ri->e = e; ri->n = n; ri->q = q; ri->lq = lq, ri->k = k, ri->flag = flag;
+  	ri->b = b, ri->w = w; ri->e = e; ri->n = n; ri->q = q; ri->k = k, ri->flag = flag;
 	ri->diff = diff;
+	ri->fine_min = fine_min, ri->fine_max = fine_max, ri->fine_range = fine_range;
 	ri->seq = NULL; ri->sig = NULL; ri->F = NULL; ri->R = NULL; ri->f_l_sig = NULL; ri->r_l_sig = NULL; ri->pore = NULL; ri->h = NULL;
   	ri->B = (ri_idx_bucket_t*)calloc(1<<ri->b, sizeof(ri_idx_bucket_t));
   	ri->km = ri_km_init();
@@ -77,34 +76,6 @@ void ri_idx_destroy(ri_idx_t *ri){
 	}
 
 	if(ri->km) ri_km_destroy(ri->km);
-	// if(ri->n_seq && ri->seq){
-	// 	for (i = 0; i < ri->n_seq; ++i){
-	// 		free(ri->seq[i].name);
-
-	// 		if(ri->flag&RI_I_STORE_SIG){
-	// 			if(ri->F && ri->F[i]) free(ri->F[i]);
-	// 			if(!(ri->flag&RI_I_REV_QUERY) && ri->R && ri->R[i]) free(ri->R[i]);
-	// 		}
-	// 	}
-
-	// 	if(ri->flag&RI_I_STORE_SIG){
-	// 		if(ri->F) free(ri->F);
-	// 		if(ri->f_l_sig) free(ri->f_l_sig);
-	// 		if(!(ri->flag&RI_I_REV_QUERY)){
-	// 			if(ri->R) free(ri->R);
-	// 			if(ri->r_l_sig) free(ri->r_l_sig);
-	// 		}
-	// 	}
-
-	// 	if(ri->seq) free(ri->seq); // km
-	// } else if(ri->n_seq && ri->sig){
-	// 	for (i = 0; i < ri->n_seq; ++i){
-	// 		if(ri->sig[i].name)free(ri->sig[i].name);
-	// 		if(ri->sig[i].sig)free(ri->sig[i].sig);
-	// 	}
-	// 	free(ri->sig); // km
-	// }
-
 	free(ri->B); free(ri);
 }
 
@@ -115,60 +86,6 @@ void ri_idx_add(ri_idx_t *ri, int n, const mm128_t *a){
 		rh_kv_push(mm128_t, 0, *p, a[i]);
 	}
 }
-
-#ifdef TRAIN_REVERSE
-static void train_reverse(const float* f_values, const float* r_values, int len, int rev_span, int q, int lq){
-
-	uint32_t quant_bit = lq+2;
-	uint32_t shift_r = 32-q;
-	const uint64_t mask_l_quant = (1UL<<lq)-1;
-
-	const int mid_rev = rev_span/2;
-
-	int sigBufFull = 0;
-	uint32_t f_signal = 0, f_tmpQuantSignal = 0, r_signal = 0, r_tmpQuantSignal = 0;
-
-	uint32_t revBuf[rev_span];
-	memset(revBuf, 0, rev_span*sizeof(uint32_t));
-
-	uint32_t prev_revBuf[5];
-	memset(prev_revBuf, 0, 5*sizeof(uint32_t));
-
-	int f_pos, r_pos = len-1-mid_rev;
-	for (f_pos = 0; f_pos < len; ++f_pos) {
-		f_signal = *((uint32_t*)&f_values[f_pos]);
-		f_tmpQuantSignal = f_signal>>30<<lq | ((f_signal>>shift_r)&mask_l_quant);
-
-		if(f_pos+1 < rev_span) {revBuf[f_pos] = f_tmpQuantSignal; continue;}
-
-		r_signal = *((uint32_t*)&r_values[r_pos--]);
-		r_tmpQuantSignal = r_signal>>30<<lq | ((r_signal>>shift_r)&mask_l_quant);
-
-		//In a for loop of size rev_span, Print each f_tmpQuantSignal stored in f_quantVal
-		revBuf[rev_span-1] = f_tmpQuantSignal;
-		for(int i = 0; i < 4; ++i){
-			fprintf(stderr, "%d\t", prev_revBuf[i]);
-			prev_revBuf[i] = prev_revBuf[i+1];
-		}
-		fprintf(stderr, "%d", prev_revBuf[4]);
-		prev_revBuf[4] = r_tmpQuantSignal;
-
-		for(int i = 0; i < rev_span-1; ++i){
-			fprintf(stderr, "\t%d", revBuf[i]);
-			revBuf[i] = revBuf[i+1];
-			// fprintf(stderr, "%f\t", f_values[f_pos-i]);
-		}
-		fprintf(stderr, "\t%d", revBuf[rev_span-1]);
-		//num_vals is 2^quant_bit
-		int num_vals = 1<<quant_bit;
-		for(int bit = 0; bit < num_vals; ++bit){
-			if(bit == r_tmpQuantSignal) fprintf(stderr, "\t1");
-			else fprintf(stderr, "\t0");
-		}
-		fprintf(stderr, "\n");
-	}
-}
-#endif
 
 static void *worker_pipeline(void *shared, int step, void *in)
 {
@@ -221,14 +138,14 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					float* s_values = p->ri->F[r_id];
 
 					ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 0, &s_len, s_values);
-					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
 					p->ri->f_l_sig[r_id] = s_len;
 
 					if(!(p->ri->flag&RI_I_REV_QUERY)){
 						p->ri->R[r_id] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
 						s_values = p->ri->R[r_id];
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
-						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
 						p->ri->r_l_sig[r_id] = s_len;
 					}
 				}
@@ -242,7 +159,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					float* s_values = (float*)calloc(t->l_seq, sizeof(float));
 
 					ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 0, &s_len, s_values);
-					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
 
 					#ifdef TRAIN_REVERSE
 					float *f_values = s_values;
@@ -252,11 +169,11 @@ static void *worker_pipeline(void *shared, int step, void *in)
 
 					if(!(p->ri->flag&RI_I_REV_QUERY)){
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
-						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
 					}
 
 					#ifdef TRAIN_REVERSE
-					train_reverse(f_values, s_values, s_len, 11, p->ri->q, p->ri->lq);
+					train_reverse(f_values, s_values, s_len, p->ri->diff, 11, p->ri->q, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range);
 					free(f_values);
 					#endif
 
@@ -362,7 +279,7 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 				uint32_t n_events_sum = 0;
 				float* s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_sum, &s_std, &n_events_sum, &s_len);
 
-				ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->lq, p->ri->k, &s->a);
+				ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
 
 				if(s_values)free(s_values);
 			}
@@ -461,13 +378,16 @@ const uint64_t *ri_idx_get(const ri_idx_t *ri, uint64_t hashval, int *n){
 
 void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 
-	uint32_t pars[8], i;
+	uint32_t pars[7], i;
 
-	pars[0] = ri->w, pars[1] = ri->e, pars[2] = ri->n, pars[3] = ri->q, pars[4] = ri->lq, pars[5] = ri->k, pars[6] = ri->n_seq, pars[7] = ri->flag;
+	pars[0] = ri->w, pars[1] = ri->e, pars[2] = ri->n, pars[3] = ri->q, pars[4] = ri->k, pars[5] = ri->n_seq, pars[6] = ri->flag;
 	
 	fwrite(RI_IDX_MAGIC, 1, RI_IDX_MAGIC_BYTE, idx_file);
-	fwrite(pars, sizeof(uint32_t), 8, idx_file);
+	fwrite(pars, sizeof(uint32_t), 7, idx_file);
 	fwrite(&ri->diff, sizeof(float), 1, idx_file);
+	fwrite(&ri->fine_min, sizeof(float), 1, idx_file);
+	fwrite(&ri->fine_max, sizeof(float), 1, idx_file);
+	fwrite(&ri->fine_range, sizeof(float), 1, idx_file);
 	fwrite(ri->pore, sizeof(ri_pore_t), 1, idx_file);
 	fwrite(ri->pore->pore_vals, sizeof(float), ri->pore->n_pore_vals, idx_file);
 	ri_kfree(ri->km, ri->pore->pore_vals); 
@@ -552,14 +472,17 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 
 	if (fread(magic, 1, RI_IDX_MAGIC_BYTE, idx_file) != RI_IDX_MAGIC_BYTE) return 0;
 	if (strncmp(magic, RI_IDX_MAGIC, RI_IDX_MAGIC_BYTE) != 0) return 0;
-	int pars[8];
-	fread(&pars[0], sizeof(int), 8, idx_file);
+	int pars[7];
+	fread(&pars[0], sizeof(int), 7, idx_file);
 
-	float diff;
+	float diff, fine_min, fine_max, fine_range;
 	fread(&diff, sizeof(float), 1, idx_file);
+	fread(&fine_min, sizeof(float), 1, idx_file);
+	fread(&fine_max, sizeof(float), 1, idx_file);
+	fread(&fine_range, sizeof(float), 1, idx_file);
 
-	ri = ri_idx_init(diff, 14, pars[0], pars[1], pars[2], pars[3], pars[4], pars[5], pars[7]);
-	ri->n_seq = pars[6];
+	ri = ri_idx_init(diff, 14, pars[0], pars[1], pars[2], pars[3], pars[4], fine_min, fine_max, fine_range, pars[6]);
+	ri->n_seq = pars[5];
 	if(ri->flag&RI_I_SIG_TARGET) ri->sig = (ri_sig_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_sig_t));
 	else ri->seq = (ri_idx_seq_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(ri_idx_seq_t));
 
@@ -684,7 +607,7 @@ void ri_idx_reader_close(ri_idx_reader_t* r){
 	free(r);
 }
 
-ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int lq, int k, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
+ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
 {
 
 	if(flag&RI_I_SIG_TARGET) return 0;
@@ -695,7 +618,7 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	pl.mini_batch_size = (uint64_t)mini_batch_size < batch_size? mini_batch_size : batch_size;
 	pl.batch_size = batch_size;
 	pl.fp = fp;
-	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
+	pl.ri = ri_idx_init(diff, b, w, e, n, q, k, fine_min, fine_max, fine_range, flag);
 	
 	pl.ri->pore = (ri_pore_t*)ri_kmalloc(pl.ri->km, sizeof(ri_pore_t));
 	memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
@@ -710,7 +633,7 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	return pl.ri;
 }
 
-ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int lq, int k, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
+ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
 {
 
 	if(!(flag&RI_I_SIG_TARGET)) return 0;
@@ -724,7 +647,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.sf = f;
 	pl.n_f = n_f;
 	pl.cur_f = cur_f;
-	pl.ri = ri_idx_init(diff, b, w, e, n, q, lq, k, flag);
+	pl.ri = ri_idx_init(diff, b, w, e, n, q, k, fine_min, fine_max, fine_range, flag);
 
 	pl.ri->pore = (ri_pore_t*)ri_kmalloc(pl.ri->km, sizeof(ri_pore_t));
 	memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
@@ -755,9 +678,9 @@ ri_idx_t* ri_idx_reader_read(ri_idx_reader_t* r, ri_pore_t* pore, int n_threads)
 	if (r->is_idx) {
 		ri = ri_idx_load(r->fp.idx);
 	} else if(r->opt.flag&RI_I_SIG_TARGET) {
-		ri = ri_idx_siggen(&(r->sfp), r->sf, r->cur_f, r->n_f, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.window_length1, r->opt.window_length2, r->opt.threshold1, r->opt.threshold2, r->opt.peak_height, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
+		ri = ri_idx_siggen(&(r->sfp), r->sf, r->cur_f, r->n_f, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.k, r->opt.fine_min, r->opt.fine_max, r->opt.fine_range, r->opt.window_length1, r->opt.window_length2, r->opt.threshold1, r->opt.threshold2, r->opt.peak_height, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
 	} else{
-		ri = ri_idx_gen(r->fp.seq, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.lq, r->opt.k, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
+		ri = ri_idx_gen(r->fp.seq, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.k, r->opt.fine_min, r->opt.fine_max, r->opt.fine_range, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
 	}
 
 	if (ri) {

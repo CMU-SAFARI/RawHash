@@ -44,8 +44,6 @@ void ri_seq_to_sig(const char *str,
 	mean = sum/j;
 	std_dev = sqrt(sum2/j - (mean)*(mean));
 
-	// fprintf(stderr, "Indexing mean: %f, std_dev: %f\n", mean, std_dev);
-
 	for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
 
 	*s_len = j;
@@ -303,7 +301,9 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".pod") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
 			char** cur_fname;
 			rh_kv_pushp(char*, 0, *fnames, &cur_fname);
-			(*cur_fname) = strdup(A);
+			(*cur_fname) = 
+			strdup(A)
+			;
 		}
 		return;
 	}

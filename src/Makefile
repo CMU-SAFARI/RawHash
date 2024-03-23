@@ -1,5 +1,4 @@
 DEBUG_OPTS=-O2
-# DEBUG=0
 
 # get hostname
 HOSTNAME := $(shell hostname)
@@ -7,9 +6,9 @@ ifeq ($(HOSTNAME),mikado)
 # Max' specific config
 
 # todo: remove this section again
-# disable debug for index creation because there is a segfault (address sanitizer)
-DEBUG=1 #todo
-DEBUG_OPTS=-O0
+-# disable debug for index creation because there is a segfault (address sanitizer)
+-DEBUG=1 #todo
+-DEBUG_OPTS=-O0
 # HDF5_COMPILE=0
 HDF5_INCLUDE_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/include
 HDF5_LIB_DIR=/home/mmordig/rawhash_project/rawhash2_new/src/../extern/hdf5//build/lib
@@ -122,6 +121,9 @@ SLOW5_INCLUDE_DIR ?= ${SLOW5_DIR}/include
 SLOW5_LIB_DIR ?= ${SLOW5_DIR}/lib
 
 LIBS+=-L${WORKDIR}/tensorflow/tflite_build/
+# INCLUDES+=-I${WORKDIR}/gsl/build/include
+# LIBS+=${WORKDIR}/gsl/build/libgsl.a
+# LIBS+=${WORKDIR}/gsl/build/libgslcblas.a
 
 #pass NOPOD5=1 to make to disable compiling with POD5
 ifeq ($(NOPOD5),1)
@@ -151,7 +153,7 @@ else
 endif
 
 INCLUDES+=-I${WORKDIR}/tensorflow/
-LIBS+=-lm -lz -ldl -ltensorflowlite_c
+LIBS+=-lm -lz -ldl -ltensorflowlite_c 
 
 PROG=rawhash2
 
