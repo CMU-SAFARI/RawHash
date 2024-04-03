@@ -21,7 +21,7 @@ SYSTEM_NAME ?= $(shell uname -s)
 
 WORKDIR = $(shell pwd)/../extern
 
-POD5_VERSION = 0.2.2
+POD5_VERSION = 0.3.10
 POD5_URLDIR = pod5-$(POD5_VERSION)-$(SYSTEM_NAME)
 POD5_REPO = https://github.com/nanoporetech/pod5-file-format
 ifdef POD5_INCLUDE_DIR
