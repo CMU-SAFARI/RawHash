@@ -265,7 +265,7 @@ float* detect_events(void *km,
 					 double* mean_sum,
 					 double* std_dev_sum,
 					 uint32_t* n_events_sum,
-					 uint32_t *n_events)
+					 uint32_t* n_events)
 {
 	float* prefix_sum = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
 	float* prefix_sum_square = (float*)ri_kcalloc(km, s_len+1, sizeof(float));

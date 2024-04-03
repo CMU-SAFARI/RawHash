@@ -44,7 +44,7 @@ void ri_seed_mz_flt(void *km, mm128_v *riv, int32_t q_occ_max, float q_occ_frac)
  */
 ri_seed_t *ri_collect_matches(void *km,
                               int *_n_seed_m,
-                              int qlen,
+                              uint32_t qlen,
                               int max_occ,
                               int max_max_occ,
                               int dist,

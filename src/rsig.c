@@ -301,9 +301,7 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".pod") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
 			char** cur_fname;
 			rh_kv_pushp(char*, 0, *fnames, &cur_fname);
-			(*cur_fname) = 
-			strdup(A)
-			;
+			(*cur_fname) = strdup(A);
 		}
 		return;
 	}
@@ -360,7 +358,7 @@ static inline void ri_read_sig_fast5(ri_sig_file_t* fp, ri_sig_t* s){
 	}
 
 	std::string sig_path = std::string(fp->raw_path[fp->cur_read]) + "/Signal";
-	std::vector<float> sig;
+	std::vector<int16_t> sig;
 	fp->fp->read(sig_path, sig);
 	// convert to pA
 	uint32_t l_sig = 0;

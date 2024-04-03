@@ -262,12 +262,14 @@ for line in fps[3]:
     if (cols[19].split(":")[2] != 'na'):
       rawhash2_time_per_read.append(mt)
       if(cols[2] != '*'):
-        rawhash2_maplast_pos.append(lastpos)
+        if(int(cols[2]) > 0):
+          rawhash2_maplast_pos.append(lastpos)
       else:
         rawhash2_umaplast_pos.append(lastpos)
     chunk = int(cols[13].split(":")[2])
     if(cols[2] != '*'):
-      rawhash2_maplast_chunk.append(chunk)
+      if(int(cols[2]) > 0):
+        rawhash2_maplast_chunk.append(chunk)
     else:
       rawhash2_umaplast_chunk.append(chunk)
     cm = int(cols[15].split(":")[2])

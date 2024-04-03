@@ -81,7 +81,7 @@ typedef struct ri_mapopt_s{
 	int32_t max_occ, max_max_occ, occ_dist;
 
 	//Chaining parameters
-	int min_events;
+	uint32_t min_events;
 	int bw;
 	int bw_long;
 	int max_target_gap_length;

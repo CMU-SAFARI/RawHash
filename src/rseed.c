@@ -5,7 +5,7 @@
 
 #define MAX_MAX_HIGH_OCC 128
 
-void ri_seed_select(int32_t n, ri_seed_t *a, int len, int max_occ, int max_max_occ, int dist)
+void ri_seed_select(int32_t n, ri_seed_t *a, uint32_t len, int max_occ, int max_max_occ, int dist)
 { // for high-occ minimizers, choose up to max_high_occ in each high-occ streak
 	extern void ks_heapdown_uint64_t(size_t i, size_t n, uint64_t*);
 	extern void ks_heapmake_uint64_t(size_t n, uint64_t*);
@@ -104,7 +104,7 @@ ri_seed_t *ri_seed_collect_all(void *km, const ri_idx_t *ri, const mm128_v *riv,
  */
 ri_seed_t *ri_collect_matches(void *km,
                               int *_n_seed_m,
-                              int qlen,
+                              uint32_t qlen,
                               int max_occ,
                               int max_max_occ,
                               int dist,

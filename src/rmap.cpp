@@ -85,7 +85,7 @@ static mm128_t *collect_seed_hits(void *km,
 			// if (skip_seed(opt->flag, hits[k], s_match, qname, qlen, ri, &is_self)) continue;
 			p = &seed_hits[(*n_seed_pos)++];
 
-			p->x = hits[k]&mask_id_shift | ref_pos;
+			p->x = (hits[k]&mask_id_shift) | ref_pos;
 			if(hits[k]&1) p->x |= 1ULL<<63; // reverse strand
 			p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
 			if (s_match->is_tandem) p->y |= RI_SEED_TANDEM;
@@ -112,7 +112,7 @@ void align_chain(mm_reg1_t *chain, mm128_t* anchors, const ri_idx_t *ri, const f
 	if(ri->flag&RI_I_SIG_TARGET) rs = chain->rev?(uint32_t)(ri->sig[rid].l_sig+1-chain->re):chain->rs;
 	else rs = chain->rev?(uint32_t)(ri->seq[rid].len+1-chain->re):chain->rs;
 	float* ref = (chain->rev)?ri->R[rid]:ri->F[rid];
-	uint32_t r_len = (chain->rev)?ri->r_l_sig[rid]:ri->f_l_sig[rid];
+	// uint32_t r_len = (chain->rev)?ri->r_l_sig[rid]:ri->f_l_sig[rid];
 
 	float dtw_cost = 0.0f;
 	uint32_t num_aligned_read_events = 0;
@@ -182,9 +182,9 @@ void align_chain(mm_reg1_t *chain, mm128_t* anchors, const ri_idx_t *ri, const f
 	chain->alignment_score = num_aligned_read_events*opt->dtw_match_bonus - dtw_cost;
 
 	if(opt->flag & RI_M_DTW_LOG_SCORES){
-		char str[256];
-		sprintf(str, "chaining_score=%f alignment_score=%f\n", chain->score, chain->alignment_score);
-		fprintf(stderr, str);
+		// char str[256];
+		fprintf(stderr, "chaining_score=%d alignment_score=%f\n", chain->score, chain->alignment_score);
+		// fprintf(stderr, str);
 	}
 }
 
@@ -297,7 +297,7 @@ void ri_map_frag(const ri_idx_t *ri,
 		//this could be slightly more agressive and be set to opt->dtw_min_score immediately,
 		//but starting with 0 if clearer
 		float best_found_alignment = 0.0f;
-		uint32_t i, k;
+		int32_t i, k;
 		
 		for(i = 0; i < reg->n_cregs; ++i){
 			k = reg->creg[i].as;
@@ -341,7 +341,7 @@ static void map_worker_for(void *_data,
 
 	uint32_t qlen = sig->l_sig;
 	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
-	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk;
+	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?(qlen/(l_chunk+1))+1:opt->max_num_chunk;
 	uint32_t s_qs, s_qe = l_chunk;
 
 	uint32_t c_count = 0;
@@ -383,7 +383,7 @@ static void map_worker_for(void *_data,
 		// 	if(chain_cnt){meanC /= chain_cnt; meanQ /= chain_cnt;}
 		// }
 		// else{
-		for (uint32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
+		for (int32_t c_ind = 0; c_ind < reg0->n_cregs; ++c_ind){
 			meanC += reg0->creg[c_ind].score;
 			meanQ += reg0->creg[c_ind].mapq;
 		}
@@ -444,7 +444,7 @@ static void map_worker_for(void *_data,
 
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
-	float read_position_scale = ((float)(c_count+1)*l_chunk/reg0->offset) / opt->sample_per_base;
+	float read_position_scale = (reg0->offset == 0)?0.0f:(opt->sample_per_base == 0)?0.0f:((float)(c_count+1)*l_chunk/reg0->offset)/opt->sample_per_base;
 	mm_reg1_t* chains = reg0->creg;
 
 	if(!chains) {reg0->n_cregs = 0;}
@@ -493,7 +493,7 @@ static void map_worker_for(void *_data,
 		reg0->maps[0].mapped = 0;
 		reg0->maps[0].tags = tags;
 	}else{
-		for(int m = 0; m < reg0->n_maps; ++m){
+		for(uint32_t m = 0; m < reg0->n_maps; ++m){
 			char *tags = (char *)malloc(1024 * sizeof(char));
 			uint32_t c_id = reg0->maps[m].c_id;
 			tags[0] = '\0'; // make it an empty string
@@ -682,9 +682,9 @@ static void *map_worker_pipeline(void *shared,
 				
 				if(reg0->read_name){
 					if(reg0->n_maps > 0 && (!p->su_stop || k < p->su_stop)){
-						for(int m = 0; m < reg0->n_maps; ++m){
+						for(uint32_t m = 0; m < reg0->n_maps; ++m){
 							if(reg0->maps[m].ref_id < ri->n_seq)
-								fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%d\t%s\n", 
+								fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%u\t%s\n", 
 												reg0->read_name,
 												reg0->maps[m].read_length,
 												reg0->maps[m].read_start_position,
@@ -701,7 +701,7 @@ static void *map_worker_pipeline(void *shared,
 							if(reg0->maps[m].tags) {free(reg0->maps[m].tags); reg0->maps[m].tags = NULL;}
 						}
 					}else{
-						fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%d\t%s\n", 
+						fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%u\t%s\n", 
 						reg0->read_name, 
 						reg0->maps[0].read_length, 
 						reg0->maps[0].mapq, 
