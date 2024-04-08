@@ -42,7 +42,7 @@ conda config --add channels bioconda
 conda config --add channels conda-forge
 conda config --set channel_priority strict
 
-conda create -n rawhash2-env python=3.6.15 pip=20.2.3 ont_vbz_hdf_plugin=1.0.1 seqkit=2.5.1
+conda create -n rawhash2-env python=3.6.15 pip=21.3.1 ont_vbz_hdf_plugin=1.0.1 seqkit=2.5.1
 conda activate rawhash2-env
 
 #Installing SRA Toolkit
