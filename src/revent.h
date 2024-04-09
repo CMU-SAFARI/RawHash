@@ -8,6 +8,13 @@
 extern "C" {
 #endif
 
+float* normalize_signal(void *km,
+						const float* sig,
+						const uint32_t s_len,
+						double* mean_sum,
+						double* std_dev_sum,
+						uint32_t* n_events_sum,
+						uint32_t* n_sig);
 /**
  * Detects events from signals
  *

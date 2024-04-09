@@ -138,14 +138,14 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					float* s_values = p->ri->F[r_id];
 
 					ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 0, &s_len, s_values);
-					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 					p->ri->f_l_sig[r_id] = s_len;
 
 					if(!(p->ri->flag&RI_I_REV_QUERY)){
 						p->ri->R[r_id] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
 						s_values = p->ri->R[r_id];
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
-						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
+						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 						p->ri->r_l_sig[r_id] = s_len;
 					}
 				}
@@ -159,7 +159,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					float* s_values = (float*)calloc(t->l_seq, sizeof(float));
 
 					ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 0, &s_len, s_values);
-					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 
 					#ifdef TRAIN_REVERSE
 					float *f_values = s_values;
@@ -169,7 +169,7 @@ static void *worker_pipeline(void *shared, int step, void *in)
 
 					if(!(p->ri->flag&RI_I_REV_QUERY)){
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
-						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
+						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 					}
 
 					#ifdef TRAIN_REVERSE
@@ -277,15 +277,26 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 				uint32_t s_len = 0;
 				double s_sum = 0, s_std = 0;
 				uint32_t n_events_sum = 0;
-				float* s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_sum, &s_std, &n_events_sum, &s_len);
-
-				ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a);
+				float* s_values;
+				
+				if(!p->ri->flag&RI_I_NO_EVENT_DETECTION)
+					s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_sum, &s_std, &n_events_sum, &s_len);
+				else s_values = normalize_signal(0, t->sig, t->l_sig, &s_sum, &s_std, &n_events_sum, &s_len);
+				
+				short out = (p->ri->flag&RI_I_OUT_QUANTIZE)?1:0;
+				if(out) fprintf(stdout, "%s\t", t->name);
+				ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, out);
 
 				if(s_values)free(s_values);
 			}
 			free(t->sig); free(t->name); 
 		}
 		free(s->sig); s->sig = 0;
+		
+		if(p->ri->flag&RI_I_OUT_QUANTIZE){
+			if(s->a.a) ri_kfree(0, s->a.a);
+			free(s); s = 0;
+		}
 		return s;
     } else if (step == 2) { // dispatch sketch to buckets
         step_t *s = (step_t*)in;
@@ -639,7 +650,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	if(!(flag&RI_I_SIG_TARGET)) return 0;
 
 	pipeline_t pl;
-	if (fp == 0 || *fp == 0 || n_f <= 0 || cur_f > n_f || (cur_f == n_f && (*fp)->cur_read >= (*fp)->num_read) || !pore || !pore->pore_vals) return 0;
+	if (fp == 0 || *fp == 0 || n_f <= 0 || cur_f > n_f || (cur_f == n_f && (*fp)->cur_read >= (*fp)->num_read) || ((!pore || !pore->pore_vals) && !(pl.ri->flag&RI_I_OUT_QUANTIZE))) return 0;
 	memset(&pl, 0, sizeof(pipeline_t));
 	pl.mini_batch_size = (uint64_t)mini_batch_size < batch_size? mini_batch_size : batch_size;
 	pl.batch_size = batch_size;
@@ -649,12 +660,14 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.cur_f = cur_f;
 	pl.ri = ri_idx_init(diff, b, w, e, n, q, k, fine_min, fine_max, fine_range, flag);
 
-	pl.ri->pore = (ri_pore_t*)ri_kmalloc(pl.ri->km, sizeof(ri_pore_t));
-	memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
-	pl.ri->pore->pore_vals = (float*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(float));
-	memcpy(pl.ri->pore->pore_vals, pore->pore_vals, pore->n_pore_vals * sizeof(float));
-	pl.ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(ri_porei_t));
-	memcpy(pl.ri->pore->pore_inds, pore->pore_inds, pore->n_pore_vals * sizeof(ri_porei_t));
+	if(!(pl.ri->flag&RI_I_OUT_QUANTIZE)){
+		pl.ri->pore = (ri_pore_t*)ri_kmalloc(pl.ri->km, sizeof(ri_pore_t));
+		memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
+		pl.ri->pore->pore_vals = (float*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(float));
+		memcpy(pl.ri->pore->pore_vals, pore->pore_vals, pore->n_pore_vals * sizeof(float));
+		pl.ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(ri_porei_t));
+		memcpy(pl.ri->pore->pore_inds, pore->pore_inds, pore->n_pore_vals * sizeof(ri_porei_t));
+	}
 
 	pl.ri->window_length1 = window_length1;
 	pl.ri->window_length2 = window_length2;
@@ -662,19 +675,21 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.ri->threshold2 = threshold2;
 	pl.ri->peak_height = peak_height;
 
-	kt_pipeline(n_threads < 3? n_threads : 3, worker_sig_pipeline, &pl, 3);
+	int n_steps = (pl.ri->flag&RI_I_OUT_QUANTIZE)?2:3;
+	kt_pipeline(n_threads < n_steps? n_threads : n_steps, worker_sig_pipeline, &pl, n_steps);
 
 	*fp = pl.sfp;
 	cur_f = pl.cur_f;
 
-	ri_idx_post(pl.ri, n_threads);
+	if(pl.ri->flag&RI_I_OUT_QUANTIZE) {ri_idx_destroy(pl.ri); pl.ri = 0;}
+	else ri_idx_post(pl.ri, n_threads);
 
-	return pl.ri;
+	return pl.ri;;
 }
 
 ri_idx_t* ri_idx_reader_read(ri_idx_reader_t* r, ri_pore_t* pore, int n_threads){
 
-	ri_idx_t *ri;
+	ri_idx_t *ri = 0;
 	if (r->is_idx) {
 		ri = ri_idx_load(r->fp.idx);
 	} else if(r->opt.flag&RI_I_SIG_TARGET) {

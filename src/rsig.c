@@ -302,9 +302,7 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".pod") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
 			char** cur_fname;
 			rh_kv_pushp(char*, 0, *fnames, &cur_fname);
-			(*cur_fname) = 
-			strdup(A)
-			;
+			(*cur_fname) = strdup(A);
 		}
 		return;
 	}
@@ -361,7 +359,7 @@ static inline void ri_read_sig_fast5(ri_sig_file_t* fp, ri_sig_t* s){
 	}
 
 	std::string sig_path = std::string(fp->raw_path[fp->cur_read]) + "/Signal";
-	std::vector<float> sig;
+	std::vector<int16_t> sig;
 	fp->fp->read(sig_path, sig);
 	// convert to pA
 	uint32_t l_sig = 0;
@@ -369,9 +367,8 @@ static inline void ri_read_sig_fast5(ri_sig_file_t* fp, ri_sig_t* s){
 	float pa = 0;
 	for (size_t i = 0; i < sig.size(); i++) {
 		pa = (sig[i]+offset)*scale;
-		if (pa > 30.0f && pa < 200.0f) {
+		if (pa > 30.0f && pa < 200.0f)
 			sig[l_sig++] = pa;
-		}
 	}
 
 	s->sig = (float*)calloc(l_sig, sizeof(float));
@@ -438,9 +435,8 @@ static inline void ri_read_sig_pod5(ri_sig_file_t* fp, ri_sig_t* s){
 	float pa = 0.0f;
 	for(uint64_t i = 0; i < read_data.num_samples; i++){
 		pa = (sig[i]+read_data.calibration_offset)*read_data.calibration_scale;
-		if (pa > 30 && pa < 200) {
+		if (pa > 30.0f && pa < 200.0f)
 			sigF[l_sig++] = pa;
-		}
 	}
 
 	free(sig);
@@ -511,9 +507,8 @@ static inline void ri_read_sig_slow5(ri_sig_file_t* fp, ri_sig_t* s){
 	
 	for(int i = 0; i < rec->len_raw_signal; ++i){
 		pa = (rec->raw_signal[i]+rec->offset)*scale;
-		if (pa > 30.0f && pa < 200.0f) {
+		if (pa > 30.0f && pa < 200.0f)
 			sigF[l_sig++] = pa;
-		}
 	}
 
 	fp->cur_read++;

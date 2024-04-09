@@ -12,6 +12,8 @@
 #define RI_I_STORE_SIG	0x10
 #define RI_I_SIG_TARGET	0x20
 #define RI_I_REV_QUERY	0x40
+#define RI_I_OUT_QUANTIZE 0x80
+#define RI_I_NO_EVENT_DETECTION 0x100
 
 #define RI_M_SEQUENCEUNTIL	0x1
 #define RI_M_RMQ			0x2
@@ -82,7 +84,7 @@ typedef struct ri_mapopt_s{
 	int32_t max_occ, max_max_occ, occ_dist;
 
 	//Chaining parameters
-	int min_events;
+	uint32_t min_events;
 	int bw;
 	int bw_long;
 	int max_target_gap_length;

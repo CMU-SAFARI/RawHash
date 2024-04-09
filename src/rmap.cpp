@@ -107,7 +107,7 @@ static mm128_t *collect_seed_hits(void *km,
 								  const char *qname,
 								  ri_reg1_t* reg,
 								  const mm128_v *riv,
-								  int qlen,
+								  uint32_t qlen,
 								  int64_t *n_seed_pos,
 								  int *rep_len)
 								//   int *n_seed_mini,
@@ -137,7 +137,7 @@ static mm128_t *collect_seed_hits(void *km,
 			// if (skip_seed(opt->flag, hits[k], s_match, qname, qlen, ri, &is_self)) continue;
 			p = &seed_hits[(*n_seed_pos)++];
 
-			p->x = hits[k]&mask_id_shift | ref_pos;
+			p->x = (hits[k]&mask_id_shift) | ref_pos;
 			if(hits[k]&1) p->x |= 1ULL<<63; // reverse strand
 			p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
 			if (s_match->is_tandem) p->y |= RI_SEED_TANDEM;
@@ -235,7 +235,7 @@ void align_chain(mm_reg1_t *chain, mm128_t* anchors, const ri_idx_t *ri, const f
 
 	if(opt->flag & RI_M_DTW_LOG_SCORES){
 		char str[256];
-		sprintf(str, "chaining_score=%f alignment_score=%f\n", chain->score, chain->alignment_score);
+		sprintf(str, "chaining_score=%d alignment_score=%f\n", chain->score, chain->alignment_score);
 		fprintf(stderr, str);
 	}
 }
@@ -287,6 +287,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	double signal_t = ri_realtime();
 	#endif
 	float* events = detect_events(b->km, s_len, sig, opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height, mean_sum, std_dev_sum, n_events_sum, &n_events);
+	fprintf(stderr, "n_events: %d\n", n_events);
 	#ifdef PROFILERH
 	ri_signaltime += ri_realtime() - signal_t;
 	#endif
@@ -299,7 +300,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	//Copy events to the end of reg->events with ri_krealloc
 	if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
 		reg->events = (float*)ri_krealloc(b->km, reg->events, (reg->offset+n_events) * sizeof(float));
-		memcpy(reg->events + reg->offset, events, n_events * sizeof(float));
+		memcpy(reg->events + reg->offset, events, n_events*sizeof(float));
 	}
 
 	#ifdef PROFILERH
@@ -308,11 +309,11 @@ void ri_map_frag(const ri_idx_t *ri,
 
 	//Sketching
 	mm128_v riv = {0,0,0};
-	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv);
+	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, 0);
 
 	if(ri->flag&RI_I_REV_QUERY){
 
-		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, interpreter, input_tensor);
+		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, 0, interpreter, input_tensor);
 
 		// float* rev_events = (float*)ri_kmalloc(b->km, n_events * sizeof(float));
 
@@ -530,7 +531,8 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 		double* mean_sum, // for raw signal normalization, reused from old chunks and updated with new chunk
 		double* std_dev_sum, // see mean_sum arg
 		uint32_t* n_events_sum // number of events in all seen chunks (not including current chunk)
-		) {
+		)
+{
 	
 
 	if(reg0->creg){free(reg0->creg); reg0->creg = NULL; reg0->n_cregs = 0;}
@@ -705,7 +707,7 @@ static void map_worker_for(void *_data,
 
 	uint32_t qlen = sig->l_sig;
 	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
-	uint32_t max_chunk =  (opt->flag&RI_M_NO_ADAPTIVE)?((qlen-1)/l_chunk)+1:opt->max_num_chunk; //todo4: why ((qlen-1)/l_chunk)+1
+	uint32_t max_chunk = (opt->flag&RI_M_NO_ADAPTIVE)?(qlen/(l_chunk+1))+1:opt->max_num_chunk; //todo4: why ((qlen-1)/l_chunk)+1
 	uint32_t s_qs, s_qe = l_chunk;
 	uint32_t c_count = 0;
 
@@ -719,7 +721,6 @@ static void map_worker_for(void *_data,
 			// mapped
 			break;
 		}
-
 	} 
 	double mapping_time = ri_realtime() - t;
 	#ifdef PROFILERH
@@ -730,10 +731,9 @@ static void map_worker_for(void *_data,
 	if (c_count > 0 && (s_qs >= qlen || c_count == max_chunk)) --c_count;
 
 	try_mapping_if_none_found(reg0, opt);
-	compute_tag_and_mapping_info(c_count + 1, (c_count + 1) * l_chunk, reg0, opt, mapping_time, qlen, s->p->ri);
+	compute_tag_and_mapping_info(c_count+1, (c_count+1)*l_chunk, reg0, opt, mapping_time, qlen, s->p->ri);
 	free_most_of_ri_reg1_t(b->km, reg0);
 	km_destroy_and_recreate(&(b->km));
-
 }
 
 void free_most_of_ri_reg1_t(void* km, ri_reg1_t* reg0) {
@@ -757,7 +757,7 @@ void try_mapping_if_none_found(ri_reg1_t *reg0, const ri_mapopt_t *opt) {
 // };
 
 void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, ri_reg1_t *reg0, const ri_mapopt_t *opt, double mapping_time, uint32_t qlen, const ri_idx_t* ri) {
-    float read_position_scale = ((float)processed_len / reg0->offset) / opt->sample_per_base; // avg num_bps/num_events of processed signal
+    float read_position_scale = (reg0->offset == 0)?0.0f:(opt->sample_per_base == 0)?0.0f:((float)processed_len/reg0->offset)/opt->sample_per_base; // avg num_bps/num_events of processed signal
 
 	mm_reg1_t *chains = reg0->creg;
     if (!chains) {
@@ -767,7 +767,6 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, r
 
     if (reg0->n_maps == 0) {
         // no map
-
         reg0->maps = (ri_map_t *)ri_kcalloc(0, 1, sizeof(ri_map_t));
         char *tags = (char *)malloc(1024 * sizeof(char));
         tags[0] = '\0';    // make it an empty string
@@ -804,7 +803,7 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, r
         // reg0->read_id = sig->rid;
         // reg0->read_name = sig->name;
 		// reg0->read_name = read_id;
-        reg0->maps[0].read_length = (ri->flag & RI_I_SIG_TARGET) ? reg0->offset : (uint32_t)(read_position_scale * reg0->offset);
+        reg0->maps[0].read_length = (ri->flag&RI_I_SIG_TARGET)?reg0->offset:(uint32_t)(read_position_scale*reg0->offset);
         reg0->maps[0].tags = tags;
 		// write invalid fields since no mapping
         reg0->maps[0].c_id = 0;
@@ -818,7 +817,6 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, r
         reg0->maps[0].mapped = 0;
     } else {
         // mapped
-
         for (int m = 0; m < reg0->n_maps; ++m) {
             char *tags = (char *)malloc(1024 * sizeof(char));
             uint32_t c_id = reg0->maps[m].c_id;
@@ -863,7 +861,7 @@ void compute_tag_and_mapping_info(uint32_t num_chunks, uint32_t processed_len, r
 ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 							int64_t chunk_size,
 							int *n_)
-{	
+{
 	*n_ = 0;
 	if (pl->n_fp < 1) return 0;
 
@@ -1041,7 +1039,7 @@ void write_out_mappings_to_stdout(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_
 	if (was_mapped) {
 		for (int m = 0; m < reg0->n_maps; ++m) {
 			if (reg0->maps[m].ref_id < ri->n_seq)
-				fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%d\t%s\n",
+				fprintf(stdout, "%s\t%u\t%u\t%u\t%c\t%s\t%u\t%u\t%u\t%u\t%u\t%u\t%s\n",
 						reg0->read_name,
 						reg0->maps[m].read_length,
 						reg0->maps[m].read_start_position,
@@ -1062,7 +1060,7 @@ void write_out_mappings_to_stdout(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_
 		}
 	} else {
 		// maps[0] contains all necessary information
-		fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%d\t%s\n", 
+		fprintf(stdout, "%s\t%u\t*\t*\t*\t*\t*\t*\t*\t*\t*\t%u\t%s\n", 
 		reg0->read_name, 
 		reg0->maps[0].read_length, 
 		reg0->maps[0].mapq, 

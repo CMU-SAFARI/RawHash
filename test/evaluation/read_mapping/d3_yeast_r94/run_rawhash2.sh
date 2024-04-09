@@ -12,10 +12,9 @@ mkdir -p ${OUTDIR}
 
 #The following is the run using default parameters:
 PREFIX="d3_yeast_r94"
-PARAMS="--best-chains 5 --w-threshold 0.5 --map-model ../features_all_all_m_logistic.tflite"
-bash ../../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} "${PARAMS}" > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"
+bash ../../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"
 
 #Minimizers
 PREFIX="d3_yeast_r94_w3"
-PARAMS="-w 3 --best-chains 5 --w-threshold 0.5 --map-model ../features_all_all_m_logistic.tflite"
+PARAMS="-w 3"
 bash ../../../scripts/run_rawhash2.sh ${OUTDIR} ${PREFIX} ${FAST5} ${REF} ${PORE} ${PRESET} ${THREAD} "${PARAMS}" > "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.out" 2> "${OUTDIR}/${PREFIX}_rawhash2_${PRESET}.err"

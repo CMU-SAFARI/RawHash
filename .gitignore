@@ -61,6 +61,8 @@ test/scripts/*test*
 test/evaluation/read_mapping/*/parameters.txt
 test/evaluation/read_mapping/*/results.txt
 test/evaluation/read_mapping/*parameters*.txt
+test/evaluation/read_mapping/*parameters/
+test/evaluation/read_mapping/s_modify.py
 
 test/evaluation/read_mapping/*.txt
 

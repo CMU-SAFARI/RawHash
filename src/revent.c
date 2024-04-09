@@ -221,13 +221,13 @@ static inline float* gen_events(void *km,
 // sig: events
 // return values:
 // n_sig: will be assigned the number of events detected in the signal
-static inline float* normalize_signal(void *km,
-									  const float* sig,
-									  const uint32_t s_len,
-									  double* mean_sum,
-									  double* std_dev_sum,
-									  uint32_t* n_events_sum,
-									  uint32_t* n_sig)
+float* normalize_signal(void *km,
+						const float* sig,
+						const uint32_t s_len,
+						double* mean_sum,
+						double* std_dev_sum,
+						uint32_t* n_events_sum,
+						uint32_t* n_sig)
 {
 	double sum = (*mean_sum), sum2 = (*std_dev_sum);
 	double mean = 0, std_dev = 0;
@@ -268,13 +268,14 @@ float* detect_events(void *km,
 					 double* mean_sum,
 					 double* std_dev_sum,
 					 uint32_t* n_events_sum,
-					 uint32_t *n_events)
+					 uint32_t* n_events)
 {
 	float* prefix_sum = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
 	float* prefix_sum_square = (float*)ri_kcalloc(km, s_len+1, sizeof(float));
 
 	//Normalize the signal
 	uint32_t n_signals = 0;
+	(*n_events) = 0;
 	float* norm_signals = normalize_signal(km, sig, s_len, mean_sum, std_dev_sum, n_events_sum, &n_signals);
 	if(n_signals == 0) return 0;
 	comp_prefix_prefixsq(norm_signals, n_signals, prefix_sum, prefix_sum_square);
