@@ -284,7 +284,7 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 				else s_values = normalize_signal(0, t->sig, t->l_sig, &s_sum, &s_std, &n_events_sum, &s_len);
 				
 				short out = (p->ri->flag&RI_I_OUT_QUANTIZE)?1:0;
-				if(out) fprintf(stdout, "%s\t", t->name);
+				if(out) fprintf(stdout, "%s\n", t->name);
 				ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, out);
 
 				if(s_values)free(s_values);
