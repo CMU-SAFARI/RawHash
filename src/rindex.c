@@ -257,8 +257,15 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 			if (old_m != m)
 				p->ri->sig = (ri_sig_t*)ri_krealloc(p->ri->km, p->ri->sig, m*sizeof(ri_sig_t));
 			for (i = 0; i < s->n_seq; ++i) {
+				if(!(s->sig[i]) || 
+				!((*(s->sig[i])).name) ||
+				!((*(s->sig[i])).sig)) continue;
 				ri_sig_t *sig = &p->ri->sig[p->ri->n_seq];
-				sig->name = (char*)ri_kmalloc(p->ri->km, strlen((*(s->sig[i])).name) + 1);
+				sig->name = (char*)ri_kmalloc(
+					p->ri->km,
+					strlen((*(
+						s->sig[i]))
+					.name) + 1);
 				strcpy(sig->name, (*(s->sig[i])).name);
 				sig->l_sig = (*(s->sig[i])).l_sig;
 				sig->offset = p->sum_len;
@@ -279,7 +286,7 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 				uint32_t n_events_sum = 0;
 				float* s_values;
 				
-				if(!p->ri->flag&RI_I_NO_EVENT_DETECTION)
+				if(!(p->ri->flag&RI_I_NO_EVENT_DETECTION))
 					s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_sum, &s_std, &n_events_sum, &s_len);
 				else s_values = normalize_signal(0, t->sig, t->l_sig, &s_sum, &s_std, &n_events_sum, &s_len);
 				
@@ -646,11 +653,10 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 
 ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
 {
-
 	if(!(flag&RI_I_SIG_TARGET)) return 0;
 
 	pipeline_t pl;
-	if (fp == 0 || *fp == 0 || n_f <= 0 || cur_f > n_f || (cur_f == n_f && (*fp)->cur_read >= (*fp)->num_read) || ((!pore || !pore->pore_vals) && !(pl.ri->flag&RI_I_OUT_QUANTIZE))) return 0;
+	if (fp == 0 || *fp == 0 || n_f <= 0 || cur_f > n_f || (cur_f == n_f && (*fp)->cur_read >= (*fp)->num_read) || ((!pore || !pore->pore_vals) && !(flag&RI_I_OUT_QUANTIZE))) return 0;
 	memset(&pl, 0, sizeof(pipeline_t));
 	pl.mini_batch_size = (uint64_t)mini_batch_size < batch_size? mini_batch_size : batch_size;
 	pl.batch_size = batch_size;

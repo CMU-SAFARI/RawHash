@@ -1,4 +1,4 @@
-DEBUG_OPTS=-O2 -fsanitize=address
+DEBUG_OPTS=-O3 -fsanitize=address
 CPP_STANDARD=c++11
 # DEBUG=0
 
@@ -22,7 +22,7 @@ tsan=
 RUCLIENT_ENABLED=1
 
 asan= # disable because grpc does not support it well, see cmakelists in readuntil_client
-DEBUG_OPTS=-O0 # -fsanitize=address # not supported for grpc
+# DEBUG_OPTS=-O0 # -fsanitize=address # not supported for grpc
 
 # PYBINDING=1
 else ifeq ($(HOSTNAME),mikado1)
