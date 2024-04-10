@@ -135,7 +135,7 @@ ri_seed_t *ri_collect_matches(void *km,
 		}
 	// }
 
-	fprintf(stderr, "n_seed_hits: %u n_flt: %u ratio: %f\n", n_seed_hits, n_flt, (float)n_flt/n_seed_hits);
+	// fprintf(stderr, "n_seed_hits: %u n_flt: %u ratio: %f\n", n_seed_hits, n_flt, (float)n_flt/n_seed_hits);
     for (i = 0, n_seed_m = 0, *rep_len = 0, *n_seed_pos = 0; i < n_seed_m0; ++i) {
 	// for (i = 0, n_seed_m = 0, *n_seed_pos = 0; i < n_seed_m0; ++i) {
 		ri_seed_t *q = &seed_hits[i];

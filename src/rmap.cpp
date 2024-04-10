@@ -287,7 +287,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	double signal_t = ri_realtime();
 	#endif
 	float* events = detect_events(b->km, s_len, sig, opt->window_length1, opt->window_length2, opt->threshold1, opt->threshold2, opt->peak_height, mean_sum, std_dev_sum, n_events_sum, &n_events);
-	fprintf(stderr, "n_events: %d\n", n_events);
+	// fprintf(stderr, "n_events: %d\n", n_events);
 	#ifdef PROFILERH
 	ri_signaltime += ri_realtime() - signal_t;
 	#endif

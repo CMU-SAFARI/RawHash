@@ -12,18 +12,18 @@ from tensorflow.keras.layers import BatchNormalization
 import numpy as np
 import os
 
-def convert_and_reshape(dataframe, labels, batch_size):
-    # Convert to tensors
-    dataset_tensor = tf.convert_to_tensor(dataframe.values, dtype=tf.float32)
-    labels_tensor = tf.convert_to_tensor(labels.values, dtype=tf.float32)
+# def convert_and_reshape(dataframe, labels, batch_size):
+#     # Convert to tensors
+#     dataset_tensor = tf.convert_to_tensor(dataframe.values, dtype=tf.float32)
+#     labels_tensor = tf.convert_to_tensor(labels.values, dtype=tf.float32)
 
-    # For dataset, reshape to [number of samples, number of features]
-    dataset_tensor = tf.reshape(dataset_tensor, [dataframe.shape[0], dataframe.shape[1]])
-    labels_tensor = tf.reshape(labels_tensor, [labels.shape[0], labels.shape[1]])
+#     # For dataset, reshape to [number of samples, number of features]
+#     dataset_tensor = tf.reshape(dataset_tensor, [dataframe.shape[0], dataframe.shape[1]])
+#     labels_tensor = tf.reshape(labels_tensor, [labels.shape[0], labels.shape[1]])
 
-    dataset_tensor = tf.data.Dataset.from_tensor_slices((dataset_tensor, labels_tensor)).batch(batch_size)
+#     dataset_tensor = tf.data.Dataset.from_tensor_slices((dataset_tensor, labels_tensor)).batch(batch_size)
     
-    return dataset_tensor
+#     return dataset_tensor
 
 # def convert_and_reshape(dataframe, labels, batch_size):
 #     # Convert to tensors
@@ -46,20 +46,20 @@ def convert_and_reshape(dataframe, labels, batch_size):
     
 #     return dataset_tensor
 
-# def convert_and_reshape(dataframe, labels, batch_size):
-#     # Convert to tensors
-#     dataset_tensor = tf.convert_to_tensor(dataframe.values, dtype=tf.float32)
-#     labels_tensor = tf.convert_to_tensor(labels.values, dtype=tf.float32)
+def convert_and_reshape(dataframe, labels, batch_size):
+    # Convert to tensors
+    dataset_tensor = tf.convert_to_tensor(dataframe.values, dtype=tf.float32)
+    labels_tensor = tf.convert_to_tensor(labels.values, dtype=tf.float32)
 
-#     # Reshape dataset for CNN input, CNNs expect data in the format of [batch, steps, channels]
-#     # Here, steps = number of features, and channels = 1 as we have 1D data
-#     dataset_tensor = tf.reshape(dataset_tensor, [-1, dataframe.shape[1], 1])
-#     labels_tensor = tf.reshape(labels_tensor, [labels.shape[0], labels.shape[1]])
+    # Reshape dataset for CNN input, CNNs expect data in the format of [batch, steps, channels]
+    # Here, steps = number of features, and channels = 1 as we have 1D data
+    dataset_tensor = tf.reshape(dataset_tensor, [-1, dataframe.shape[1], 1])
+    labels_tensor = tf.reshape(labels_tensor, [labels.shape[0], labels.shape[1]])
 
-#     # Create batches
-#     dataset_tensor = tf.data.Dataset.from_tensor_slices((dataset_tensor, labels_tensor)).batch(batch_size)
+    # Create batches
+    dataset_tensor = tf.data.Dataset.from_tensor_slices((dataset_tensor, labels_tensor)).batch(batch_size)
     
-#     return dataset_tensor
+    return dataset_tensor
 
 def load_data(file_path):
     df = pd.read_csv(file_path, sep='\t', header=None)
@@ -80,15 +80,15 @@ def load_data(file_path):
 
 def create_model(input_shape, num_classes, learning_rate=0.001):
     model = Sequential()
-    # model.add(Conv1D(filters=32, kernel_size=2, activation='relu', input_shape=(input_shape, 1)))
-    # model.add(BatchNormalization())
-    # model.add(MaxPooling1D(pool_size=2))
-    # model.add(LSTM(50, return_sequences=True))
-    # model.add(BatchNormalization())
-    # model.add(Conv1D(filters=128, kernel_size=3, activation='relu'))
-    # model.add(BatchNormalization())
-    # model.add(MaxPooling1D(pool_size=2))
-    # model.add(Flatten())
+    model.add(Conv1D(filters=32, kernel_size=2, activation='relu', input_shape=(input_shape, 1)))
+    model.add(BatchNormalization())
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(LSTM(50, return_sequences=True))
+    model.add(BatchNormalization())
+    model.add(Conv1D(filters=128, kernel_size=3, activation='relu'))
+    model.add(BatchNormalization())
+    model.add(MaxPooling1D(pool_size=2))
+    model.add(Flatten())
     model.add(Dense(64, activation='relu'))
     model.add(Dense(64, activation='relu'))
     model.add(Dense(num_classes, activation='softmax'))
