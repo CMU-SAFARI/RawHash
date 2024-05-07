@@ -32,6 +32,7 @@ typedef struct ri_idx_s{
 	float diff;
 	float fine_min, fine_max, fine_range;
 	struct ri_idx_bucket_s *B; // index (hidden)
+	struct ri_idx_bucket_s *P; // reverse pore values index (hidden)
 
 	ri_pore_t* pore;
 
@@ -182,6 +183,8 @@ void ri_idx_destroy(ri_idx_t* ri);
  * @return			pointer to the list of values that share the same key (hash value)
  */
 const uint64_t *ri_idx_get(const ri_idx_t *ri, uint64_t hashval, int *n);
+
+const uint64_t *ri_idx_rev_get(const ri_idx_t *ri, uint64_t hashval);
 
 int32_t ri_idx_cal_max_occ(const ri_idx_t *ri, float f);
 

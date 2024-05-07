@@ -6,21 +6,7 @@
 #include "rawhash.h"
 #include "ketopt.h"
 
-#define RH_VERSION "2.2"
-
-#ifdef __linux__
-#include <sys/resource.h>
-#include <sys/time.h>
-void liftrlimit()
-{
-	struct rlimit r;
-	getrlimit(RLIMIT_AS, &r);
-	r.rlim_cur = r.rlim_max;
-	setrlimit(RLIMIT_AS, &r);
-}
-#else
-void liftrlimit() {}
-#endif
+#define RH_VERSION "2.1"
 
 static ko_longopt_t long_options[] = {
 	{ (char*)"level_column",     	ko_required_argument, 	300 },
@@ -59,7 +45,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"seg-window-length2",	ko_required_argument, 	333 },
 	{ (char*)"seg-threshold1",		ko_required_argument, 	334 },
 	{ (char*)"seg-threshold2",		ko_required_argument, 	335 },
-	{ (char*)"seg-peak_height",		ko_required_argument, 	336 },
+	{ (char*)"seg-peak-height",		ko_required_argument, 	336 },
 	{ (char*)"sequence-until",     	ko_no_argument,       	337 },
 	{ (char*)"threshold",			ko_required_argument, 	338 },
 	{ (char*)"n-samples",			ko_required_argument, 	339 },
@@ -83,13 +69,15 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"dtw-min-score", 		ko_required_argument, 	357 },
 	{ (char*)"log-anchors",			ko_no_argument,			358 },
 	{ (char*)"log-num-anchors",		ko_no_argument,			359 },
-	{ (char*)"ava",					ko_no_argument, 	  	360 },
+	// { (char*)"ava",					ko_no_argument, 	  	360 },
 	{ (char*)"r10",					ko_no_argument, 		361 },
 	{ (char*)"rev-query",			ko_no_argument, 		362 },
 	{ (char*)"fine-min",			ko_required_argument, 	364 },
 	{ (char*)"fine-max",			ko_required_argument, 	365 },
 	{ (char*)"fine-range",			ko_required_argument, 	366 },
-	{ (char*)"version",				ko_no_argument, 	  	367 },
+	{ (char*)"out-quantize",		ko_no_argument,  		367 },
+	{ (char*)"no-event-detection",	ko_no_argument,  		368 },
+	{ (char*)"version",				ko_no_argument, 	  	369 },
 	{ 0, 0, 0 }
 };
 
@@ -122,6 +110,10 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 	if (preset == 0) {
 		ri_idxopt_init(io);
 		ri_mapopt_init(mo);
+	} else if (strcmp(preset, "viral") == 0) {
+		io->e = 6;
+		mo->bw = 100; mo->max_target_gap_length = 500; mo->max_query_gap_length = 500;
+		mo->max_num_chunk = 5, mo->min_chaining_score = 10; mo->chain_gap_scale = 1.2f; mo->chain_skip_scale = 0.3f;
 	} else if (strcmp(preset, "sensitive") == 0) {
 		//default
 	} else if (strcmp(preset, "fast") == 0) {
@@ -131,10 +123,49 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 		io->e = 11; io->w = 3;
 		io->fine_range = 0.6;
 		mo->max_num_chunk = 5; mo->min_mapq = 5, mo->min_chaining_score = 10, mo->chain_gap_scale = 0.6f;
-	} else if (strcmp(preset, "viral") == 0) {
+	} else if (strcmp(preset, "ava-viral") == 0) {
 		io->e = 6;
 		mo->bw = 100; mo->max_target_gap_length = 500; mo->max_query_gap_length = 500;
 		mo->max_num_chunk = 5, mo->min_chaining_score = 10; mo->chain_gap_scale = 1.2f; mo->chain_skip_scale = 0.3f;
+
+		io->flag |= RI_I_SIG_TARGET;
+		mo->flag |= RI_M_ALL_CHAINS;
+		mo->min_chaining_score = 80;
+		mo->flag |= RI_M_NO_ADAPTIVE;
+	} else if (strcmp(preset, "ava-small") == 0) {
+		//default
+
+		io->flag |= RI_I_SIG_TARGET;
+		mo->flag |= RI_M_ALL_CHAINS;
+		mo->min_chaining_score = 100;
+		mo->flag |= RI_M_NO_ADAPTIVE;
+
+	} else if (strcmp(preset, "ava-large") == 0) {
+		io->fine_range = 0.6;
+		mo->chain_gap_scale = 0.6f;
+
+		io->flag |= RI_I_SIG_TARGET;
+		mo->flag |= RI_M_ALL_CHAINS;
+		mo->min_chaining_score = 70;
+		mo->flag |= RI_M_NO_ADAPTIVE;
+
+	} else if (strcmp(preset, "ava-pro") == 0) {
+		io->flag |= RI_I_SIG_TARGET;
+		mo->flag |= RI_M_ALL_CHAINS;
+		mo->min_chaining_score = 50;
+		mo->flag |= RI_M_NO_ADAPTIVE;
+	}
+	
+	 else if (strcmp(preset, "ava-faster") == 0) {
+		io->e = 11; io->w = 3;
+		io->fine_range = 0.6;
+		mo->max_num_chunk = 5; mo->min_mapq = 5, mo->chain_gap_scale = 0.6f;
+
+		io->flag |= RI_I_SIG_TARGET;
+		mo->flag |= RI_M_ALL_CHAINS;
+		mo->min_chaining_score = 100;
+		mo->flag |= RI_M_NO_ADAPTIVE;
+
 	} else if (strcmp(preset, "sequence-until") == 0) {
 		//default
 	} else return -1;
@@ -285,7 +316,7 @@ int main(int argc, char *argv[])
 		else if (c == 333) {opt.window_length2 = atoi(o.arg); ipt.window_length2 = atoi(o.arg);}// --seg-window-length2
 		else if (c == 334) {opt.threshold1 = atof(o.arg); ipt.threshold1 = atof(o.arg);}// --seg-threshold1
 		else if (c == 335) {opt.threshold2 = atof(o.arg); ipt.threshold2 = atof(o.arg);}// --seg-threshold2
-		else if (c == 336) {opt.peak_height = atof(o.arg); ipt.peak_height = atof(o.arg);}// --seg-peak_height
+		else if (c == 336) {opt.peak_height = atof(o.arg); ipt.peak_height = atof(o.arg);}// --seg-peak-height
 		else if (c == 337) opt.flag |= RI_M_SEQUENCEUNTIL;// --sequence-until
 		else if (c == 338) opt.t_threshold = atof(o.arg);// --threshold
 		else if (c == 339) opt.tn_samples = atoi(o.arg);// --n-samples
@@ -322,12 +353,6 @@ int main(int argc, char *argv[])
 		else if (c == 357) opt.dtw_min_score = atof(o.arg); // --dtw-min-score
 		else if (c == 358) opt.flag |= RI_M_LOG_ANCHORS; // --log-anchors
 		else if (c == 359) opt.flag |= RI_M_LOG_NUM_ANCHORS; // --log-num-anchors
-		else if (c == 360) { // --ava
-			ipt.flag |= RI_I_SIG_TARGET;
-			opt.flag |= RI_M_ALL_CHAINS;
-			opt.min_chaining_score = 15;
-			opt.flag |= RI_M_NO_ADAPTIVE;
-		}
 		else if (c == 361) { // --r10
 			ipt.k = 9;
 
@@ -345,13 +370,17 @@ int main(int argc, char *argv[])
 		else if (c == 364) {ipt.fine_min = atof(o.arg);}// --fine-min
 		else if (c == 365) {ipt.fine_max = atof(o.arg);}// --fine-max
 		else if (c == 366) {ipt.fine_range = atof(o.arg);}// --fine-range
-		else if (c == 367) {puts(RH_VERSION); return 0;}// --version
+		else if (c == 367) {ipt.flag |= RI_I_OUT_QUANTIZE; ipt.flag |= RI_I_SIG_TARGET;}// --out-quantize
+		else if (c == 368) {ipt.flag |= RI_I_NO_EVENT_DETECTION;}// --no-event-detection
+		else if (c == 369) {puts(RH_VERSION); return 0;}// --version
 		else if (c == 'V') {puts(RH_VERSION); return 0;}
 	}
 
 	if (argc == o.ind || fp_help == stdout) {
 		fprintf(fp_help, "Usage: rawhash [options] <target.fa>|<target.idx> [query.fast5] [...]\n");
 		fprintf(fp_help, "Options:\n");
+
+		fprintf(fp_help, "    --version     show version number\n");
 		
 		fprintf(fp_help, "  K-mer (pore) Model:\n");
 		fprintf(fp_help, "    -p FILE      pore model FILE [].\n");
@@ -413,7 +442,7 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    --seg-window-length2 INT     [Advanced] Second window length in segmentation [%u]\n", opt.window_length2);
 		fprintf(fp_help, "    --seg-threshold1 FLOAT     [Advanced] Peak value threshold for the first window in segmentation [%g]\n", opt.threshold1);
 		fprintf(fp_help, "    --seg-threshold2 FLOAT     [Advanced] Peak value threshold for the first window in segmentation [%g]\n", opt.threshold2);
-		fprintf(fp_help, "    --seg-peak_height FLOAT     [Advanced] Peak height than the current signal to confirm the peak point in segmentation [%g]\n", opt.peak_height);
+		fprintf(fp_help, "    --seg-peak-height FLOAT     [Advanced] Peak height than the current signal to confirm the peak point in segmentation [%g]\n", opt.peak_height);
 
 		fprintf(fp_help, "\n  Sequence Until Parameters:\n");
 		fprintf(fp_help, "    --sequence-until     Activates Sequence Until and performs real-time relative abundance calculations. The computation will stop as soon as an estimation with high confidence is reached without processing further reads from the set.\n");
@@ -427,17 +456,24 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "    -t INT      number of threads [%d]\n", n_threads);
 		fprintf(fp_help, "    -K NUM      minibatch size for mapping [500M]. Increasing this value may increase thread utilization. If there are many larger FAST5 files, it is recommended to keep this value between 500M - 5G to use less memory while utilizing threads nicely.\n");
 //		fprintf(fp_help, "    -v INT     verbose level [%d]\n", ri_verbose);
-		fprintf(fp_help, "    --version     show version number\n");
+
+		fprintf(fp_help, "\n  Experimental/Debugging Parameters:\n");
+		fprintf(fp_help, "    --out-quantize     	Output the quantized values from raw signals provided as input. Mapping is not performed and the index file is not needed.\n");
+		fprintf(fp_help, "    --no-event-detection  Do not perform event detection. This can be set if your raw signal is already segmented.\n");
 		
 		fprintf(fp_help, "\n  Presets:\n");
-		fprintf(fp_help, "    --depletion     Should be used for quickly depleting organisms for use cases that require high precision (e.g., for contamination analysis or relative abundance estimation). Can be used with or without the -x preset\n");
-		fprintf(fp_help, "    --ava     For overlapping. Can be used with or without -x preset\n");
-		fprintf(fp_help, "    --r10     Sets the segmentation parameters for R10.4.1. Can be used with or without the -x preset\n");
+		fprintf(fp_help, "    --depletion     Should be used for quickly depleting organisms for use cases that require high precision (e.g., for contamination analysis or relative abundance estimation). Can be used with or without the -x preset (--best-chains 5 --min-mapq 10 --w-threshold 0.5 --min-anchors 2 --min-score 15 --chain-skip-scale 0).\n");
+		fprintf(fp_help, "    --r10     Sets the segmentation parameters for R10.4.1. Can be used with or without the -x preset (-k9 --seg-window-length1 3 --seg-window-length2 6 --seg-threshold1 6.5 --seg-threshold2 4 --seg-peak-height 0.2 --chain-gap-scale 1.2).\n");
 		fprintf(fp_help, "    -x STR     preset (always applied before other options) []\n");
-		fprintf(fp_help, "                 - viral     Enables accurate mapping to very small genomes such as viral genomes.\n");
-		fprintf(fp_help, "                 - sensitive     Enables sensitive mapping. Suitable when working with small genomes of size < 500M.\n");
-		fprintf(fp_help, "                 - fast     Enables fast mapping with slightly reduced accuracy. Suitable when reads are mapped to large genomes of size > 500M and < 5Gb\n");
+		fprintf(fp_help, "                 - viral     Enables accurate mapping to very small genomes such as viral genomes (-e 6 -q 4 --max-chunks 5 --bw 100 --max-target-gap 500 --max-target-gap 500 --min-score 10 --chain-gap-scale 1.2 --chain-skip-scale 0.3).\n");
+		fprintf(fp_help, "                 - sensitive     Enables sensitive mapping. Suitable when working with small genomes of size < 500M (-e 8 -q 4 --fine-range 0.4).\n");
+		fprintf(fp_help, "                 - fast     Enables fast mapping with slightly reduced accuracy. Suitable when reads are mapped to large genomes of size > 500M and < 5Gb (-e 8 -q 4 --max-chunks 20).\n");
 		fprintf(fp_help, "                 - faster     Enables faster mapping than '-x fast' and reduced memory space usage for indexing with slightly reduced accuracy. This mechanism uses the minimizer sketching technique and should be used when '-x fast' cannot meet the real-time requirements for a particular genome (e.g., for very large genomes > 5Gb)\n");
+		fprintf(fp_help, "\n  Rawsamble Presets:\n");
+		fprintf(fp_help, "                 - ava-viral     	 All-vs-all overlapping for very small genomes such as viral genomes.\n");
+		fprintf(fp_help, "                 - ava-small   All-vs-all overlapping for small genomes of size < 500M.\n");
+		fprintf(fp_help, "                 - ava-fast     	 All-vs-all overlapping for large genomes of size > 500M and < 5Gb\n");
+		fprintf(fp_help, "                 - ava-faster    	 All-vs-all overlapping for very large genomes > 5Gb)\n");
 		
 		// fprintf(fp_help, "\nSee `man ./rawhash.1' for detailed description of these and other advanced command-line options.\n");
 		return fp_help == stdout? 0 : 1;
@@ -454,8 +490,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	if (!idx_rdr->is_idx && fnw == 0 && argc - o.ind < 2) {
-		fprintf(stderr, "[ERROR] missing input: please specify a query FAST5/SLOW5 file(s) to map or option -d to store the index in a file before running the mapping\n");
+	if (!idx_rdr->is_idx && fnw == 0 && argc - o.ind < 2 && !(ipt.flag&RI_I_OUT_QUANTIZE)) {
+		fprintf(stderr, "[ERROR] missing input: please specify a query FAST5/SLOW5/POD5 file(s) to map or option -d to store the index in a file before running the mapping\n");
 		ri_idx_reader_close(idx_rdr);
 		return 1;
 	}
@@ -466,16 +502,18 @@ int main(int argc, char *argv[])
 	pore.pore_inds = NULL;
 	pore.max_val = -5000.0;
 	pore.min_val = 5000.0;
-	if(!idx_rdr->is_idx && fpore == 0){
-		fprintf(stderr, "[ERROR] missing input: please specify a pore model file with -p when generating the index from a sequence file\n");
-		ri_idx_reader_close(idx_rdr);
-		return 1;
-	}else if(!idx_rdr->is_idx && fpore){
-		load_pore(fpore, ipt.k, ipt.lev_col, &pore);
-		if(!pore.pore_vals){
-			fprintf(stderr, "[ERROR] cannot parse the k-mer pore model file. Please see the example k-mer model files provided in the RawHash repository.\n");
+	if(!(ipt.flag&RI_I_OUT_QUANTIZE)){
+		if((!idx_rdr->is_idx && fpore == 0) && !(!(ipt.flag&RI_I_REV_QUERY) && ipt.flag&RI_I_SIG_TARGET)){
+			fprintf(stderr, "[ERROR] missing input: please specify a pore model file with -p when generating the index from a sequence file\n");
 			ri_idx_reader_close(idx_rdr);
 			return 1;
+		}else if(!idx_rdr->is_idx && fpore){
+			load_pore(fpore, ipt.k, ipt.lev_col, &pore);
+			if(!pore.pore_vals){
+				fprintf(stderr, "[ERROR] cannot parse the k-mer pore model file. Please see the example k-mer model files provided in the RawHash repository.\n");
+				ri_idx_reader_close(idx_rdr);
+				return 1;
+			}
 		}
 	}
 

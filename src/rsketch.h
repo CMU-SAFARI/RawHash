@@ -13,6 +13,12 @@
 extern "C" {
 #endif
 
+uint32_t dynamic_quantize(float signal,
+						  float fine_min,
+						  float fine_max,
+						  float fine_range,
+						  uint32_t n_buckets);
+
 /**
  * Generate sketches (hash values) by quantizing and concatanating normalized event values
  *
@@ -52,7 +58,25 @@ void ri_sketch(void *km,
                float fine_min,
                float fine_max,
                float fine_range,
-               mm128_v *p);
+               mm128_v *p,
+                short out);
+
+void ri_sketch_rev(void *km,
+                   const float* s_values,
+                   uint32_t id,
+                   int strand,
+                   uint32_t len,
+                   float diff,
+                   int w,
+                   int e,
+                   int n,
+                   uint32_t quant_bit,
+                   int k,
+                   float fine_min,
+                   float fine_max,
+                   float fine_range,
+                   mm128_v *p,
+                   short out);
 
 #ifdef __cplusplus
 }

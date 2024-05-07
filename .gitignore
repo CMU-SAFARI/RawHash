@@ -5,6 +5,8 @@ test/data/d2_*
 test/data/d3_*
 test/data/d4_*
 test/data/d5_*
+test/data/d6_*
+test/data/d7_*
 test/data/*/*.fa
 test/data/*/*.fasta
 test/data/*/*.tar
@@ -50,8 +52,6 @@ test/evaluation/*/*slurm*
 test/evaluation/*/*/test_*
 test/data/relative_abundance/test*
 test/evaluation/*/*/comparison/*/
-
-test/data/*d7*
 
 test/data/relative_abundance/read_ids.txt
 

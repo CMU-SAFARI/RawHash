@@ -18,13 +18,13 @@ void ri_idxopt_init(ri_idxopt_t *opt)
     opt->window_length2 = 9; //--seg-window-length2
     opt->threshold1 = 4.0f; //--seg-threshold1
     opt->threshold2 = 3.5f; //--seg-threshold2
-    opt->peak_height = 0.4f; //--seg-peak_height
+    opt->peak_height = 0.4f; //--seg-peak-height
 
 	// opt->window_length1 = 3; //--seg-window-length1
     // opt->window_length2 = 6; //--seg-window-length2
     // opt->threshold1 = 1.4f; //--seg-threshold1
     // opt->threshold2 = 9.0f; //--seg-threshold2
-    // opt->peak_height = 0.2f; //--seg-peak_height
+    // opt->peak_height = 0.2f; //--seg-peak-height
 
 	opt->bp_per_sec = 450; //--bp-per-sec
 	opt->sample_rate = 4000; //--sample-rate
@@ -70,7 +70,7 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->mask_len = INT_MAX; //--primary-length
 	
 	opt->pri_ratio = 0.3f;
-	opt->best_n = 0;
+	opt->best_n = 0; //--best-chains
 
 	opt->top_n_mean = 0; //--top-n-mean
 
@@ -104,19 +104,19 @@ void ri_mapopt_init(ri_mapopt_t *opt)
     opt->window_length2 = 9; //--seg-window-length2
     opt->threshold1 = 4.0f; //--seg-threshold1
     opt->threshold2 = 3.5f; //--seg-threshold2
-    opt->peak_height = 0.4f; //--seg-peak_height
+    opt->peak_height = 0.4f; //--seg-peak-height
 
 	// opt->window_length1 = 3; //--seg-window-length1
     // opt->window_length2 = 7; //--seg-window-length2
     // opt->threshold1 = 4.0f; //--seg-threshold1
     // opt->threshold2 = 3.0f; //--seg-threshold2
-    // opt->peak_height = 0.4f; //--seg-peak_height
+    // opt->peak_height = 0.4f; //--seg-peak-height
 
 	// opt->window_length1 = 3; //--seg-window-length1
     // opt->window_length2 = 6; //--seg-window-length2
     // opt->threshold1 = 1.4f; //--seg-threshold1
     // opt->threshold2 = 9.0f; //--seg-threshold2
-    // opt->peak_height = 0.2f; //--seg-peak_height
+    // opt->peak_height = 0.2f; //--seg-peak-height
 
 	//TODO: RNA values:
 	// opt->window_length1 = 7,

@@ -65,7 +65,8 @@ void ri_sketch_min(void *km,
 				   float fine_min,
 				   float fine_max,
 				   float fine_range,
-				   mm128_v *p)
+				   mm128_v *p,
+				   short out)
 {
 	assert(len > 0 && (w > 0 && w < 256) && e*quant_bit <= (64-RI_HASH_SHIFT));
 	
@@ -151,7 +152,8 @@ void ri_sketch_reg(void *km,
 				   float fine_min,
 				   float fine_max,
 				   float fine_range,
-				   mm128_v *p){
+				   mm128_v *p,
+				   short out){
 
 	assert(len > 0 && (uint32_t)e*quant_bit <= 64);
 
@@ -162,21 +164,32 @@ void ri_sketch_reg(void *km,
 	uint32_t n_buckets = 1UL<<quant_bit;
 
 	int sigBufFull = 0;
-	uint32_t f_pos, sigBufPos = 0, l_sigpos = 0; //last signal position
+	uint32_t f_pos = 0, sigBufPos = 0, l_sigpos = 0; //last signal position
 	uint32_t f_tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
-	rh_kv_resize(mm128_t, km, *p, p->n + len);
+	if(!out)rh_kv_resize(mm128_t, km, *p, p->n + len-span-1);
 
 	mm128_t sigBuf[e];
 	memset(sigBuf, 0, e*sizeof(mm128_t));
 
-    for (f_pos = 0; f_pos < len; ++f_pos) {
-        if((f_pos > 0 && fabs(s_values[f_pos] - s_values[l_sigpos]) < diff)) continue;
+	//First quantization is done here
+	l_sigpos = f_pos;
+	f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
+	if(out) fprintf(stdout, "%u", f_tmpQuantSignal);
+	sigBuf[sigBufPos].y = id_shift | (uint32_t)f_pos<<RI_POS_SHIFT | strand;
+	if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
+	quantVal = f_tmpQuantSignal&mask_events;
+	sigBuf[sigBufPos].x = (hash64(quantVal, mask)<<RI_HASH_SHIFT) | span;
+	if(sigBufFull && !out) rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+
+    for (f_pos = 1; f_pos < len; ++f_pos) {
+        if((fabs(s_values[f_pos] - s_values[l_sigpos]) < diff)) continue;
 
 		l_sigpos = f_pos;
 
 		f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
+		if(out) fprintf(stdout, ",%u", f_tmpQuantSignal);
 
 		sigBuf[sigBufPos].y = id_shift | (uint32_t)f_pos<<RI_POS_SHIFT | strand;
 		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
@@ -186,8 +199,73 @@ void ri_sketch_reg(void *km,
 		
 		if(!sigBufFull) continue;
 
-		rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+		if(!out)rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
     }
+}
+
+void ri_sketch_reg_rev(void *km,
+					   const float* s_values,
+					   uint32_t id,
+					   int strand,
+					   uint32_t len,
+					   float diff,
+					   int e,
+					   uint32_t quant_bit,
+					   int k,
+					   float fine_min,
+				   	   float fine_max,
+				   	   float fine_range,
+					   mm128_v *p,
+					   short out)
+{
+	assert(len > 0 && (uint32_t)e*quant_bit <= 64-RI_HASH_SHIFT);
+
+	uint32_t span = k+e-1;
+	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_quant_bit = (1ULL<<quant_bit)-1;
+
+	uint32_t n_buckets = 1UL<<quant_bit;
+
+	int sigBufFull = 0, streak = 1;
+	uint32_t f_pos = 0, r_pos = len-1, sigBufPos = 0, l_sigpos = 0; //last signal position
+	uint32_t f_tmpQuantSignal = 0, r_tmpQuantSignal = 0;
+	uint64_t quantVal = 0;
+
+	if(!out)rh_kv_resize(mm128_t, km, *p, p->n + len-span-1);
+
+	mm128_t sigBuf[e];
+	memset(sigBuf, 0, e*sizeof(mm128_t));
+
+	//First quantization is done here
+	l_sigpos = f_pos;
+	f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
+	if(out) fprintf(stdout, "%u", f_tmpQuantSignal);
+	sigBuf[sigBufPos].y = id_shift | ((uint32_t)(len-f_pos-1))<<RI_POS_SHIFT | strand;
+	if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
+	quantVal = f_tmpQuantSignal&mask_events;
+	sigBuf[sigBufPos].x = quantVal;
+	if(sigBufFull && !out && streak >= e) rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+
+    for (f_pos = 1; f_pos < len; ++f_pos) {
+        if((fabs(s_values[f_pos] - s_values[l_sigpos]) < diff)) {streak = 0; continue;}
+
+		l_sigpos = f_pos;
+
+		f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
+		if(out) fprintf(stdout, ",%u", f_tmpQuantSignal);
+
+		// sigBuf[sigBufPos].y = id_shift | ((uint32_t)(len-f_pos-1))<<RI_POS_SHIFT | strand;
+		sigBuf[sigBufPos].y = id_shift | f_pos<<RI_POS_SHIFT | strand;
+		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
+
+		quantVal = (quantVal<<quant_bit|f_tmpQuantSignal)&mask_events;
+		streak++;
+		sigBuf[sigBufPos].x = quantVal;
+		
+		if(!sigBufFull) continue;
+
+		if(!out && streak >= e)rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+    }
+	if(out) fprintf(stdout, "\n");
 }
 
 void ri_sketch(void *km,
@@ -204,8 +282,30 @@ void ri_sketch(void *km,
                float fine_min,
                float fine_max,
                float fine_range,
-               mm128_v *p)
+               mm128_v *p,
+			   short out)
 {
-	if(w) ri_sketch_min(km, s_values, id, strand, len, diff, w, e, quant_bit, k, fine_min, fine_max, fine_range, p);
-	else ri_sketch_reg(km, s_values, id, strand, len, diff, e, quant_bit, k, fine_min, fine_max, fine_range, p);
+	if(w) ri_sketch_min(km, s_values, id, strand, len, diff, w, e, quant_bit, k, fine_min, fine_max, fine_range, p, out);
+	else ri_sketch_reg(km, s_values, id, strand, len, diff, e, quant_bit, k, fine_min, fine_max, fine_range, p, out);
+}
+
+void ri_sketch_rev(void *km,
+				   const float* s_values,
+				   uint32_t id,
+				   int strand,
+				   uint32_t len,
+				   float diff,
+				   int w,
+				   int e,
+				   int n,
+				   uint32_t quant_bit,
+				   int k,
+				   float fine_min,
+               	   float fine_max,
+               	   float fine_range,
+				   mm128_v *p,
+				   short out)
+{
+	// if(w) ri_sketch_min(km, s_values, id, strand, len, diff, w, e, q, lq, k, p, out);
+	ri_sketch_reg_rev(km, s_values, id, strand, len, diff, e, quant_bit, k, fine_min, fine_max, fine_range, p, out);
 }

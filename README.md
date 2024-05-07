@@ -20,11 +20,11 @@ RawHash performs real-time mapping of nanopore raw signals. When the prefix of r
 
 # Recent changes
 
+* We have integrated a new overlapping mechanism along with its presets, for our new mechanism, called **Rawsamble**. Please see below the corresponding section to run Rawsamble (i.e., overlapping) with RawHash.
+
 * We came up with a better and more accurate quantization mechanism in RawHash2. The new quantization mechanism dynamically arranges the bucket sizes that each signal value is quantized depending on the normalized distribution of the signal values. **This provides significant improvements in both accuracy and performance.**
 
 * We have integrated the signal alignment functionality with DTW as proposed in RawAlign (see the citation below). The parameters may still not be highly optimized as this is still in experimental stage. Use it with caution.
-
-* Offline overlapping functionality is integrated.
 
 * rmap.c is now rmap.cpp (needs to be compiled with C++) due to the recent DTW integration. We are planning to make it a C-compatible implementation again.
 
@@ -84,13 +84,19 @@ You can print the help message to learn how to use `rawhash2`:
 rawhash2
 ```
 
+or 
+
+```bash
+rawhash2 -h
+```
+
 ## Indexing
 Indexing is similar to minimap2's usage. We additionally include the pore models located under ./extern
 
 Below is an example that generates an index file `ref.ind` for the reference genome `ref.fasta` using a certain k-mer model located under `extern` and `32` threads.
 
 ```bash
-rawhash2 -d ref.ind -p extern/kmer_models/r9.4_180mv_450bps_6mer/template_median68pA.model -t 32 ref.fasta
+rawhash2 -d ref.ind -p extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model -t 32 ref.fasta
 ```
 
 Note that you can directly jump to mapping without creating the index because RawHash2 is able to generate the index relatively quickly on-the-fly within the mapping step. However, a real-time genome analysis application may still prefer generating the indexing before the mapping step. Thus, we suggest creating the index before the mapping step.
@@ -115,10 +121,10 @@ rawhash2 -t 32 -o mapping.paf ref.ind test/data/d1_sars-cov-2_r94/fast5_files
 
 RawHash2 also provides a set of default parameters that can be preset automatically.
 
-* Mapping reads to a viral reference genome using its corresponding preset with the high precision goal (as set by --depletion):
+* Mapping reads to a viral reference genome using its corresponding preset:
 
 ```
-rawhash2 -t 32 -x viral --depletion ref.ind test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
+rawhash2 -t 32 -x viral ref.ind test/data/d1_sars-cov-2_r94/fast5_files > mapping.paf
 ```
 
 * Mapping reads to small reference genomes (<500M bases) using its corresponding preset:
@@ -140,6 +146,30 @@ rawhash2 -t 32 -x faster ref.ind test/data/d5_human_na12878_r94/fast5_files > ma
 ```
 
 The output will be saved to `mapping.paf` in a modified PAF format used by [Uncalled](https://github.com/skovaka/UNCALLED).
+
+## Rawsamble (for overlapping and assembly construction)
+
+Our new overlapping mechanism, Rawsamble, is now integrated in RawHash. To create overlaps, you can construct the index from signals and perform overlapping using this index as follows:
+
+```
+rawhash2 -x ava-small -p ../../rawhash2/extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model -d ava.ind -t32 test/data/d3_yeast_r94/fast5_files/
+```
+
+Then perform overlapping using this index:
+
+```
+rawhash2 -x ava-small -t32 ava.ind test/data/d3_yeast_r94/fast5_files/ > ava.paf
+```
+
+We provide the following presets for Rawsamble to enable the overlapping mode (shown in the help message):
+
+`
+  Rawsamble Presets:
+                 - ava-viral             All-vs-all overlapping for very small genomes such as viral genomes.
+                 - ava-small             All-vs-all overlapping for small genomes of size < 500M.
+                 - ava-fast              All-vs-all overlapping for large genomes of size > 500M and < 5Gb
+                 - ava-faster            All-vs-all overlapping for very large genomes > 5Gb)
+`
 
 ## Potential issues you may encounter during mapping
 
@@ -183,12 +213,12 @@ If you use RawHash in your work, please consider citing the following papers:
 	url = {https://doi.org/10.1093/bioinformatics/btad272},
 }
 
-@article{firtina_rawhash2_2023,
-  title = {{RawHash2}: Accurate and Fast Mapping of Raw Nanopore Signals using a Hash-based Seeding Mechanism},
+@article{firtina_rawhash2_2024,
+  title = {{RawHash2: Mapping Raw Nanopore Signals Using Hash-Based Seeding and Adaptive Quantization}},
   author = {Firtina, Can and Soysal, Melina and Lindegger, Joël and Mutlu, Onur},
   journal = {arXiv},
-  year = {2023},
-  month = sep,
+  year = {2024},
+  month = may,
   doi = {10.48550/arXiv.2309.05771},
   url = {https://doi.org/10.48550/arXiv.2309.05771},
 }
