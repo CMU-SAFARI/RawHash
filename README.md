@@ -163,13 +163,14 @@ rawhash2 -x ava-small -t32 ava.ind test/data/d3_yeast_r94/fast5_files/ > ava.paf
 
 We provide the following presets for Rawsamble to enable the overlapping mode (shown in the help message):
 
-`
-  Rawsamble Presets:
+
+```bash
+Rawsamble Presets:
                  - ava-viral             All-vs-all overlapping for very small genomes such as viral genomes.
                  - ava-small             All-vs-all overlapping for small genomes of size < 500M.
                  - ava-fast              All-vs-all overlapping for large genomes of size > 500M and < 5Gb
                  - ava-faster            All-vs-all overlapping for very large genomes > 5Gb)
-`
+```
 
 ## Potential issues you may encounter during mapping
 
