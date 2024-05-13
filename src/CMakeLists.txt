@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(RawHash2Src LANGUAGES CXX)
 
+option(POD5_DOWNLOAD "Download POD5" ON)
+option(HDF5_COMPILE "Compile HDF5" ON)
+option(SLOW5_COMPILE "Compile slow5lib" ON)
+
 find_program(CCACHE_PROGRAM ccache)
 if(CCACHE_PROGRAM)
     message(STATUS "ccache found: ${CCACHE_PROGRAM}")
@@ -262,7 +266,7 @@ elseif(SYSTEM_NAME STREQUAL "Windows_NT")
     set(POD5_URL "${POD5_REPO}/releases/download/${POD5_VERSION}/lib_pod5-${POD5_VERSION}-win")
 endif()
 
-set(HDF5_DIR "${WORKDIR}/hdf5/")
+set(HDF5_DIR "${WORKDIR}/hdf5")
 set(HDF5_BUILD_DIR "${HDF5_DIR}/build")
 if(DEFINED ENV{HDF5_INCLUDE_DIR})
     set(HDF5_COMPILE 0)
@@ -272,7 +276,7 @@ endif()
 set(HDF5_LIB_DIR "${HDF5_BUILD_DIR}/lib")
 set(HDF5_LIB "hdf5")
 
-set(SLOW5_DIR "${WORKDIR}/slow5lib/")
+set(SLOW5_DIR "${WORKDIR}/slow5lib")
 if(DEFINED ENV{SLOW5_INCLUDE_DIR})
     set(SLOW5_COMPILE 0)
 else()
@@ -325,13 +329,6 @@ if(ENABLE_TSAN)
     target_link_libraries(${TARGET_NAME} PRIVATE -fsanitize=thread)
 endif()
 
-if(NOT NOPOD5)
-    add_custom_target(zstd
-        COMMAND ${CMAKE_COMMAND} -E chdir ${WORKDIR}/zstd make -j
-        COMMENT "Building ZSTD library"
-    )
-endif()
-
 if(NOT NOHDF5 AND HDF5_COMPILE)
     add_custom_target(hdf5
         COMMAND ${CMAKE_COMMAND} -E echo "Configuring and building HDF5..."
@@ -340,21 +337,29 @@ if(NOT NOHDF5 AND HDF5_COMPILE)
         COMMAND ${CMAKE_COMMAND} -E chdir ${HDF5_DIR} make -j
         COMMAND ${CMAKE_COMMAND} -E chdir ${HDF5_DIR} make install
     )
+    add_dependencies(${TARGET_NAME} hdf5)
 endif()
 
 if(NOT NOSLOW5 AND SLOW5_COMPILE)
     add_custom_target(slow5
         COMMAND ${CMAKE_COMMAND} -E chdir ${SLOW5_DIR} make
     )
+    add_dependencies(${TARGET_NAME} slow5)
 endif()
 
-if(NOT NOPOD5 AND POD5_DOWNLOAD)
-    message(STATUS "${CMAKE_COMMAND} -E chdir ${WORKDIR}/${POD5_URLDIR} wget -qO- ${POD5_URL} | tar -xzv")
-    add_custom_target(pod5
-        COMMAND ${CMAKE_COMMAND} -E make_directory ${WORKDIR}/${POD5_URLDIR}
-        COMMAND wget -qO- ${POD5_URL} | tar -xzv -C ${WORKDIR}/${POD5_URLDIR}
-        DEPENDS zstd
+if(NOT NOPOD5)
+    add_custom_target(zstd
+        COMMAND ${CMAKE_COMMAND} -E chdir ${WORKDIR}/zstd make -j
+        COMMENT "Building ZSTD library"
     )
+    if(POD5_DOWNLOAD)
+        add_custom_target(pod5
+            COMMAND ${CMAKE_COMMAND} -E make_directory ${WORKDIR}/${POD5_URLDIR}
+            COMMAND wget -qO- ${POD5_URL} | tar -xzv -C ${WORKDIR}/${POD5_URLDIR}
+            DEPENDS zstd
+        )
+        add_dependencies(${TARGET_NAME} pod5)
+    endif()
 endif()
 
 add_custom_target(tensorflow
@@ -362,3 +367,4 @@ add_custom_target(tensorflow
     COMMAND ${CMAKE_COMMAND} -E chdir ${WORKDIR}/tensorflow/tflite_build ${CMAKE_COMMAND} ../tensorflow/lite/c
     COMMAND ${CMAKE_COMMAND} -E chdir ${WORKDIR}/tensorflow/tflite_build ${CMAKE_COMMAND} --build . -j
 )
+add_dependencies(${TARGET_NAME} tensorflow)
