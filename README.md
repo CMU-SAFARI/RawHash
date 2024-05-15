@@ -32,45 +32,50 @@ RawHash performs real-time mapping of nanopore raw signals. When the prefix of r
 
 # Installation
 
-* Clone the code from its GitHub repository (`--recursive` must be used):
+* Clone the code from its GitHub repository and recursively initialize submodules:
 
 ```bash
-git clone --recursive https://github.com/CMU-SAFARI/RawHash.git rawhash2
+git clone https://github.com/CMU-SAFARI/RawHash.git rawhash2
+cd rawhash2 && git submodule update --init --recursive
 ```
 
 * Compile (Make sure you have a C++ compiler and GNU make):
 
 ```bash
-cd rawhash2 && make
+mkdir build && cd build
+cmake ..
+make -j
 ```
 
-If the compilation is successful, the path to the binary will be `bin/rawhash2`.
+If the compilation is successful, the default path to the binary will be `bin/rawhash2`.
 
 ## Compiling with HDF5, SLOW5, and POD5
 
-We are aware that some of the pre-compiled libraries (e.g., POD5) may not work in your system and you may need to compile these libraries from scratch. Additionally, it may be possible that you may not want to compile any of the HDF5, SLOW5, or POD5 libraries if you are not going to use them. RawHash2 provides a flexible Makefile to enable custom compilation of these libraries.
+We are aware that some of the pre-compiled libraries (e.g., POD5) may not work in your system and you may need to compile these libraries from scratch. Additionally, it may be possible that you may not want to compile any of the HDF5, SLOW5, or POD5 libraries if you are not going to use them. RawHash2 provides several CMake options to enable custom compilation of these libraries.
 
-* It is possible to provide your own include and lib directories for *any* of the HDF5, SLOW5, and POD5 libraries, if you do not want to use the source code or the pre-compiled binaries that come with RawHash2. To use your own include and lib directories you should pass them to `make` when compiling as follows:
-
-```bash
-#Provide the path to all of the HDF5/SLOW5/POD5 include and lib directories during compilation
-make HDF5_INCLUDE_DIR=/path/to/hdf5/include HDF5_LIB_DIR=/path/to/hdf5/lib \
-	 SLOW5_INCLUDE_DIR=/path/to/slow5/include SLOW5_LIB_DIR=/path/to/slow5/lib \
-	 POD5_INCLUDE_DIR=/path/to/pod5/include POD5_LIB_DIR=/path/to/pod5/lib
-
-#Provide the path to only POD5 include and lib directories during compilation
-make POD5_INCLUDE_DIR=/path/to/pod5/include POD5_LIB_DIR=/path/to/pod5/lib
-```
-
-* It is possible to disable compiling *any* of the HDF5, SLOW5, and POD5 libraries. To disable them, you can use the following variables
+It is possible to provide your own include and lib directories for *any* of the HDF5, SLOW5, and POD5 libraries, if you do not want to use the source code or the pre-compiled binaries that come with RawHash2. To use your own include and lib directories you should pass them to `cmake` when compiling as follows:
 
 ```bash
-#Disables compiling HDF5
-make NOHDF5=1
+# Provide the path to all of the HDF5/SLOW5/POD5 include and lib directories during compilation
+cmake -DHDF5_DIR=/path/to/hdf5 -DSLOW5_DIR=/path/to/slow5 -DPOD5_DIR=/path/to/pod5 ..
 
-#Disables compiling SLOW5 and POD5
-make NOSLOW5=1 NOPOD5=1
+# Provide the path to only POD5 include and lib directories during compilation
+cmake -DPOD5_DIR=/path/to/pod5
 ```
+
+Note that the provided path should generally contain _both_ `include/` and `lib/` folders with the corresponding library's include and library files.
+
+It is possible to disable compiling *any* of the HDF5, SLOW5, and POD5 libraries. To disable them, you can use the following variables
+
+```bash
+# Disables compiling HDF5
+cmake -DNOHDF5=1 ..
+
+# Disables compiling SLOW5 and POD5
+cmake -DNOSLOW5=1 -DNOPOD5=1 ..
+```
+
+The variables and paths will be stored in CMake cache, meaning that you would need to run `cmake` again with explicitly provided new values to change them.
 
 # Usage
 
