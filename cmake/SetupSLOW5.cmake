@@ -12,11 +12,10 @@ function(setup_slow5)
             ExternalProject_Add(
                 slow5_build
                 SOURCE_DIR ${SLOW5_SOURCE_DIR}
-                BINARY_DIR ${SLOW5_DIR}/build
-                INSTALL_COMMAND # slow5 doesn't have native install target
-                    ${CMAKE_COMMAND} -E make_directory ${SLOW5_DIR}/lib &&
-                    ${CMAKE_COMMAND} -E copy ${SLOW5_DIR}/build/libslow5.so ${SLOW5_DIR}/lib &&
-                    ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR}/include ${SLOW5_DIR}/include
+                BUILD_DIR ${SLOW5_DIR}
+                CONFIGURE_COMMAND ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR} ${SLOW5_DIR}
+                BUILD_COMMAND make -C ${SLOW5_DIR}
+                INSTALL_COMMAND ""
             )
             add_dependencies(${TARGET_NAME} slow5_build)
         else()

@@ -11,7 +11,7 @@ function(link_imported_library LIB_NAME LIB_DIR)
     add_library(${LIB_NAME} STATIC IMPORTED)
     file(MAKE_DIRECTORY ${LIB_DIR}/include)
     set_target_properties(${LIB_NAME} PROPERTIES
-        IMPORTED_LOCATION ${LIB_DIR}/lib/lib${LIB_NAME}.so
+        IMPORTED_LOCATION ${LIB_DIR}/lib/lib${LIB_NAME}.a
         INTERFACE_INCLUDE_DIRECTORIES ${LIB_DIR}/include
     )
     target_link_libraries(${TARGET_NAME} PRIVATE ${LIB_NAME})

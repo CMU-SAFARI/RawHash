@@ -45,7 +45,7 @@ function(setup_pod5)
             endif()
         endif()
         include_directories(${POD5_DIR}/include)
-        target_link_libraries(${TARGET_NAME} PRIVATE ${POD5_LIBRARIES})
+        target_link_libraries(${TARGET_NAME} PRIVATE ${POD5_LIBRARIES} zstd)
     endif()
 endfunction()
 
