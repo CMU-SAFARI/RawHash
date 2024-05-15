@@ -13,6 +13,5 @@ RUN mkdir build && cd build \
     && make -j
 
 ENTRYPOINT ["./build/bin/rawhash2"]
-CMD ["--help"]
 
 LABEL Name=rawhash2 Version=0.0.1
