@@ -3,11 +3,11 @@ name: Docker Build and Test
 on:
   push:
     branches:
-      - docker
+      - make_cmake_migrate
       - main
   pull_request:
     branches:
-      - docker
+      - make_cmake_migrate
       - main
 
 jobs:
