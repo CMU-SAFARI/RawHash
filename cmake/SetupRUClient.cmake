@@ -1,0 +1,132 @@
+function(setup_ruclient)
+    if(RUCLIENT_ENABLED)
+        message(STATUS "ruclient enabled")
+        set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 20)
+        set_target_properties(${TARGET_NAME} PROPERTIES C_STANDARD 20)
+        target_compile_definitions(${TARGET_NAME} PRIVATE RUCLIENT_ENABLED)
+        target_sources(${TARGET_NAME} PRIVATE rawhash_ruclient.cpp)
+        # TODO: Place everything in subdirectories of CMAKE_SOURCE_DIR?
+        target_link_directories(${TARGET_NAME} PRIVATE 
+            {CMAKE_SOURCE_DIR}/../readuntil_fake/build/
+            ~/.local/lib/
+        )
+        include_directories(
+            {CMAKE_SOURCE_DIR}/../readuntil_fake/external/spdlog/include
+            {CMAKE_SOURCE_DIR}/../readuntil_fake/include
+        )
+
+        # TODO: Any less painful way to do this?
+        target_link_libraries(${TARGET_NAME} 
+            ont_device_client_LIB
+            grpc_utils_LIB
+            utils_LIB
+            ru_method_LIB
+            data_client_LIB
+            grpc_utils_LIB
+            readuntil_grpc_proto
+            grpc++_reflection
+            grpc++
+            grpc
+            re2
+            upb_json_lib
+            upb_textformat_lib
+            upb_collections_lib
+            upb
+            utf8_range_lib
+            z
+            cares
+            gpr
+            absl_random_distributions
+            absl_random_seed_sequences
+            absl_random_internal_pool_urbg
+            absl_random_internal_randen
+            absl_random_internal_randen_hwaes
+            absl_random_internal_randen_hwaes_impl
+            absl_random_internal_randen_slow
+            absl_random_internal_platform
+            absl_random_internal_seed_material
+            absl_random_seed_gen_exception
+            ssl
+            crypto
+            address_sorting
+            protobuf
+            absl_log_internal_check_op
+            absl_leak_check
+            absl_die_if_null
+            absl_log_internal_conditions
+            absl_log_internal_message
+            absl_log_internal_nullguard
+            absl_examine_stack
+            absl_log_internal_format
+            absl_log_internal_proto
+            absl_log_internal_log_sink_set
+            absl_log_sink
+            absl_log_entry
+            absl_flags
+            absl_flags_internal
+            absl_flags_marshalling
+            absl_flags_reflection
+            absl_flags_config
+            absl_flags_program_name
+            absl_flags_private_handle_accessor
+            absl_flags_commandlineflag
+            absl_flags_commandlineflag_internal
+            absl_log_initialize
+            absl_log_globals
+            absl_log_internal_globals
+            absl_raw_hash_set
+            absl_hash
+            absl_city
+            absl_low_level_hash
+            absl_hashtablez_sampler
+            absl_statusor
+            absl_status
+            absl_cord
+            absl_cordz_info
+            absl_cord_internal
+            absl_cordz_functions
+            absl_exponential_biased
+            absl_cordz_handle
+            absl_crc_cord_state
+            absl_crc32c
+            absl_crc_internal
+            absl_crc_cpu_detect
+            absl_bad_optional_access
+            absl_str_format_internal
+            absl_strerror
+            absl_synchronization
+            absl_stacktrace
+            absl_symbolize
+            absl_debugging_internal
+            absl_demangle_internal
+            absl_graphcycles_internal
+            absl_kernel_timeout_internal
+            absl_malloc_internal
+            absl_time
+            absl_civil_time
+            absl_time_zone
+            absl_bad_variant_access
+            absl_utf8_validity
+            absl_strings
+            absl_int128
+            absl_string_view
+            absl_throw_delegate
+            absl_strings_internal
+            absl_base
+            absl_raw_logging_internal
+            absl_log_severity
+            absl_spinlock_wait
+            dl
+            m
+            rt
+            channel_data_LIB
+            current_read_data_LIB
+            channel_stats_LIB
+            utils_LIB
+            threadsafe_queue_LIB
+            spdlogd
+        )
+    else()
+        message(STATUS "ruclient disabled")
+    endif()
+endfunction()
