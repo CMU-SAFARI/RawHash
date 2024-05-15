@@ -12,6 +12,7 @@ RUN mkdir build && cd build \
     && cmake .. \
     && make -j
 
-CMD ["./build/bin/rawhash2"]
+ENTRYPOINT ["./build/bin/rawhash2"]
+CMD ["--help"]
 
 LABEL Name=rawhash2 Version=0.0.1
