@@ -63,7 +63,7 @@ cmake -DHDF5_DIR=/path/to/hdf5 -DSLOW5_DIR=/path/to/slow5 -DPOD5_DIR=/path/to/po
 cmake -DPOD5_DIR=/path/to/pod5
 ```
 
-Note that the provided path should generally contain _both_ `include/` and `lib/` folders with the corresponding library's include and library files.
+Note that the provided path should generally contain _both_ `include/` and `lib/` folders with the corresponding project's include and library files.
 
 It is possible to disable compiling *any* of the HDF5, SLOW5, and POD5 libraries. To disable them, you can use the following variables
 
