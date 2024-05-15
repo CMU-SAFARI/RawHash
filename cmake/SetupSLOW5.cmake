@@ -11,8 +11,8 @@ function(setup_slow5)
             endif()
             ExternalProject_Add(
                 slow5_build
-                SOURCE_DIR ${SLOW5_SOURCE_DIR}
                 BUILD_DIR ${SLOW5_DIR}
+                SOURCE_DIR ${SLOW5_SOURCE_DIR}
                 CONFIGURE_COMMAND ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR} ${SLOW5_DIR}
                 BUILD_COMMAND make -C ${SLOW5_DIR}
                 INSTALL_COMMAND ""
