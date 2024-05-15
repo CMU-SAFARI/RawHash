@@ -1,34 +1,29 @@
-include(ExternalProject)
+include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
 
 function(setup_slow5)
     if(NOSLOW5)
         target_compile_definitions(${TARGET_NAME} PRIVATE NSLOW5RH=1)
     else()
-        set(SLOW5_DIR ${WORKDIR}/slow5lib)
-        set(SLOW5_BUILD_DIR ${SLOW5_DIR}/build)
         set(SLOW5_SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/slow5lib)
         if(SLOW5_COMPILE)
-            if(NOT SLOW5_INCLUDE_DIR)
-                override_cached(SLOW5_INCLUDE_DIR ${SLOW5_SOURCE_DIR}/include)
+            if(NOT SLOW5_DIR)
+                override_cached(SLOW5_DIR ${WORKDIR}/slow5lib)
             endif()
             ExternalProject_Add(
                 slow5_build
                 SOURCE_DIR ${SLOW5_SOURCE_DIR}
-                BINARY_DIR ${SLOW5_BUILD_DIR}
-                INSTALL_DIR ${SLOW5_DIR}
-                INSTALL_COMMAND ""
+                BINARY_DIR ${SLOW5_DIR}/build
+                INSTALL_COMMAND # slow5 doesn't have native install target
+                    ${CMAKE_COMMAND} -E make_directory ${SLOW5_DIR}/lib &&
+                    ${CMAKE_COMMAND} -E copy ${SLOW5_DIR}/build/libslow5.so ${SLOW5_DIR}/lib &&
+                    ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR}/include ${SLOW5_DIR}/include
             )
             add_dependencies(${TARGET_NAME} slow5_build)
         else()
-            if(NOT SLOW5_INCLUDE_DIR)
-                message(FATAL_ERROR "SLOW5_COMPILE is OFF, but no include dir provided")
+            if(NOT SLOW5_DIR)
+                message(FATAL_ERROR "SLOW5_COMPILE is OFF, but no dir provided")
             endif()
         endif()
-        add_library(slow5 STATIC IMPORTED)
-        set_target_properties(slow5 PROPERTIES
-            IMPORTED_LOCATION $${SLOW5_DIR}/lib/libslow5.a
-            INTERFACE_INCLUDE_DIRECTORIES ${SLOW5_INCLUDE_DIR}
-        )
-        target_link_libraries(${TARGET_NAME} PRIVATE slow5)
+        link_imported_library(slow5 ${SLOW5_DIR})
     endif()
 endfunction()

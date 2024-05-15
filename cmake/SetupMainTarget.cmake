@@ -12,7 +12,7 @@ function(setup_main_target)
     set_target_properties(${TARGET_NAME} PROPERTIES C_STANDARD 11)
 
     find_package(Threads REQUIRED)
-    target_link_libraries(${TARGET_NAME} PRIVATE Threads::Threads)
+    target_link_libraries(${TARGET_NAME} PRIVATE Threads::Threads m z dl)
     target_compile_options(${TARGET_NAME} PRIVATE -Wall -fopenmp -march=native -O3)
     target_compile_definitions(${TARGET_NAME} PRIVATE HAVE_KALLOC)
 

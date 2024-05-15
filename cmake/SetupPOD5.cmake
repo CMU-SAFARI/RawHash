@@ -1,19 +1,15 @@
-include(ExternalProject)
+include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
 
 function(setup_zstd)
+set(ZSTD_DIR ${WORKDIR}/zstd)
     ExternalProject_Add(
         zstd_build
         SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/zstd/build/cmake
-        BINARY_DIR ${WORKDIR}/zstd/build
-        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${WORKDIR}/zstd
+        BINARY_DIR ${ZSTD_DIR}/build
+        CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${ZSTD_DIR}
     )
     add_dependencies(${TARGET_NAME} zstd_build)
-    add_library(zstd STATIC IMPORTED)
-    file(MAKE_DIRECTORY ${WORKDIR}/zstd/include)
-    set_target_properties(zstd PROPERTIES
-        IMPORTED_LOCATION ${WORKDIR}/zstd/lib/libzstd.a
-        INTERFACE_INCLUDE_DIRECTORIES ${WORKDIR}/zstd/include
-    )
+    link_imported_library(zstd ${ZSTD_DIR})
 endfunction()
 
 function(setup_pod5)
@@ -29,27 +25,27 @@ function(setup_pod5)
         resolve_pod5_url()
 
         if(POD5_DOWNLOAD)
-            if(NOT POD5_INCLUDE_DIR)
-                override_cached(POD5_INCLUDE_DIR "${WORKDIR}/${POD5_URLDIR}/include")
+            if(NOT POD5_DIR)
+                override_cached(POD5_DIR ${WORKDIR}/${POD5_URLDIR})
             endif()
             ExternalProject_Add(
-                pod5
+                pod5_build
                 PREFIX ${WORKDIR}/pod5
-                SOURCE_DIR ${WORKDIR}/${POD5_URLDIR}
+                SOURCE_DIR ${POD5_DIR}
                 URL ${POD5_URL}
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND ""
                 INSTALL_COMMAND ""
                 DOWNLOAD_EXTRACT_TIMESTAMP TRUE
             )
-            add_dependencies(${TARGET_NAME} pod5)
+            add_dependencies(${TARGET_NAME} pod5_build)
         else()
-            if(NOT POD5_INCLUDE_DIR)
-                message(FATAL_ERROR "POD5_DOWNLOAD is OFF, but no include dir provided")
+            if(NOT POD5_DIR)
+                message(FATAL_ERROR "POD5_DOWNLOAD is OFF, but no dir provided")
             endif()
         endif()
-        include_directories("${POD5_INCLUDE_DIR}")
-        target_link_libraries(${TARGET_NAME} PRIVATE "${POD5_LIBRARIES}" zstd)
+        include_directories(${POD5_DIR}/include)
+        target_link_libraries(${TARGET_NAME} PRIVATE ${POD5_LIBRARIES})
     endif()
 endfunction()
 

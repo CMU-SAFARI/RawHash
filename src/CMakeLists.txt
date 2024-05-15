@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.10)
 project(RawHash2Src LANGUAGES CXX)
 
-include(ExternalProject)
-
 option(USE_CCACHE "Use ccache to speed up rebuilds" ON)
 option(USE_MOLD "Use mold linker for faster linking" ON)
 
@@ -21,22 +19,14 @@ option(NOPOD5 "Do not use POD5" OFF)
 option(NOHDF5 "Do not use HDF5" OFF)
 option(NOSLOW5 "Do not use SLOW5" OFF)
 
-set(POD5_INCLUDE_DIR "" CACHE PATH "Path to POD5 include directory")
-set(HDF5_INCLUDE_DIR "" CACHE PATH "Path to HDF5 include directory")
-set(SLOW5_INCLUDE_DIR "" CACHE PATH "Path to SLOW5 include directory")
+set(POD5_DIR "" CACHE PATH "Path to POD5 directory")
+set(HDF5_DIR "" CACHE PATH "Path to HDF5 directory")
+set(SLOW5_DIR "" CACHE PATH "Path to SLOW5 directory")
+
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin CACHE PATH "Binaries directory")
 
 set(WORKDIR ${CMAKE_BINARY_DIR}/extern)
 file(MAKE_DIRECTORY ${WORKDIR})
-
-function(override_cached name value)
-    message(STATUS "Overriding ${name} to ${value}")
-    get_property(doc_string CACHE ${name} PROPERTY HELPSTRING)
-    get_property(type CACHE ${name} PROPERTY TYPE)
-    set(${name} "${value}" CACHE ${type} "${doc_string}" FORCE)
-endfunction()
-
-# TODO: Sync with CXX flags or change files to .cpp
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -x c++")
 
 include(../cmake/SetupCCacheMold.cmake)
 include(../cmake/SetupMainTarget.cmake)
@@ -44,6 +34,7 @@ include(../cmake/SetupRUClient.cmake)
 include(../cmake/SetupPOD5.cmake)
 include(../cmake/SetupHDF5.cmake)
 include(../cmake/SetupSLOW5.cmake)
+include(../cmake/SetupTFLite.cmake)
 
 setup_ccache_mold()
 setup_main_target()
@@ -51,6 +42,7 @@ setup_ruclient()
 setup_pod5()
 setup_hdf5()
 setup_slow5()
+setup_tflite()
 
-add_subdirectory(${CMAKE_SOURCE_DIR}/extern/tensorflow/tensorflow/lite ${CMAKE_CURRENT_BINARY_DIR}/tensorflow-lite EXCLUDE_FROM_ALL)
-target_link_libraries(${TARGET_NAME} PRIVATE tensorflow-lite)
+# TODO: Sync with CXX flags or change files to .cpp
+set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -x c++")
