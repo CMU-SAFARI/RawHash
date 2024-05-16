@@ -3,11 +3,9 @@ name: Docker Build and Test
 on:
   push:
     branches:
-      - make_cmake_migrate
       - main
   pull_request:
     branches:
-      - make_cmake_migrate
       - main
 
 jobs:
@@ -27,4 +25,4 @@ jobs:
         run: docker build -t build_test .
 
       - name: Run Docker container
-        run: docker run --rm build_test
+        run: docker run --rm build_test -h
