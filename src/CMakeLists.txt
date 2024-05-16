@@ -15,7 +15,7 @@ option(POD5_DOWNLOAD "Download POD5" ON)
 option(HDF5_COMPILE "Compile HDF5" ON)
 option(SLOW5_COMPILE "Compile slow5lib" ON)
 
-option(NOPOD5 "Do not use POD5" OFF)
+option(NOPOD5 "Do not use POD5" ON)
 option(NOHDF5 "Do not use HDF5" ON)
 option(NOSLOW5 "Do not use SLOW5" OFF)
 
