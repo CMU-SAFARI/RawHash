@@ -4,10 +4,10 @@ function(override_cached name value)
     message(STATUS "Overriding ${name} to ${value}")
     get_property(doc_string CACHE ${name} PROPERTY HELPSTRING)
     get_property(type CACHE ${name} PROPERTY TYPE)
-    set(${name} "${value}" CACHE ${type} "${doc_string}" FORCE)
+    set(${name} ${value} CACHE ${type} ${doc_string} FORCE)
 endfunction()
 
-function(link_imported_library LIB_NAME LIB_DIR)
+function(link_imported_library TARGET_NAME LIB_NAME LIB_DIR)
     add_library(${LIB_NAME} STATIC IMPORTED)
     file(MAKE_DIRECTORY ${LIB_DIR}/include)
     set_target_properties(${LIB_NAME} PROPERTIES

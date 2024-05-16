@@ -1,4 +1,4 @@
-function(setup_ruclient)
+function(setup_ruclient TARGET_NAME)
     if(RUCLIENT_ENABLED)
         find_package(gRPC REQUIRED)
         set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 20)

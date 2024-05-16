@@ -1,6 +1,6 @@
 include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
 
-function(setup_zstd)
+function(setup_zstd TARGET_NAME)
 set(ZSTD_DIR ${WORKDIR}/zstd)
     ExternalProject_Add(
         zstd_build
@@ -9,14 +9,14 @@ set(ZSTD_DIR ${WORKDIR}/zstd)
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${ZSTD_DIR}
     )
     add_dependencies(${TARGET_NAME} zstd_build)
-    link_imported_library(zstd ${ZSTD_DIR})
+    link_imported_library(${TARGET_NAME} zstd ${ZSTD_DIR})
 endfunction()
 
-function(setup_pod5)
+function(setup_pod5 TARGET_NAME)
     if(NOPOD5)
         target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1)
     else()
-        setup_zstd()
+        setup_zstd(${TARGET_NAME})
 
         set(POD5_VERSION "0.2.2")
         set(POD5_URLDIR "pod5-${POD5_VERSION}-${CMAKE_SYSTEM_NAME}")
@@ -63,17 +63,16 @@ function(resolve_pod5_url)
         else()
             set(POD5_URL "${POD5_REPO}/releases/download/${POD5_VERSION}/lib_pod5-${POD5_VERSION}-linux-x64.tar.gz" PARENT_SCOPE)
         endif()
-
         set(POD5_LIB_DIR "${WORKDIR}/${POD5_URLDIR}/${POD5_LIB}")
         set(POD5_LIBRARIES "${POD5_LIB_DIR}/libpod5_format.a"
                         "${POD5_LIB_DIR}/libarrow.a"
                         "${POD5_LIB_DIR}/libjemalloc_pic.a"  PARENT_SCOPE)
-    elseif(SYSTEM_NAME STREQUAL "Darwin")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         set(POD5_URL "${POD5_REPO}/releases/download/${POD5_VERSION}/lib_pod5-${POD5_VERSION}-osx-11.0-arm64.tar.gz")
         set(POD5_LIB_DIR "${WORKDIR}/${POD5_URLDIR}/lib")
         set(POD5_LIBRARIES "${POD5_LIB_DIR}/libpod5_format.a"
                            "${POD5_LIB_DIR}/libarrow.a"  PARENT_SCOPE)
-    elseif(SYSTEM_NAME STREQUAL "Windows_NT")
+    elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows_NT")
         set(POD5_URL "${POD5_REPO}/releases/download/${POD5_VERSION}/lib_pod5-${POD5_VERSION}-win" PARENT_SCOPE)
     endif()
 endfunction()

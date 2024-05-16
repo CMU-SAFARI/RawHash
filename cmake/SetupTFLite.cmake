@@ -1,6 +1,6 @@
 include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
 
-function(setup_tflite)
+function(setup_tflite TARGET_NAME)
     set(TF_SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/tensorflow)
     add_subdirectory(${TF_SOURCE_DIR}/tensorflow/lite ${WORKDIR}/tflite EXCLUDE_FROM_ALL)
     include_directories(${TF_SOURCE_DIR})
