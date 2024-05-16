@@ -1,9 +1,6 @@
 function(setup_main_target)
     if(PYBINDING)
-        message(STATUS "Building with Python binding support")
-        set(TARGET_NAME rawhash_pybinding CACHE INTERNAL "Main target")
-        # TODO: Non-existent in git?
-        add_executable(${TARGET_NAME} rawhash_mapper.cpp)
+        message(FATAL_ERROR "Building with Python binding support is not implemented")
     else()
         set(TARGET_NAME rawhash2 CACHE INTERNAL "Main target")
         add_executable(${TARGET_NAME} main.cpp)
@@ -37,20 +34,29 @@ function(setup_main_target)
     target_sources(${TARGET_NAME} PRIVATE
         bseq.c
         dtw.cpp
-        hit.c
         kalloc.c
         kthread.c
-        lchain.c
         revent.c
-        rindex.c
         rmap.cpp
         roptions.c
-        rseed.c
-        rsig.c
         rsketch.c
         rutils.c
         sequence_until.c
     )
+    # C files that rely on hdf5_tools.hpp
+    # Should be compiled as CXX for now
+    set(PSEUDO_C_SOURCES
+        hit.c
+        lchain.c
+        rindex.c
+        rseed.c
+        rsig.c
+    )
+    foreach(source IN LISTS PSEUDO_C_SOURCES)
+        set_source_files_properties(${source} PROPERTIES LANGUAGE CXX)
+    endforeach()
+    target_sources(${TARGET_NAME} PRIVATE ${PSEUDO_C_SOURCES})
+
 
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_options(${TARGET_NAME} PRIVATE

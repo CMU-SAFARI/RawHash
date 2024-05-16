@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
-project(RawHash2Src LANGUAGES CXX)
+project(RawHash2Src)
 
 option(USE_CCACHE "Use ccache to speed up rebuilds" ON)
 option(USE_MOLD "Use mold linker for faster linking" ON)
 
-option(PYBINDING "Build with Python bindings" OFF)
+option(PYBINDING "Build with Python bindings" OFF) # WIP
 option(PROFILE "Enable profiling support" OFF)
 option(RUCLIENT_ENABLED "Enable ReadUntil client" OFF)
 
@@ -43,6 +43,3 @@ setup_pod5()
 setup_hdf5()
 setup_slow5()
 setup_tflite()
-
-# TODO: Sync with CXX flags or change files to .cpp
-set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -x c++")

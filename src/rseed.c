@@ -7,8 +7,6 @@
 
 void ri_seed_select(int32_t n, ri_seed_t *a, int len, int max_occ, int max_max_occ, int dist)
 { // for high-occ minimizers, choose up to max_high_occ in each high-occ streak
-	extern void ks_heapdown_uint64_t(size_t i, size_t n, uint64_t*);
-	extern void ks_heapmake_uint64_t(size_t n, uint64_t*);
 	int32_t i, last0, m;
 	uint64_t b[MAX_MAX_HIGH_OCC]; // this is to avoid a heap allocation
 
