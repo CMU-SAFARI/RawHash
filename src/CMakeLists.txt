@@ -16,7 +16,7 @@ option(HDF5_COMPILE "Compile HDF5" ON)
 option(SLOW5_COMPILE "Compile slow5lib" ON)
 
 option(NOPOD5 "Do not use POD5" OFF)
-option(NOHDF5 "Do not use HDF5" OFF)
+option(NOHDF5 "Do not use HDF5" ON)
 option(NOSLOW5 "Do not use SLOW5" OFF)
 
 set(POD5_DIR "" CACHE PATH "Path to POD5 directory")
