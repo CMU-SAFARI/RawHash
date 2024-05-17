@@ -11,10 +11,9 @@ function(setup_slow5 TARGET_NAME)
             endif()
             ExternalProject_Add(
                 slow5_build
-                BUILD_DIR ${SLOW5_DIR}
+                BINARY_DIR ${SLOW5_DIR}
                 SOURCE_DIR ${SLOW5_SOURCE_DIR}
-                CONFIGURE_COMMAND ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR} ${SLOW5_DIR}
-                BUILD_COMMAND make -C ${SLOW5_DIR}
+                CONFIGURE_COMMAND ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR} .
                 INSTALL_COMMAND ""
             )
             add_dependencies(${TARGET_NAME} slow5_build)

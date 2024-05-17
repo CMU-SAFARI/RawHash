@@ -29,8 +29,7 @@ function(setup_pod5 TARGET_NAME)
                 override_cached(POD5_DIR ${WORKDIR}/${POD5_URLDIR})
             endif()
             ExternalProject_Add(
-                pod5_build
-                PREFIX ${WORKDIR}/pod5
+                pod5_download
                 SOURCE_DIR ${POD5_DIR}
                 URL ${POD5_URL}
                 CONFIGURE_COMMAND ""
@@ -38,7 +37,7 @@ function(setup_pod5 TARGET_NAME)
                 INSTALL_COMMAND ""
                 DOWNLOAD_EXTRACT_TIMESTAMP TRUE
             )
-            add_dependencies(${TARGET_NAME} pod5_build)
+            add_dependencies(${TARGET_NAME} pod5_download)
         else()
             if(NOT POD5_DIR)
                 message(FATAL_ERROR "POD5_DOWNLOAD is OFF, but no dir provided")
