@@ -21,7 +21,8 @@ void ri_seq_to_sig(const char *str,
 	int i, j, l, pos, n = 0;
 	// uint64_t shift1 = 2 * (k - 1);
 	uint64_t mask = (1ULL<<2*k) - 1, kmer = 0;
-	double mean = 0, std_dev = 0, sum = 0, sum2 = 0, curval = 0;
+	// double mean = 0, std_dev = 0, sum = 0, sum2 = 0
+	// float curval = 0;
 
 	for (i = l = j = n = 0; i < len; ++i) {
 		if(strand) pos = len-i-1;
@@ -35,16 +36,16 @@ void ri_seq_to_sig(const char *str,
 
 		if(i+1 < k) continue;
 
-		curval = pore->pore_vals[kmer];
-		s_values[j++] = curval;
-		sum += curval;
-		sum2 += curval*curval;
+		// curval = pore->pore_vals[kmer];
+		s_values[j++] = pore->pore_vals[kmer];;
+		// sum += curval;
+		// sum2 += curval*curval;
 	}
 
-	mean = sum/j;
-	std_dev = sqrt(sum2/j - (mean)*(mean));
+	// mean = sum/j;
+	// std_dev = sqrt(sum2/j - (mean)*(mean));
 
-	for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
+	// for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
 
 	*s_len = j;
 }

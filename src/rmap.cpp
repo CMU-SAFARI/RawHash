@@ -99,7 +99,7 @@ void init_reg1_t(ri_reg1_t* reg0) {
  *               		a[i].y = flags  | q_span | q_pos
  */
 static mm128_t *collect_seed_hits(void *km,
-								//   const ri_mapopt_t *opt,
+								  int is_all_vs_all,
 								  int max_occ,
 								  int max_max_occ,
                               	  int dist,
@@ -133,13 +133,24 @@ static mm128_t *collect_seed_hits(void *km,
 			if(ri->flag&RI_I_SIG_TARGET) ref_name = ri->sig[hits[k]>>RI_ID_SHIFT].name;
 			else ref_name = ri->seq[hits[k]>>RI_ID_SHIFT].name;
 
-			if(strcmp(qname, ref_name) == 0) continue;
+			if(is_all_vs_all != 0 && strcmp(qname, ref_name) >= 0) continue;
 			// if (skip_seed(opt->flag, hits[k], s_match, qname, qlen, ri, &is_self)) continue;
 			p = &seed_hits[(*n_seed_pos)++];
 
 			p->x = (hits[k]&mask_id_shift) | ref_pos;
-			if(hits[k]&1) p->x |= 1ULL<<63; // reverse strand
-			p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
+			if(hits[k]&1) p->x |= 1ULL<<63; // reverse reference strand
+			
+			if(ri->flag&RI_I_REV_QUERY && s_match->q_pos&1 == 1){
+				int32_t rlen;
+				if(ri->flag&RI_I_REV_QUERY) rlen = ri->sig[hits[k]>>32].l_sig;
+				else rlen = ri->seq[hits[k]>>32].len;
+
+				p->x = 1ULL<<63 | (hits[k]&mask_id_shift) | (rlen - (ref_pos + 1 - s_match->q_span) - 1);
+				p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
+			}else{
+				p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
+			}
+
 			if (s_match->is_tandem) p->y |= RI_SEED_TANDEM;
 			if (is_self) p->y |= RI_SEED_SELF;
 		}
@@ -312,20 +323,25 @@ void ri_map_frag(const ri_idx_t *ri,
 	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, 0);
 
 	if(ri->flag&RI_I_REV_QUERY){
+		uint32_t span = ri->k+ri->e-1;
+		mm128_v riv_rev = {0,0,0};
+		mm128_t rev_anchor = {0,0};
+		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv_rev, 0);
 
-		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, 0, interpreter, input_tensor);
+		rh_kv_resize(mm128_t, b->km, riv, riv.n + riv_rev.n);
 
-		// float* rev_events = (float*)ri_kmalloc(b->km, n_events * sizeof(float));
+		for(int i = 0; i < riv_rev.n; ++i){
+			const uint64_t *cr;
+			mm128_t *p = &(riv_rev.a[i]);
+			cr = ri_idx_rev_get(ri, p->x);
+			if(cr){
+				rev_anchor.y = p->y;
+				rev_anchor.x = ((*cr)<<RI_HASH_SHIFT) | span;
+				rh_kv_push(mm128_t, b->km, riv, rev_anchor);
+			}
+		}
 
-		// //Update this for loop for your own mechanism (normalized event values)
-		// for(int i = 0; i < n_events; ++i){
-		// 	//the most basic event calling
-		// 	unsigned int rev_ind = find_closest_pore_ind(ri->pore, events[n_events-1-i]);
-		// 	//if needed, normalize the event value here. By defauly, pore_vals should have the normalized values below.
-		// 	rev_events[i] = ri->pore_vals[rev_ind];
-		// }
-		// ri_sketch(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv);
-		// if(rev_events){ri_kfree(b->km, rev_events); rev_events = NULL;}
+		if(riv_rev.a){ri_kfree(b->km, riv_rev.a); riv_rev.a = NULL; riv_rev.n = riv_rev.m = 0;}
 	}
 	
 	if(events){ri_kfree(b->km, events); events = NULL;}
@@ -349,7 +365,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	// uint64_t *seed_mini;
 
 	//Seeding
-	seed_hits = collect_seed_hits(b->km, opt->mid_occ, opt->max_max_occ, opt->occ_dist, ri, qname, reg, &riv, n_events, &n_seed_pos, &rep_len);
+	seed_hits = collect_seed_hits(b->km, (opt->flag&RI_M_ALL_CHAINS)?1:0, opt->mid_occ, opt->max_max_occ, opt->occ_dist, ri, qname, reg, &riv, n_events, &n_seed_pos, &rep_len);
 	if(riv.a){ri_kfree(b->km, riv.a); riv.a = NULL; riv.n = riv.m = 0;}
 	// ri_kfree(b->km, seed_mini);
 
@@ -390,7 +406,8 @@ void ri_map_frag(const ri_idx_t *ri,
 	//Find primary chains
 	reg->creg = mm_gen_regs(b->km, hash, reg->offset+n_events, reg->n_cregs, u, seed_hits);
 	mm_set_parent(b->km, opt->mask_level, opt->mask_len, reg->n_cregs, reg->creg, opt->flag&RI_M_HARD_MLEVEL, opt->alt_drop);
-	mm_select_sub(b->km, opt->pri_ratio, opt->best_n, 1, opt->max_target_gap_length * 0.8, &(reg->n_cregs), reg->creg);
+	if(!(opt->flag&RI_M_ALL_CHAINS))
+		mm_select_sub(b->km, opt->pri_ratio, opt->best_n, 1, opt->max_target_gap_length * 0.8, &(reg->n_cregs), reg->creg);
 
 	if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
 		//this could be slightly more agressive and be set to opt->dtw_min_score immediately,
@@ -419,12 +436,13 @@ void ri_map_frag(const ri_idx_t *ri,
 	for(int ic = 0; ic < reg->n_cregs; ++ic){
 		int rid = reg->creg[ic].rid;
 		int rs = reg->creg[ic].rev?(uint32_t)(ri->seq[rid].len+1-reg->creg[ic].re):reg->creg[ic].rs;
-		char* rname = (ri->flag&RI_I_SIG_TARGET)?ri->sig[rid].name:ri->seq[rid].name;
+		// char* rname = (ri->flag&RI_I_SIG_TARGET)?ri->sig[rid].name:ri->seq[rid].name;
 
 		// float* ref = (reg->creg[ic].rev)?ri->R[rid]:ri->F[rid];
 		// uint32_t r_len = (reg->creg[ic].rev)?ri->r_l_sig[rid]:ri->f_l_sig[rid];
 
-		// fprintf(stderr, "Chain: %d\trid: %d\tmapq: %d\tscore: %d\tcnt: %d\ts: %c\trs: %d\tql: %d\tp?: %c\n", ic, rid, reg->creg[ic].mapq, reg->creg[ic].score, reg->creg[ic].cnt, "+-"[reg->creg[ic].rev], rs, reg->creg[ic].qs, reg->creg[ic].qe, "01"[reg->creg[ic].parent == ic]);
+		if(reg->creg[ic].rev)
+			fprintf(stderr, "Chain: %d\trid: %d\tmapq: %d\tscore: %d\tcnt: %d\ts: %c\trs: %d\tql: %d\tp?: %c\n", ic, rid, reg->creg[ic].mapq, reg->creg[ic].score, reg->creg[ic].cnt, "+-"[reg->creg[ic].rev], rs, reg->creg[ic].qs, reg->creg[ic].qe, "01"[reg->creg[ic].parent == ic]);
 
 		// 	fprintf(stderr, "Chain: %d rid: %d mapq: %d score: %d align: %f cnt: %d s: %c rs: %d qs: %d qe: %d p?: %c\n", ic, rid, reg->creg[ic].mapq, reg->creg[ic].score, reg->creg[ic].alignment_score, reg->creg[ic].cnt, "+-"[reg->creg[ic].rev], rs, reg->creg[ic].qs, reg->creg[ic].qe, "01"[reg->creg[ic].parent == ic]);
 
@@ -577,39 +595,41 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 		bestQ = reg0->creg[ic].mapq;
 		bestC = reg0->creg[ic].score;
 
-		if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
-			bestA = reg0->creg[ic].alignment_score;
-			if(n_chains == 1){ //no all-vs-all overlap mod
-				uint32_t best_ind = 0;
-				for(int i = 1; i < reg0->n_cregs; ++i){
-					if(reg0->creg[i].alignment_score > bestA){
-						bestA = reg0->creg[i].alignment_score;
-						best_ind = i;
+		if(!(opt->flag&RI_M_ALL_CHAINS)){
+			if(opt->flag&RI_M_DTW_EVALUATE_CHAINS){
+				bestA = reg0->creg[ic].alignment_score;
+				if(n_chains == 1){ //no all-vs-all overlap mod
+					uint32_t best_ind = 0;
+					for(int i = 1; i < reg0->n_cregs; ++i){
+						if(reg0->creg[i].alignment_score > bestA){
+							bestA = reg0->creg[i].alignment_score;
+							best_ind = i;
+						}
 					}
+					ic = best_ind;
+					bestQ = reg0->creg[ic].mapq;
+					bestC = reg0->creg[ic].score;
 				}
-				ic = best_ind;
-				bestQ = reg0->creg[ic].mapq;
-				bestC = reg0->creg[ic].score;
-			}
-			if(bestA >= opt->dtw_min_score){
-				// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
-				r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+				if(bestA >= opt->dtw_min_score){
+					// r_bestma = (bestA > 0)?(1.0f - (meanA/bestA)):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+					r_bestma = (bestA > 0)?(bestA/50.0f):0.0f; if(r_bestma < 0) r_bestma = 0.0f;
+					r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
+					r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
+
+					weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+				}
+			}else{
+				r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
 				r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
 				r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
 
-				weighted_sum = opt->w_bestma*r_bestma + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
+				weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
 			}
-		}else{
-			r_bestq = (bestQ > 0)?(bestQ/30.0f):0.0f; if(r_bestq > 1) r_bestq = 1.0f;
-			r_bestmq = (bestQ > 0)?(1.0f - (meanQ/bestQ)):0.0f; if(r_bestmq < 0) r_bestmq = 0.0f;
-			r_bestmc = (bestC > 0)?(1.0f - (meanC/bestC)):0.0f; if(r_bestmc < 0) r_bestmc = 0.0f;
-
-			weighted_sum = opt->w_bestq*r_bestq + opt->w_bestmq*r_bestmq + opt->w_bestmc*r_bestmc;
 		}
 		
 		#ifndef TRAIN_MAP
 		// Compare the weighted sum against a threshold to make the decision
-		if (weighted_sum >= opt->w_threshold) {
+		if (weighted_sum >= opt->w_threshold || opt->flag&RI_M_ALL_CHAINS) {
 			reg0->n_maps++;
 			reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
 			reg0->maps[reg0->n_maps-1].c_id = ic;
@@ -706,7 +726,7 @@ static void map_worker_for(void *_data,
 	uint32_t n_events_sum = 0;
 
 	uint32_t qlen = sig->l_sig;
-	uint32_t l_chunk = (opt->chunk_size > qlen)?qlen:opt->chunk_size;
+	uint32_t l_chunk = (opt->chunk_size > qlen || (opt->flag&RI_M_NO_ADAPTIVE))?qlen:opt->chunk_size;
 	uint32_t max_chunk = (opt->flag&RI_M_NO_ADAPTIVE)?(qlen/(l_chunk+1))+1:opt->max_num_chunk; //todo4: why ((qlen-1)/l_chunk)+1
 	uint32_t s_qs, s_qe = l_chunk;
 	uint32_t c_count = 0;
@@ -716,7 +736,8 @@ static void map_worker_for(void *_data,
 	for (s_qs = c_count = 0; s_qs < qlen && c_count < max_chunk; s_qs += l_chunk, ++c_count) {
 		s_qe = s_qs + l_chunk;
 		if(s_qe > qlen) s_qe = qlen;
-
+		
+		// fprintf(stderr, "name %s, chunk %d, qs %d, qe %d\n", sig->name, c_count, s_qs, s_qe);
 		if (continue_mapping_with_new_chunk(s->p->ri, (const uint32_t)s_qe-s_qs, (const float*)&(sig->sig[s_qs]), reg0, b, opt, sig->name, &mean_sum, &std_dev_sum, &n_events_sum)) {
 			// mapped
 			break;
