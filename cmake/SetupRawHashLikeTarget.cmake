@@ -1,9 +1,13 @@
-function(setup_main_target TARGET_NAME)
-    if(PYBINDING)
-        message(FATAL_ERROR "Building with Python binding support is not implemented")
-    else()
-        add_executable(${TARGET_NAME} main.cpp)
-    endif()
+function(setup_rawhashlike_target TARGET_NAME)
+    # if(PYBINDING)
+    #     message(FATAL_ERROR "Building with Python binding support is not implemented")
+    # # else()
+    # #     # add_executable(${TARGET_NAME} main.cpp)
+    # #     add_executable(${TARGET_NAME} rawhash_wrapper.cpp)
+    # endif()
+    # target_compile_options(${TARGET_NAME} PRIVATE -Wno-sign-compare)
+    target_compile_options(${TARGET_NAME} PRIVATE -w) # disable all warnings, dangerous!
+
     set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 11)
     set_target_properties(${TARGET_NAME} PROPERTIES C_STANDARD 11)
 

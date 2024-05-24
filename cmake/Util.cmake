@@ -8,10 +8,12 @@ function(override_cached name value)
 endfunction()
 
 function(link_imported_library TARGET_NAME LIB_NAME LIB_DIR)
-    add_library(${LIB_NAME} STATIC IMPORTED)
+    add_library(${LIB_NAME} SHARED IMPORTED)
     file(MAKE_DIRECTORY ${LIB_DIR}/include)
+    # replace LIB_DIR by absolute path
+    get_filename_component(LIB_DIR ${LIB_DIR} ABSOLUTE) # todo: workaround
     set_target_properties(${LIB_NAME} PROPERTIES
-        IMPORTED_LOCATION ${LIB_DIR}/lib/lib${LIB_NAME}.a
+        IMPORTED_LOCATION ${LIB_DIR}/lib/lib${LIB_NAME}.so
         INTERFACE_INCLUDE_DIRECTORIES ${LIB_DIR}/include
     )
     target_link_libraries(${TARGET_NAME} PRIVATE ${LIB_NAME})

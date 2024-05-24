@@ -247,7 +247,7 @@ void align_chain(mm_reg1_t *chain, mm128_t* anchors, const ri_idx_t *ri, const f
 	if(opt->flag & RI_M_DTW_LOG_SCORES){
 		char str[256];
 		sprintf(str, "chaining_score=%d alignment_score=%f\n", chain->score, chain->alignment_score);
-		fprintf(stderr, str);
+		fprintf(stderr, "%s", str);
 	}
 }
 

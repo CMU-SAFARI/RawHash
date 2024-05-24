@@ -5,15 +5,15 @@
 #ifndef ROPTIONS_H
 #define ROPTIONS_H
 
-#define RI_I_NAIVE		0x1
-#define RI_I_MIN		0x2
-#define RI_I_BLEND		0x4
-#define RI_I_SYNCMER	0x8
-#define RI_I_STORE_SIG	0x10
-#define RI_I_SIG_TARGET	0x20
-#define RI_I_REV_QUERY	0x40
-#define RI_I_OUT_QUANTIZE 0x80
-#define RI_I_NO_EVENT_DETECTION 0x100
+#define RI_I_NAIVE		0x1 // unused
+#define RI_I_MIN		0x2 // unused
+#define RI_I_BLEND		0x4 // unused
+#define RI_I_SYNCMER	0x8 // unused
+#define RI_I_STORE_SIG	0x10 // whether to store the signal (generated from a fasta reference)
+#define RI_I_SIG_TARGET	0x20 // whether the index consists of raw signals rather than nucleotides
+#define RI_I_REV_QUERY	0x40 // whether the index is queried with the read and its reverse complement (through a revcomp prediction model); if not, need to store reference signal for both forward and reverse signal
+#define RI_I_OUT_QUANTIZE 0x80 // quantize raw signals (index not needed)
+#define RI_I_NO_EVENT_DETECTION 0x100 // whether the signal are raw signals, or events (which will be normalized only, removing outliers)
 
 #define RI_M_SEQUENCEUNTIL	0x1
 #define RI_M_RMQ			0x2

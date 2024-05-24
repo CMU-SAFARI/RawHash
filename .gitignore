@@ -1,6 +1,8 @@
 bin/
 build/
 run_dir/
+.venv/
+example_out/
 
 test/data/d1_*
 test/data/d2_*
