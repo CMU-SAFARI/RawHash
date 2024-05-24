@@ -168,18 +168,18 @@ void ri_sketch_reg(void *km,
 	uint32_t f_tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
-	if(!out)rh_kv_resize(mm128_t, km, *p, p->n + len);
+	if(!out)rh_kv_resize(mm128_t, km, *p, p->n + len-span-1);
 
 	mm128_t sigBuf[e];
 	memset(sigBuf, 0, e*sizeof(mm128_t));
 
 	//First quantization is done here
 	l_sigpos = f_pos;
-	f_tmpQuantSignal = dynamic_quantize(s_values[0], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
+	f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
 	if(out) fprintf(stdout, "%u", f_tmpQuantSignal);
 	sigBuf[sigBufPos].y = id_shift | (uint32_t)f_pos<<RI_POS_SHIFT | strand;
 	if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
-	quantVal = (quantVal<<quant_bit|f_tmpQuantSignal)&mask_events;
+	quantVal = f_tmpQuantSignal&mask_events;
 	sigBuf[sigBufPos].x = (hash64(quantVal, mask)<<RI_HASH_SHIFT) | span;
 	if(sigBufFull && !out) rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
 
@@ -217,84 +217,58 @@ void ri_sketch_reg_rev(void *km,
 				   	   float fine_max,
 				   	   float fine_range,
 					   mm128_v *p,
-					   short out,
-					   TfLiteInterpreter* interpreter,
-					   TfLiteTensor* input_tensor)
+					   short out)
+					//    TfLiteInterpreter* interpreter,
+					//    TfLiteTensor* input_tensor)
 {
-	assert(interpreter != NULL);
-	assert(input_tensor != NULL);
-
-	assert(len > 0 && e*quant_bit <= 64-RI_HASH_SHIFT);
+	assert(len > 0 && (uint32_t)e*quant_bit <= 64-RI_HASH_SHIFT);
 
 	uint32_t span = k+e-1;
-	
 	const uint64_t id_shift = (uint64_t)id<<RI_ID_SHIFT, mask = (1ULL<<32)-1, mask_events = (1ULL<<(quant_bit*e))-1, mask_quant_bit = (1ULL<<quant_bit)-1;
 
 	uint32_t n_buckets = 1UL<<quant_bit;
 
-	//For reverse complementing
-	const int rev_span = 11; //TODO: make this an argument (see rindex.c)
-	const int mid_rev = rev_span/2; 
-
-	int sigBufFull = 0;
-	uint32_t f_pos, r_pos = len-1-mid_rev, sigBufPos = 0, l_sigpos = 0; //last signal position
+	int sigBufFull = 0, streak = 1;
+	uint32_t f_pos = 0, r_pos = len-1, sigBufPos = 0, l_sigpos = 0; //last signal position
 	uint32_t f_tmpQuantSignal = 0, r_tmpQuantSignal = 0;
 	uint64_t quantVal = 0;
 
-	rh_kv_resize(mm128_t, km, *p, p->n + len);
+	if(!out)rh_kv_resize(mm128_t, km, *p, p->n + len-span-1);
 
 	mm128_t sigBuf[e];
 	memset(sigBuf, 0, e*sizeof(mm128_t));
-	
-	float* revBuf = (float*)malloc(rev_span*sizeof(float));
-	memset(revBuf, 0, rev_span*sizeof(float));
-	float* out_results = (float*)malloc(32*sizeof(float));
-	memset(out_results, 0, 32*sizeof(float));
 
-    for (f_pos = 0; f_pos < len; ++f_pos) {
-        if((f_pos > 0 && fabs(s_values[f_pos] - s_values[l_sigpos]) < diff)) continue;
+	//First quantization is done here
+	l_sigpos = f_pos;
+	f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
+	if(out) fprintf(stdout, "%u", f_tmpQuantSignal);
+	sigBuf[sigBufPos].y = id_shift | ((uint32_t)(len-f_pos-1))<<RI_POS_SHIFT | strand;
+	if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
+	quantVal = f_tmpQuantSignal&mask_events;
+	sigBuf[sigBufPos].x = quantVal;
+	if(sigBufFull && !out && streak >= e) rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+
+    for (f_pos = 1; f_pos < len; ++f_pos) {
+        if((fabs(s_values[f_pos] - s_values[l_sigpos]) < diff)) {streak = 0; continue;}
 
 		l_sigpos = f_pos;
 
 		f_tmpQuantSignal = dynamic_quantize(s_values[f_pos], fine_min, fine_max, fine_range, n_buckets)&mask_quant_bit;
-		
-		if(f_pos+1 < rev_span) {revBuf[f_pos] = f_tmpQuantSignal; continue;}
-		
-		revBuf[rev_span-1] = f_tmpQuantSignal;
-		
-		//Do the inference here
-		TfLiteTensorCopyFromBuffer(input_tensor, revBuf, sizeof(float)*rev_span);
-		TfLiteInterpreterInvoke(interpreter);
-		const TfLiteTensor* output_tensor = TfLiteInterpreterGetOutputTensor(interpreter, 0);
-		if(!output_tensor) fprintf(stderr, "Error: output_tensor is NULL\n");
-		else {
-			// fprintf(stderr, "size: %u %u ", TfLiteTensorByteSize(output_tensor), sizeof(float));
-			TfLiteTensorCopyToBuffer(output_tensor, out_results, 32*sizeof(float));
-			r_tmpQuantSignal = 0;
-			float maxVal = out_results[0];
-			for(int revout = 1; revout < 32; revout++) {
-				if(out_results[revout] > maxVal) {
-					maxVal = out_results[revout];
-					r_tmpQuantSignal = revout;
-				}
-			}
-		}
+		if(out) fprintf(stdout, ",%u", f_tmpQuantSignal);
 
-		for(int i = 0; i < rev_span-1; i++) revBuf[i] = revBuf[i+1]; //TODO: Do it more efficiently
-
-		sigBuf[sigBufPos].y = id_shift | (uint32_t)r_pos--<<RI_POS_SHIFT | strand;
+		// sigBuf[sigBufPos].y = id_shift | ((uint32_t)(len-f_pos-1))<<RI_POS_SHIFT | strand;
+		sigBuf[sigBufPos].y = id_shift | f_pos<<RI_POS_SHIFT | strand;
 		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
 
-		quantVal = (quantVal<<quant_bit|r_tmpQuantSignal)&mask_events;
-		sigBuf[sigBufPos].x = (hash64(quantVal, mask)<<RI_HASH_SHIFT) | span;
-
+		quantVal = (quantVal<<quant_bit|f_tmpQuantSignal)&mask_events;
+		streak++;
+		sigBuf[sigBufPos].x = quantVal;
+		
 		if(!sigBufFull) continue;
 
-		rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
+		if(!out && streak >= e)rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
     }
-
-	free(out_results);
-	free(revBuf);
+	if(out) fprintf(stdout, "\n");
 }
 
 void ri_sketch(void *km,
@@ -333,12 +307,12 @@ void ri_sketch_rev(void *km,
                	   float fine_max,
                	   float fine_range,
 				   mm128_v *p,
-				   short out,
-				   TfLiteInterpreter* interpreter,
-				   TfLiteTensor* input_tensor)
+				   short out)
+				//    TfLiteInterpreter* interpreter,
+				//    TfLiteTensor* input_tensor)
 {
 	// if(w) ri_sketch_min(km, s_values, id, strand, len, diff, w, e, q, lq, k, p);
-	ri_sketch_reg_rev(km, s_values, id, strand, len, diff, e, quant_bit, k, fine_min, fine_max, fine_range, p, out, interpreter, input_tensor);
+	ri_sketch_reg_rev(km, s_values, id, strand, len, diff, e, quant_bit, k, fine_min, fine_max, fine_range, p, out);
 }
 
 #ifdef TRAIN_REVERSE

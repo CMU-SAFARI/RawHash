@@ -22,42 +22,44 @@ struct Alignment {
 	bool pos_strand;
 };
 
-// typedef DecisionMaker::ChunkType ChunkType;
+typedef DecisionMaker::ChunkType ChunkType;
 
-// /**
-//  * @brief Maps read in current channel, progressively receiving new chunks
-//  * 
-//  */
-// class ChannelReadMapper {
+/**
+ * @brief Maps read in current channel, progressively receiving new chunks
+ * 
+ */
+class ChannelReadMapper {
+	// todo: rename to RawHashSingleReadMapper
 
-// public:
-// // todo: calibration by reference
-// 	ChannelReadMapper(const ri_idx_t *ri, const ri_mapopt_t *opt, SingleChannelCalibration calibration, ri_tbuf_t* b, std::string read_id);
-// 	Decision try_mapping_new_chunk(ReadIdentifier const& read_ident, ChunkType const& chunk, uint32_t chunk_idx);
-	
-// 	// void compute_mappings();
-// 	// void write_mappings_to_stdout();
-// 	// // destroy immediately to avoid doing it in the destructor (when going to new read where we want to minimize latency), only destroys if reg0 was set, i.e. at least one chunk received
-// 	// void destroy();
+public:
+// todo: calibration by reference
+	ChannelReadMapper(const ri_idx_t *ri, const ri_mapopt_t *opt, SingleChannelCalibration calibration, ri_tbuf_t* b, std::string read_id);
+	Decision try_mapping_new_chunk(ReadIdentifier const& read_ident, ChunkType const& chunk, uint32_t chunk_idx);
 
-// 	// ~ChannelReadMapper() {
-// 	// 	destroy();
-// 	// }
+	// populate mappings from reg0, and free irrelevant stuff
+	void populate_mappings();
+	// write out to stdout
+	void write_out_mappings();
+	// destroy immediately to avoid doing it in the destructor (when going to new read where we want to minimize latency), only destroys if reg0 was set, i.e. at least one chunk received
+	void free_mappings();
 
-// 	double mapping_time;
-// private:
-// 	const ri_idx_t *ri; // reference index
-// 	const ri_mapopt_t *opt; // mapping options
-// 	SingleChannelCalibration calibration;
-// 	ri_tbuf_t* b = NULL; // thread-local buffer, not owned by this class!
+	~ChannelReadMapper();
 
-// 	std::string read_id; // since reg0->read_name is const char*, we manage it explicitly
-// 	ri_reg1_t* reg0;
-// 	double mean_sum, std_dev_sum;
-// 	uint32_t n_events_sum;
-// 	uint32_t c_count;
-// 	uint32_t qlen; // number of raw signals seen for this read
-// };
+	double mapping_time;
+private:
+	const ri_idx_t *ri; // reference index
+	const ri_mapopt_t *opt; // mapping options
+	SingleChannelCalibration calibration;
+	ri_tbuf_t* b = NULL; // thread-local buffer, not owned by this class!
+
+	// read-specific
+	std::string read_id; // since reg0->read_name is const char*, we manage it explicitly
+	ri_reg1_t* reg0;
+	double mean_sum, std_dev_sum;
+	uint32_t n_events_sum;
+	uint32_t c_count;
+	uint32_t qlen; // number of raw signals seen for this read
+};
 
 /**
  * @brief Decision maker taking decisions for reads on a single channel
@@ -77,12 +79,7 @@ private:
 	SingleChannelCalibration calibration;
 
 	// per read
-	ri_reg1_t* reg0;
-	double mean_sum, std_dev_sum;
-	uint32_t n_events_sum;
-	uint32_t c_count;
-	double mapping_time;
-	uint32_t qlen; // number of raw signals seen for this read
+	ChannelReadMapper channel_read_mapper;
 };
 
 #endif

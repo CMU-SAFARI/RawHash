@@ -1,7 +1,7 @@
 include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
 
 function(setup_zstd TARGET_NAME)
-set(ZSTD_DIR ${WORKDIR}/zstd)
+set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
     ExternalProject_Add(
         zstd_build
         SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/zstd/build/cmake
@@ -26,7 +26,7 @@ function(setup_pod5 TARGET_NAME)
 
         if(POD5_DOWNLOAD)
             if(NOT POD5_DIR)
-                override_cached(POD5_DIR ${WORKDIR}/${POD5_URLDIR})
+                override_cached(POD5_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/${POD5_URLDIR})
             endif()
             ExternalProject_Add(
                 pod5_download
@@ -35,7 +35,8 @@ function(setup_pod5 TARGET_NAME)
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND ""
                 INSTALL_COMMAND ""
-                DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+                # requires cmake >= 3.24
+                # DOWNLOAD_EXTRACT_TIMESTAMP TRUE
             )
             add_dependencies(${TARGET_NAME} pod5_download)
         else()
@@ -62,13 +63,13 @@ function(resolve_pod5_url)
         else()
             set(POD5_URL "${POD5_REPO}/releases/download/${POD5_VERSION}/lib_pod5-${POD5_VERSION}-linux-x64.tar.gz" PARENT_SCOPE)
         endif()
-        set(POD5_LIB_DIR "${WORKDIR}/${POD5_URLDIR}/${POD5_LIB}")
+        set(POD5_LIB_DIR "${EXTERNAL_PROJECTS_BUILD_DIR}/${POD5_URLDIR}/${POD5_LIB}")
         set(POD5_LIBRARIES "${POD5_LIB_DIR}/libpod5_format.a"
                         "${POD5_LIB_DIR}/libarrow.a"
                         "${POD5_LIB_DIR}/libjemalloc_pic.a"  PARENT_SCOPE)
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
         set(POD5_URL "${POD5_REPO}/releases/download/${POD5_VERSION}/lib_pod5-${POD5_VERSION}-osx-11.0-arm64.tar.gz")
-        set(POD5_LIB_DIR "${WORKDIR}/${POD5_URLDIR}/lib")
+        set(POD5_LIB_DIR "${EXTERNAL_PROJECTS_BUILD_DIR}/${POD5_URLDIR}/lib")
         set(POD5_LIBRARIES "${POD5_LIB_DIR}/libpod5_format.a"
                            "${POD5_LIB_DIR}/libarrow.a"  PARENT_SCOPE)
     elseif(CMAKE_SYSTEM_NAME STREQUAL "Windows_NT")

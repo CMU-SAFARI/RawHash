@@ -17,7 +17,9 @@
 #define idx_hash(a) ((a)>>1)
 #define idx_eq(a, b) ((a)>>1 == (b)>>1)
 KHASH_INIT(idx, uint64_t, uint64_t, 1, idx_hash, idx_eq)
+KHASH_INIT(idx_rev, uint64_t, uint64_t, 1, idx_hash, idx_eq)
 typedef khash_t(idx) idxhash_t;
+typedef khash_t(idx_rev) idx_revhash_t;
 
 KHASH_MAP_INIT_STR(str, uint32_t)
 
@@ -58,6 +60,7 @@ ri_idx_t* ri_idx_init(float diff, int b, int w, int e, int n, int q, int k, floa
 	ri->fine_min = fine_min, ri->fine_max = fine_max, ri->fine_range = fine_range;
 	ri->seq = NULL; ri->sig = NULL; ri->F = NULL; ri->R = NULL; ri->f_l_sig = NULL; ri->r_l_sig = NULL; ri->pore = NULL; ri->h = NULL;
   	ri->B = (ri_idx_bucket_t*)calloc(1<<ri->b, sizeof(ri_idx_bucket_t));
+	ri->P = (ri_idx_bucket_t*)calloc(1<<ri->b, sizeof(ri_idx_bucket_t));
   	ri->km = ri_km_init();
 
 	return ri;
@@ -74,9 +77,15 @@ void ri_idx_destroy(ri_idx_t *ri){
 			kh_destroy(idx, (idxhash_t*)ri->B[i].h);
 		}
 	}
+	if(ri->flag&RI_I_SIG_TARGET && ri->P){
+		for (i = 0; i < 1U<<ri->b; ++i) {
+			free(ri->P[i].a.a);
+			kh_destroy(idx_rev, (idx_revhash_t*)ri->P[i].h);
+		}
+	}
 
 	if(ri->km) ri_km_destroy(ri->km);
-	free(ri->B); free(ri);
+	if(ri->B)free(ri->B); if(ri->P)free(ri->P); free(ri);
 }
 
 void ri_idx_add(ri_idx_t *ri, int n, const mm128_t *a){
@@ -321,7 +330,7 @@ static void worker_post(void *g, long i, int tid){
 	ri_idx_bucket_t *b = &ri->B[i];
 	if (b->a.n == 0) return;
 
-	// sort by minimizer
+	// sort by hash values of sketches (e.g., minimizer hash value)
 	radix_sort_128x(b->a.a, b->a.a + b->a.n);
 
 	// count and preallocate
@@ -366,9 +375,55 @@ static void worker_post(void *g, long i, int tid){
 	ri_kfree(0, b->a.a);
 	b->a.n = b->a.m = 0, b->a.a = 0;
 }
+
+static void worker_post_P(void *g, long i, int tid){
+	int n, n_keys;
+	size_t j, start_a, start_p;
+	idx_revhash_t *h = 0;
+	ri_idx_t *ri = (ri_idx_t*)g;
+	ri_idx_bucket_t *b = &ri->P[i];
+	if (b->a.n == 0) return;
+
+	// sort by hash values of reverse values
+	radix_sort_128x(b->a.a, b->a.a + b->a.n);
+
+	// count and preallocate
+	for (j = 1, n = 1, n_keys = 0, b->n = 0; j <= b->a.n; ++j) {
+		if (j == b->a.n || b->a.a[j].x != b->a.a[j-1].x) {
+			if(n == 1)++n_keys;
+			n = 1;
+		} else ++n;
+	}
+	h = kh_init(idx_rev);
+	kh_resize(idx_rev, h, n_keys);
+	// b->p = (uint64_t*)calloc(b->n, 8);
+
+	// create the hash table
+	for (j = 1, n = 1, start_a = start_p = 0; j <= b->a.n; ++j) {
+		if (j == b->a.n || b->a.a[j].x != b->a.a[j-1].x) {
+			if(n == 1){
+				khint_t itr;
+				int absent;
+				mm128_t *p = &b->a.a[j-1];
+				itr = kh_put(idx_rev, h, p->x>>ri->b<<1, &absent);
+				assert(absent);
+				kh_key(h, itr) |= 1;
+				kh_val(h, itr) = p->y;
+			}
+			n = 1;
+		} else ++n;
+	}
+	b->h = h;
+
+	// deallocate and clear b->a
+	ri_kfree(0, b->a.a);
+	b->a.n = b->a.m = 0, b->a.a = 0;
+}
  
 static void ri_idx_post(ri_idx_t *ri, int n_threads){
 	kt_for(n_threads, worker_post, ri, 1<<ri->b);
+	if(ri->flag&RI_I_REV_QUERY)
+		kt_for(n_threads, worker_post_P, ri, 1<<ri->b);
 }
 
 void ri_idx_sort(ri_idx_t *ri, int n_threads){
@@ -392,6 +447,17 @@ const uint64_t *ri_idx_get(const ri_idx_t *ri, uint64_t hashval, int *n){
 		*n = (uint32_t)kh_val(h, k);
 		return &b->p[kh_val(h, k)>>32];
 	}
+}
+
+const uint64_t *ri_idx_rev_get(const ri_idx_t *ri, uint64_t hashval){
+	uint64_t mask = (1ULL<<ri->b) - 1;
+	khint_t k;
+	ri_idx_bucket_t *b = &ri->P[hashval&mask];
+	idx_revhash_t *h = (idx_revhash_t*)b->h;
+	if (h == 0) return 0;
+	k = kh_get(idx_rev, h, hashval>>ri->b<<1);
+	if (k == kh_end(h)) return 0;
+	return &kh_val(h, k);
 }
 
 void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
@@ -477,6 +543,25 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 		}
 	}
 
+	if(ri->flag&RI_I_REV_QUERY){
+		for (i = 0; i < 1U<<ri->b; ++i) {
+			ri_idx_bucket_t *b = &ri->P[i];
+			khint_t k;
+			idx_revhash_t *h = (idx_revhash_t*)b->h;
+			uint32_t size = h? h->size : 0;
+			// fwrite(&b->n, 4, 1, idx_file);
+			// fwrite(b->p, 8, b->n, idx_file);
+			fwrite(&size, 4, 1, idx_file);
+			if (size == 0) continue;
+			for (k = 0; k < kh_end(h); ++k) {
+				uint64_t x[2];
+				if (!kh_exist(h, k)) continue;
+				x[0] = kh_key(h, k), x[1] = kh_val(h, k);
+				fwrite(x, 8, 2, idx_file);
+			}
+		}
+	}
+
 	fflush(idx_file);
 }
 
@@ -558,6 +643,7 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 			}
 		}
 	}
+	
 	for (i = 0; i < 1U<<ri->b; ++i) {
 		ri_idx_bucket_t *b = &ri->B[i];
 		uint32_t j, size;
@@ -577,6 +663,27 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 			k = kh_put(idx, h, x[0], &absent);
 			assert(absent);
 			kh_val(h, k) = x[1];
+		}
+	}
+
+	if(ri->flag&RI_I_REV_QUERY){
+		for (i = 0; i < 1U<<ri->b; ++i) {
+			ri_idx_bucket_t *b = &ri->P[i];
+			uint32_t j, size;
+			khint_t k;
+			idxhash_t *h;
+			fread(&size, 4, 1, idx_file);
+			if (size == 0) continue;
+			b->h = h = kh_init(idx);
+			kh_resize(idx, h, size);
+			for (j = 0; j < size; ++j) {
+				uint64_t x[2];
+				int absent;
+				fread(x, 8, 2, idx_file);
+				k = kh_put(idx, h, x[0], &absent);
+				assert(absent);
+				kh_val(h, k) = x[1];
+			}
 		}
 	}
 
@@ -625,9 +732,71 @@ void ri_idx_reader_close(ri_idx_reader_t* r){
 	free(r);
 }
 
+static inline uint64_t hash64(uint64_t key, uint64_t mask){
+    key = (~key + (key << 21)) & mask; // key = (key << 21) - key - 1;
+    key = key ^ key >> 24;
+    key = ((key + (key << 3)) + (key << 8)) & mask; // key * 265
+    key = key ^ key >> 14;
+    key = ((key + (key << 2)) + (key << 4)) & mask; // key * 21
+    key = key ^ key >> 28;
+    key = (key + (key << 31)) & mask;
+    return key;
+}
+
+static void generate_kmers(ri_idx_t* ri) {
+	const short span = ri->e + ri->k - 1;
+
+	const uint64_t mask = (1ULL<<32)-1, mask_quant_bit = (1ULL<<ri->q)-1, maskQ = (1U << (2*ri->k))-1,  mask_events = (1ULL<<(ri->q*ri->e))-1, maskBucket = (1ULL<<ri->b) - 1;
+	
+	const uint32_t n_buckets = 1UL<<ri->q;
+	uint32_t f_tmpQuantSignal = 0, qmer = 0;
+	uint64_t quantVal = 0, r_quantVal = 0;
+	
+	mm128_t kmerVal;
+	float prev_val;
+	int fail = 0;
+    for (uint32_t i = 0; i < (1U<<2*span); i++) {
+		qmer = (i >> (2 * (ri->e-1)))&maskQ;
+		prev_val = ri->pore->pore_vals[qmer];
+		f_tmpQuantSignal = dynamic_quantize(prev_val, ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
+		quantVal = f_tmpQuantSignal&mask_events;
+		for (int j = 1; j < ri->e; j++) {
+			qmer = (i >> (2 * (ri->e-1-j)))&maskQ;
+			if((fabs(ri->pore->pore_vals[qmer] - prev_val) < ri->diff)) {fail = 1; break;};
+			prev_val = ri->pore->pore_vals[qmer];
+
+			f_tmpQuantSignal = dynamic_quantize(ri->pore->pore_vals[qmer], ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
+			quantVal = (quantVal<<ri->q|f_tmpQuantSignal)&mask_events;
+    	}
+
+		if(fail == 0){
+			//reverse complementing
+			uint32_t x = i, y = 0;
+			for (short j = 0; j < span; j++) {
+				y = (y<<2) | ((x&3)^3);
+				x >>= 2;
+			}
+
+			r_quantVal = 0;
+			for (int j = 0; j < ri->e; j++) {
+				qmer = (y >> (2 * (ri->e-1-j)))&maskQ;
+				f_tmpQuantSignal = dynamic_quantize(ri->pore->pore_vals[qmer], ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
+				r_quantVal = (r_quantVal<<ri->q|f_tmpQuantSignal)&mask_events;
+			}
+
+			kmerVal.x = quantVal;
+			kmerVal.y = hash64(r_quantVal, mask);
+			// kmerVal.y = quantVal;
+			mm128_v *p = &ri->P[quantVal&maskBucket].a;
+			rh_kv_push(mm128_t, 0, *p, kmerVal);
+		}
+		fail = 0;
+    }
+	// if(riv.a){ri_kfree(0, riv.a); riv.a = NULL; riv.n = riv.m = 0;}
+}
+
 ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
 {
-
 	if(flag&RI_I_SIG_TARGET) return 0;
 
 	pipeline_t pl;
@@ -644,6 +813,8 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	memcpy(pl.ri->pore->pore_vals, pore->pore_vals, pore->n_pore_vals * sizeof(float));
 	pl.ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(ri_porei_t));
 	memcpy(pl.ri->pore->pore_inds, pore->pore_inds, pore->n_pore_vals * sizeof(ri_porei_t));
+
+	if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
 
 	kt_pipeline(n_threads < 3? n_threads : 3, worker_pipeline, &pl, 3);
 	ri_idx_post(pl.ri, n_threads);
@@ -681,6 +852,8 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.ri->threshold2 = threshold2;
 	pl.ri->peak_height = peak_height;
 
+	if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
+
 	int n_steps = (pl.ri->flag&RI_I_OUT_QUANTIZE)?2:3;
 	kt_pipeline(n_threads < n_steps? n_threads : n_steps, worker_sig_pipeline, &pl, n_steps);
 
@@ -690,7 +863,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	if(pl.ri->flag&RI_I_OUT_QUANTIZE) {ri_idx_destroy(pl.ri); pl.ri = 0;}
 	else ri_idx_post(pl.ri, n_threads);
 
-	return pl.ri;;
+	return pl.ri;
 }
 
 ri_idx_t* ri_idx_reader_read(ri_idx_reader_t* r, ri_pore_t* pore, int n_threads){

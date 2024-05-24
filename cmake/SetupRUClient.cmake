@@ -6,7 +6,7 @@ function(setup_ruclient TARGET_NAME)
     target_compile_definitions(${TARGET_NAME} PRIVATE RUCLIENT_ENABLED)
     target_sources(${TARGET_NAME} PRIVATE rawhash_ruclient.cpp)
         if(NOT RUCLIENT_DIR)
-            override_cached(RUCLIENT_DIR ${WORKDIR}/ruclient)
+            override_cached(RUCLIENT_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/ruclient)
         endif()
         ExternalProject_Add(
             ruclient_build

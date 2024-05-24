@@ -17,6 +17,11 @@
 extern "C" {
 #endif
 
+uint32_t dynamic_quantize(float signal,
+						  float fine_min,
+						  float fine_max,
+						  float fine_range,
+						  uint32_t n_buckets);
 /**
  * Generate sketches (hash values) by quantizing and concatanating normalized event values
  *
@@ -74,9 +79,9 @@ void ri_sketch_rev(void *km,
                    float fine_max,
                    float fine_range,
                    mm128_v *p,
-                   short out,
-                   TfLiteInterpreter* interpreter,
-                   TfLiteTensor* input_tensor);
+                   short out);
+                //    TfLiteInterpreter* interpreter,
+                //    TfLiteTensor* input_tensor);
 
 #ifdef TRAIN_REVERSE
 void train_reverse(const float* f_values,

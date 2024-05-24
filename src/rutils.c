@@ -114,6 +114,22 @@ ri_porei_t* create_sorted_pairs(const ri_pore_t* pore) {
     return pairs;
 }
 
+//Generate all possible k-mers given const short k (k-mer length) using 2-bit representation and store it in an array
+uint32_t* generate_kmers(const short k) {
+    mm128_t kmerVal;
+    uint32_t* kmers = (uint32_t*)malloc((1U<<k) * sizeof(uint32_t));
+    for (uint32_t i = 0; i < (1U<<k); i++) {
+        uint32_t x = i;
+        uint32_t y = 0;
+        for (short j = 0; j < k; j++) {
+            y = (y<<2) | (x&3);
+            x >>= 2;
+        }
+        kmers[i] = y;
+    }
+    return kmers;
+}
+
 void load_pore(const char* fpore, const short k, const short lev_col, ri_pore_t* pore){
 	FILE* fp = fopen(fpore, "r");
 	if(fp == NULL){
@@ -125,6 +141,8 @@ void load_pore(const char* fpore, const short k, const short lev_col, ri_pore_t*
 	char line[1024];
 	char* token;
 	int i = 0;
+    double mean = 0, std_dev = 0, sum = 0, sum2 = 0, curval = 0;
+
 	while(fgets(line, sizeof(line), fp) != NULL){
 		if(!strncmp(line, "kmer", 4)) continue;
     	char* rest = line;
@@ -134,6 +152,8 @@ void load_pore(const char* fpore, const short k, const short lev_col, ri_pore_t*
 				float value;
 				if (sscanf(token, "%f", &value) == 1) {
 					pore->pore_vals[i] = value;
+                    sum += value;
+		            sum2 += value*value;
 				} else {
 					fprintf(stderr, "Error: cannot convert '%s' to float\n", token);
 					free(pore->pore_vals); pore->pore_vals = NULL;
@@ -147,56 +167,14 @@ void load_pore(const char* fpore, const short k, const short lev_col, ri_pore_t*
 	}
 	fclose(fp);
 
+    mean = sum/i;
+	std_dev = sqrt(sum2/i - (mean)*(mean));
+
+    for(int j = 0; j < i; ++j) pore->pore_vals[j] = (pore->pore_vals[j]-mean)/std_dev;
+
     pore->n_pore_vals = 1U<<(2*k);
     pore->k = k;
     pore->pore_inds = create_sorted_pairs(pore);
-}
-
-// Function to swap two elements
-void swap(float *a, float *b) {
-    float t = *a; *a = *b; *b = t;
-}
-
-// Partition function for QuickSelect
-int partition(float arr[], int low, int high) {
-    float pivot = arr[high];
-    int i = (low - 1);
-
-    for (int j = low; j <= high - 1; j++) {
-        if (arr[j] < pivot) {
-            i++;
-            swap(&arr[i], &arr[j]);
-        }
-    }
-    swap(&arr[i + 1], &arr[high]);
-    return (i + 1);
-}
-
-// QuickSelect function to find Median
-float quickSelect(float arr[], int low, int high, int k) {
-    if (low == high) return arr[low];
-
-    int pivotIndex = partition(arr, low, high);
-
-    if (k == pivotIndex) return arr[k];
-    else if (k < pivotIndex) return quickSelect(arr, low, pivotIndex - 1, k);
-    else return quickSelect(arr, pivotIndex + 1, high, k);
-}
-
-// Function to find median using QuickSelect
-float findMedian(float arr[], int n) {
-    if (n % 2 != 0) return quickSelect(arr, 0, n - 1, n / 2);
-    else return 0.5 * (quickSelect(arr, 0, n - 1, n / 2 - 1) + quickSelect(arr, 0, n - 1, n / 2));
-}
-
-float calculateMAD(float* arr, int n, float median) {
-    float* deviations = (float*)malloc(n * sizeof(float));
-    for (int i = 0; i < n; ++i) {
-        deviations[i] = fabs(arr[i] - median);
-    }
-    float mad = findMedian(deviations, n);
-    free(deviations);
-    return mad;
 }
 
 // #define sort_key_128x(a) ((a).x)

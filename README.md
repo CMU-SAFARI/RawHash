@@ -42,12 +42,17 @@ cd rawhash2 && git submodule update --init --recursive
 * Compile (Make sure you have a C++ compiler and GNU make):
 
 ```bash
-mkdir build && cd build
-cmake ..
-make -j
+# if not doing a fresh clone, make sure that the submodules don't have anything built from previous makefile-based 
+# setup , i.e. delete extern directory, then initialize submodules as above
+(mkdir -p build && cd build && cmake .. && make -j)
+build/bin/rawhash2
 ```
 
-If the compilation is successful, the default path to the binary will be `bin/rawhash2`.
+Troubleshooting:
+- `makefile error 2`: rerun `make -j`, then the actual error is shown
+- updating submodules: the current cmake setup may not correctly handle this, so the easiest solution is to delete the build directory
+
+If the compilation is successful, the default path to the binary will be `build/bin/rawhash2`.
 
 ## Compiling with HDF5, SLOW5, and POD5
 

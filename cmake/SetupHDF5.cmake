@@ -4,9 +4,13 @@ function(setup_hdf5 TARGET_NAME)
     if(NOHDF5)
         target_compile_definitions(${TARGET_NAME} PRIVATE NHDF5RH=1)
     else()
+        # print HDF5_DIR
+        message(STATUS "EXTERNAL_PROJECTS_BUILD_DIR: ${EXTERNAL_PROJECTS_BUILD_DIR}")
+        message(STATUS "HDF5_DIR: ${HDF5_DIR}")
+
         if(HDF5_COMPILE)
             if(NOT HDF5_DIR)
-                override_cached(HDF5_DIR ${WORKDIR}/hdf5)
+                override_cached(HDF5_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/hdf5)
             endif()
             set(HDF5_BUILD_DIR ${HDF5_DIR}/build)
             ExternalProject_Add(

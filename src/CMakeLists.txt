@@ -26,8 +26,9 @@ set(RUCLIENT_DIR "" CACHE PATH "Path to ReadUntil directory")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin CACHE PATH "Binaries directory")
 
-set(WORKDIR ${CMAKE_BINARY_DIR}/extern)
-file(MAKE_DIRECTORY ${WORKDIR})
+set(EXTERNAL_PROJECTS_BUILD_DIR ${CMAKE_BINARY_DIR}/extern)
+file(MAKE_DIRECTORY ${EXTERNAL_PROJECTS_BUILD_DIR})
+message(STATUS "External projects build directory: ${EXTERNAL_PROJECTS_BUILD_DIR}")
 
 set(TARGET_NAME rawhash2)
 
@@ -38,6 +39,8 @@ include(../cmake/SetupPOD5.cmake)
 include(../cmake/SetupHDF5.cmake)
 include(../cmake/SetupSLOW5.cmake)
 include(../cmake/SetupTFLite.cmake)
+
+# setup_slow5(${TARGET_NAME})
 
 setup_ccache_mold()
 setup_main_target(${TARGET_NAME})
