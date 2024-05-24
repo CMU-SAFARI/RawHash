@@ -9,5 +9,5 @@ REF=$4 #Path to the reference genome
 THREAD=$5 #Number of threads to use
 PARAMS=$6 #(optional -- you can keep it empty) custom parameters to set on top of the default parameters
 
-# /usr/bin/time -vpo "${OUTDIR}/${PREFIX}_uncalled_index.time" uncalled index ${PARAMS} -o "${OUTDIR}/${PREFIX}_uncalled.ind" ${REF}
+/usr/bin/time -vpo "${OUTDIR}/${PREFIX}_uncalled_index.time" uncalled index ${PARAMS} -o "${OUTDIR}/${PREFIX}_uncalled.ind" ${REF}
 /usr/bin/time -vpo "${OUTDIR}/${PREFIX}_uncalled_map.time" uncalled map -t ${THREAD} ${PARAMS} "${OUTDIR}/${PREFIX}_uncalled.ind" ${SIGNALS} > "${OUTDIR}/${PREFIX}_uncalled.paf"

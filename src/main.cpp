@@ -41,7 +41,7 @@ int main(int argc, char *argv[])
 	// int n_parts;
 	char*& idx_out_filename = parsed_args.idx_out_filename;
 	char*& fpore = parsed_args.fpore;
-	FILE*& fp_help = parsed_args.fp_help;
+	// FILE*& fp_help = parsed_args.fp_help;
 	int& ru_server_port = parsed_args.ru_server_port;
 	ketopt_t& o = parsed_args.o;
 
@@ -53,31 +53,33 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (!idx_rdr->is_idx && idx_out_filename == 0 && argc - o.ind < 2) {
-		fprintf(stderr, "[ERROR] missing input: please specify a query FAST5/SLOW5 file(s) to map or option -d to store the index in a file before running the mapping\n");
+	if (!idx_rdr->is_idx && idx_out_filename == 0 && argc - o.ind < 2 && !(ipt.flag&RI_I_OUT_QUANTIZE)) {
+		fprintf(stderr, "[ERROR] missing input: please specify a query FAST5/SLOW5/POD5 file(s) to map or option -d to store the index in a file before running the mapping\n");
 		ri_idx_reader_close(idx_rdr);
 		exit(EXIT_FAILURE);
 	}
 
-	
 	ri_pore_t pore;
 	pore.pore_vals = NULL;
 	pore.pore_inds = NULL;
 	pore.max_val = -5000.0;
 	pore.min_val = 5000.0;
-	if(!idx_rdr->is_idx && fpore == 0){
-		fprintf(stderr, "[ERROR] missing input: please specify a pore model file with -p when generating the index from a sequence file\n");
-		ri_idx_reader_close(idx_rdr);
-		exit(EXIT_FAILURE);
-	}else if(!idx_rdr->is_idx && fpore){
-		load_pore(fpore, ipt.k, ipt.lev_col, &pore);
-		if(!pore.pore_vals){
-			fprintf(stderr, "[ERROR] cannot parse the k-mer pore model file. Please see the example k-mer model files provided in the RawHash repository.\n");
+	if(!(ipt.flag&RI_I_OUT_QUANTIZE)){
+		if(!idx_rdr->is_idx && fpore == 0){
+			fprintf(stderr, "[ERROR] missing input: please specify a pore model file with -p when generating the index from a sequence file\n");
 			ri_idx_reader_close(idx_rdr);
 			exit(EXIT_FAILURE);
+		}else if(!idx_rdr->is_idx && fpore){
+			load_pore(fpore, ipt.k, ipt.lev_col, &pore);
+			if(!pore.pore_vals){
+				fprintf(stderr, "[ERROR] cannot parse the k-mer pore model file. Please see the example k-mer model files provided in the RawHash repository.\n");
+				ri_idx_reader_close(idx_rdr);
+				exit(EXIT_FAILURE);
+			}
 		}
 	}
 
+	#ifdef RUCLIENT_ENABLED
 	// todo1: remove
 	int& port = ru_server_port;
 	if (port == 0) {
@@ -93,6 +95,7 @@ int main(int argc, char *argv[])
         return EXIT_FAILURE;
     }
 	log("Using port " + std::to_string(port));
+	#endif
 
 	if (ru_server_port == -1) {
 		// offline processing

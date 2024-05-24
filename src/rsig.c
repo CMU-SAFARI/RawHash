@@ -21,7 +21,8 @@ void ri_seq_to_sig(const char *str,
 	int i, j, l, pos, n = 0;
 	// uint64_t shift1 = 2 * (k - 1);
 	uint64_t mask = (1ULL<<2*k) - 1, kmer = 0;
-	double mean = 0, std_dev = 0, sum = 0, sum2 = 0, curval = 0;
+	// double mean = 0, std_dev = 0, sum = 0, sum2 = 0
+	// float curval = 0;
 
 	for (i = l = j = n = 0; i < len; ++i) {
 		if(strand) pos = len-i-1;
@@ -35,18 +36,16 @@ void ri_seq_to_sig(const char *str,
 
 		if(i+1 < k) continue;
 
-		curval = pore->pore_vals[kmer];
-		s_values[j++] = curval;
-		sum += curval;
-		sum2 += curval*curval;
+		// curval = pore->pore_vals[kmer];
+		s_values[j++] = pore->pore_vals[kmer];;
+		// sum += curval;
+		// sum2 += curval*curval;
 	}
 
-	mean = sum/j;
-	std_dev = sqrt(sum2/j - (mean)*(mean));
+	// mean = sum/j;
+	// std_dev = sqrt(sum2/j - (mean)*(mean));
 
-	// fprintf(stderr, "Indexing mean: %f, std_dev: %f\n", mean, std_dev);
-
-	for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
+	// for(i = 0; i < j; ++i) s_values[i] = (s_values[i]-mean)/std_dev;
 
 	*s_len = j;
 }
@@ -361,7 +360,7 @@ static inline void ri_read_sig_fast5(ri_sig_file_t* fp, ri_sig_t* s){
 	}
 
 	std::string sig_path = std::string(fp->raw_path[fp->cur_read]) + "/Signal";
-	std::vector<float> sig;
+	std::vector<int16_t> sig;
 	fp->fp->read(sig_path, sig);
 	// convert to pA
 	uint32_t l_sig = 0;
@@ -369,9 +368,8 @@ static inline void ri_read_sig_fast5(ri_sig_file_t* fp, ri_sig_t* s){
 	float pa = 0;
 	for (size_t i = 0; i < sig.size(); i++) {
 		pa = (sig[i]+offset)*scale;
-		if (pa > 30.0f && pa < 200.0f) {
+		if (pa > 30.0f && pa < 200.0f)
 			sig[l_sig++] = pa;
-		}
 	}
 
 	s->sig = (float*)calloc(l_sig, sizeof(float));
@@ -438,9 +436,8 @@ static inline void ri_read_sig_pod5(ri_sig_file_t* fp, ri_sig_t* s){
 	float pa = 0.0f;
 	for(uint64_t i = 0; i < read_data.num_samples; i++){
 		pa = (sig[i]+read_data.calibration_offset)*read_data.calibration_scale;
-		if (pa > 30 && pa < 200) {
+		if (pa > 30.0f && pa < 200.0f)
 			sigF[l_sig++] = pa;
-		}
 	}
 
 	free(sig);
@@ -511,9 +508,8 @@ static inline void ri_read_sig_slow5(ri_sig_file_t* fp, ri_sig_t* s){
 	
 	for(int i = 0; i < rec->len_raw_signal; ++i){
 		pa = (rec->raw_signal[i]+rec->offset)*scale;
-		if (pa > 30.0f && pa < 200.0f) {
+		if (pa > 30.0f && pa < 200.0f)
 			sigF[l_sig++] = pa;
-		}
 	}
 
 	fp->cur_read++;

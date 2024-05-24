@@ -104,7 +104,7 @@ ri_seed_t *ri_seed_collect_all(void *km, const ri_idx_t *ri, const mm128_v *riv,
  */
 ri_seed_t *ri_collect_matches(void *km,
                               int *_n_seed_m,
-                              int qlen,
+                              uint32_t qlen,
                               int max_occ,
                               int max_max_occ,
                               int dist,
@@ -124,13 +124,18 @@ ri_seed_t *ri_collect_matches(void *km,
 	// *seed_mini = (uint64_t*)ri_kmalloc(km, riv->n * sizeof(uint64_t));
 	seed_hits = ri_seed_collect_all(km, ri, riv, &n_seed_m0);
 
+	uint32_t n_flt = 0, n_seed_hits = 0;
+
     // if (dist > 0 && max_max_occ > max_occ) {
 	// 	ri_seed_select(n_seed_m0, seed_hits, qlen, max_occ, max_max_occ, dist);
 	// } else{
-		for (i = 0; i < n_seed_m0; ++i)
-        	if (seed_hits[i].n > max_occ) seed_hits[i].flt = 1;
+		for (i = 0; i < n_seed_m0; ++i){
+			n_seed_hits += seed_hits[i].n;
+        	if (seed_hits[i].n > max_occ) {seed_hits[i].flt = 1; n_flt += seed_hits[i].n;}
+		}
 	// }
 
+	fprintf(stderr, "n_seed_hits: %u n_flt: %u ratio: %f\n", n_seed_hits, n_flt, (float)n_flt/n_seed_hits);
     for (i = 0, n_seed_m = 0, *rep_len = 0, *n_seed_pos = 0; i < n_seed_m0; ++i) {
 	// for (i = 0, n_seed_m = 0, *n_seed_pos = 0; i < n_seed_m0; ++i) {
 		ri_seed_t *q = &seed_hits[i];

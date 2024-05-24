@@ -1,4 +1,4 @@
-DEBUG_OPTS=-O2 -fsanitize=address
+DEBUG_OPTS=-O3 -fsanitize=address
 CPP_STANDARD=c++11
 # DEBUG=0
 
@@ -22,7 +22,7 @@ tsan=
 RUCLIENT_ENABLED=1
 
 asan= # disable because grpc does not support it well, see cmakelists in readuntil_client
-DEBUG_OPTS=-O0 # -fsanitize=address # not supported for grpc
+# DEBUG_OPTS=-O0 # -fsanitize=address # not supported for grpc
 
 # PYBINDING=1
 else ifeq ($(HOSTNAME),mikado1)
@@ -106,7 +106,7 @@ SYSTEM_NAME ?= $(shell uname -s)
 
 WORKDIR = $(shell pwd)/../extern
 
-POD5_VERSION = 0.2.2
+POD5_VERSION = 0.3.10
 POD5_URLDIR = pod5-$(POD5_VERSION)-$(SYSTEM_NAME)
 POD5_REPO = https://github.com/nanoporetech/pod5-file-format
 ifdef POD5_INCLUDE_DIR
@@ -160,6 +160,9 @@ SLOW5_INCLUDE_DIR ?= ${SLOW5_DIR}/include
 SLOW5_LIB_DIR ?= ${SLOW5_DIR}/lib
 
 LIBS+=-L${WORKDIR}/tensorflow/tflite_build/
+# INCLUDES+=-I${WORKDIR}/gsl/build/include
+# LIBS+=${WORKDIR}/gsl/build/libgsl.a
+# LIBS+=${WORKDIR}/gsl/build/libgslcblas.a
 
 #pass NOPOD5=1 to make to disable compiling with POD5
 ifeq ($(NOPOD5),1)

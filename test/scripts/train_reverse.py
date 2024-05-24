@@ -62,9 +62,13 @@ def convert_and_reshape(dataframe, labels, batch_size):
     return dataset_tensor
 
 def load_data(file_path):
-    df = pd.read_csv(file_path, sep='\t', header=None, skipfooter=8, engine='python')
-    features = df.iloc[:, 5:16]
-    labels = df.iloc[:, 16:]
+    df = pd.read_csv(file_path, sep='\t', header=None)
+    features = df.iloc[:, 1:12]
+    labels = df.iloc[:, 12:]
+
+    # Print 10 lines of features and labels
+    print(features.head(10))
+    print(labels.head(10))
     
     X_train, X_val, y_train, y_val = train_test_split(features, labels, test_size=0.1, random_state=42)
 
@@ -76,17 +80,17 @@ def load_data(file_path):
 
 def create_model(input_shape, num_classes, learning_rate=0.001):
     model = Sequential()
-    model.add(Conv1D(filters=64, kernel_size=3, activation='relu', input_shape=(input_shape, 1)))
+    model.add(Conv1D(filters=32, kernel_size=2, activation='relu', input_shape=(input_shape, 1)))
     model.add(BatchNormalization())
     model.add(MaxPooling1D(pool_size=2))
-    # model.add(LSTM(50, return_sequences=True))
-    # model.add(BatchNormalization())
+    model.add(LSTM(50, return_sequences=True))
+    model.add(BatchNormalization())
     model.add(Conv1D(filters=128, kernel_size=3, activation='relu'))
     model.add(BatchNormalization())
     model.add(MaxPooling1D(pool_size=2))
     model.add(Flatten())
-    model.add(Dense(256, activation='relu'))
-    model.add(Dense(128, activation='relu'))
+    model.add(Dense(64, activation='relu'))
+    model.add(Dense(64, activation='relu'))
     model.add(Dense(num_classes, activation='softmax'))
 
     # model = Sequential()
@@ -119,9 +123,9 @@ def create_lstm_model(num_past_predictions, num_other_features, num_classes, lea
     # Input for past predictions
     past_predictions_input = Input(shape=(num_past_predictions,), name='past_predictions_input')
     # Embedding for categorical past predictions
-    past_predictions_embedding = Embedding(input_dim=32, output_dim=embedding_dim, input_length=num_past_predictions)(past_predictions_input)
+    past_predictions_embedding = Embedding(input_dim=16, output_dim=embedding_dim, input_length=num_past_predictions)(past_predictions_input)
     # LSTM layer to process sequences
-    lstm_out = LSTM(32)(past_predictions_embedding)
+    lstm_out = LSTM(16)(past_predictions_embedding)
 
     # Input for other features
     other_features_input = Input(shape=(num_other_features,), name='other_features_input')
@@ -188,4 +192,4 @@ if __name__ == "__main__":
     with open(tflite_model_file, 'wb') as f:
         f.write(tflite_model)
 
-    #Usage: sbatch -p gpu_part --gres gpu:1 --wrap="python ../../scripts/train_reverse.py ../read_mapping/d2_ecoli_r94/rawhash2/tq1/w0_bc0_mc5_t05_rawhash2_sensitive.err logistic onehot learning_rate"
+    #Usage: sbatch -x fury0 -p gpu_part --gres gpu:1 --wrap="python ../../scripts/train_reverse.py ../read_mapping/d2_ecoli_r94/rawhash2/rev_train/_rawhash2_index_sensitive.err logistic onehot"
