@@ -14,8 +14,9 @@ function(setup_slow5 TARGET_NAME)
                 slow5_build
                 BINARY_DIR ${SLOW5_DIR}
                 SOURCE_DIR ${SLOW5_SOURCE_DIR}
-                CONFIGURE_COMMAND ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR} .
-                INSTALL_COMMAND ""
+                INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR}/include ${SLOW5_DIR}/include
+                             && ${CMAKE_COMMAND} -E make_directory ${SLOW5_DIR}/lib
+                             && ${CMAKE_COMMAND} -E rename ${SLOW5_DIR}/libslow5.so ${SLOW5_DIR}/lib/libslow5.so
             )
             message(STATUS "Current dir: ${CMAKE_CURRENT_BINARY_DIR}")
             add_dependencies(${TARGET_NAME} slow5_build)
@@ -25,7 +26,6 @@ function(setup_slow5 TARGET_NAME)
             endif()
         endif()
         message(STATUS "Using slow5 from ${SLOW5_DIR}")
-        target_include_directories(${TARGET_NAME} PRIVATE ${SLOW5_DIR}/include)
         link_imported_library(${TARGET_NAME} slow5 ${SLOW5_DIR})
     endif()
 endfunction()

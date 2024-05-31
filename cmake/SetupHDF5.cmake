@@ -7,7 +7,7 @@ function(setup_hdf5 TARGET_NAME)
         # print HDF5_DIR
         message(STATUS "EXTERNAL_PROJECTS_BUILD_DIR: ${EXTERNAL_PROJECTS_BUILD_DIR}")
         message(STATUS "HDF5_DIR: ${HDF5_DIR}")
-
+        set(HDF5_SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/hdf5)
         if(HDF5_COMPILE)
             if(NOT HDF5_DIR)
                 override_cached(HDF5_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/hdf5)
@@ -15,9 +15,9 @@ function(setup_hdf5 TARGET_NAME)
             set(HDF5_BUILD_DIR ${HDF5_DIR}/build)
             ExternalProject_Add(
                 hdf5_build
-                SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/hdf5
+                SOURCE_DIR ${HDF5_SOURCE_DIR}
                 BINARY_DIR ${HDF5_BUILD_DIR}
-                CONFIGURE_COMMAND ${CMAKE_SOURCE_DIR}/extern/hdf5/configure --enable-threadsafe --disable-hl --prefix=${HDF5_BUILD_DIR}
+                CONFIGURE_COMMAND ${HDF5_SOURCE_DIR}/configure --enable-threadsafe --disable-hl --prefix=${HDF5_BUILD_DIR}
                 # INSTALL_DIR and DCMAKE_INSTALL_PREFIX are ignored by hdf5
                 INSTALL_COMMAND make install prefix=${HDF5_DIR}
             )
