@@ -4,9 +4,11 @@
 
 #include "rawhash_wrapper.hpp"
 #include "rawhash.h"
+#include "rmap.h"
 #include "cli_parsing.cpp"
 
 RawHashMapper::RawHashMapper(int argc, char *argv[]) {
+    std::cout << "RawHashMapper constructor" << std::endl;
     
     // copied from main()
     liftrlimit();
@@ -73,13 +75,94 @@ RawHashMapper::RawHashMapper(int argc, char *argv[]) {
     if (ri_verbose >= 3) ri_idx_stat(ri);
 
     _ri = ri;
+    _opt = new ri_mapopt_t;
+    *((ri_mapopt_t*)_opt) = opt; // copy constructor
 }
 
 RawHashMapper::~RawHashMapper() {
     fprintf(stderr, "[M::%s] closing the index\n", __func__);
     ri_idx_destroy((ri_idx_t*)_ri);
+    delete _opt;
 }
 
-void RawHashMapper::info() {
+void RawHashMapper::idx_info() const {
     fprintf(stderr, "[M::%s] index info\n", __func__); // todo
+    ri_idx_stat((ri_idx_t*)_ri);
+}
+
+std::vector<Alignment> RawHashMapper::map(float* raw_signal, int signal_length) {
+    // print
+    fprintf(stderr, "[M::%s] mapping\n", __func__);
+    for (int i = 0; i < signal_length; i++) {
+        fprintf(stderr, "%f ", raw_signal[i]);
+    }
+
+    ri_idx_t* ri = (ri_idx_t*)_ri;
+    pipeline_mt pipeline = {
+        // .n_processed = 0,
+        // .n_threads = 1,
+        // .n_fp = 0,
+        // .cur_fp = 0,
+        // .n_f = 0,
+        // .cur_f = 0,
+        // .mini_batch_size = 0,
+        .opt = (ri_mapopt_t*)_opt,
+        // .f = NULL,
+        // .fp = NULL,
+        .ri = ri,
+        // .fn = NULL,
+        // .su_nreads = 0,
+        // .su_nestimations = 0,
+        // .ab_count = 0,
+        // .su_cur = 0,
+        // .su_estimations = NULL,
+        // .su_c_estimations = NULL,
+        // .su_stop = 0,
+        .map_model = NULL
+    };
+    ri_tbuf_t *buf = ri_tbuf_init();
+    char* read_name = "read123";
+    ri_sig_t signal = {
+        .rid = 123,
+        .l_sig = signal_length,
+        .name = read_name,
+
+        .offset = 0, // todo
+        .sig = raw_signal,
+    };
+    ri_sig_t* signal_ptr = &signal; // since &&signal not working since &signal is temporary
+    ri_reg1_t reg0_noptr; // will be initialized
+    ri_reg1_t* reg0 = &reg0_noptr;
+    step_mt data = {
+        .p = &pipeline,
+        .n_sig = 1,
+        .sig = (ri_sig_t**)(&signal_ptr),
+        .reg = (ri_reg1_t**)(&reg0),
+        .buf = &buf
+    };
+    map_worker_for(&data, 0, 0);
+
+    // write out
+    write_out_mappings_to_stdout(reg0, ri);
+    std::vector<Alignment> alignments;
+    for (int m = 0; m < reg0->n_maps; ++m) {
+        if (reg0->maps[m].ref_id < ri->n_seq) {
+            // mapped
+            alignments.push_back(Alignment {
+                .contig = (ri->flag & RI_I_SIG_TARGET) ? ri->sig[reg0->maps[m].ref_id].name : ri->seq[reg0->maps[m].ref_id].name,
+                .ref_start = reg0->maps[m].fragment_start_position,
+                .ref_end = reg0->maps[m].fragment_start_position + reg0->maps[m].fragment_length,
+                .is_pos_strand = not reg0->maps[m].rev
+            });
+        }
+    }
+    // todo: dummy alignment
+    alignments.push_back(Alignment {
+        .contig = "fakealignment_chr123", .ref_start = 123, .ref_end = 456, .is_pos_strand = true
+    });
+    free_mappings_ri_reg1_t(reg0);
+
+    ri_tbuf_destroy(buf);
+
+    return alignments;
 }

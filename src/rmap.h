@@ -151,6 +151,11 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 	double* std_dev_sum, // see mean_sum arg
 	uint32_t* n_events_sum // number of events in all seen chunks (not including current chunk)
 );
+
+// map a single read to a reference, called in parallel
+void map_worker_for(void *_data,
+						   long i,
+						   int tid);
 #ifdef __cplusplus
 }
 #endif

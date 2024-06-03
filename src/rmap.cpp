@@ -707,7 +707,7 @@ bool continue_mapping_with_new_chunk(const ri_idx_t *ri, // reference index
 
 
 // map a single read to a reference, called in parallel
-static void map_worker_for(void *_data,
+void map_worker_for(void *_data,
 						   long i,
 						   int tid) // kt_for() callback
 {
