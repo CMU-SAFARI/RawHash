@@ -1,4 +1,5 @@
 #pragma once
+
 #include <cstdint>
 #include <vector>
 
@@ -19,14 +20,25 @@ class RawHashMapper {
      * Also mixes malloc/free and new/delete
      */
 public:
+    /**
+     * @brief Use the same arguments as the CLI
+     * 
+     * Including the leading program name (which will be ignored)
+     * Note that the option "-d index" (to dump the index) is ignored, so the index should be 
+     * dumped with the rawhash CLI, then it can be used for mapping with this function.
+     * 
+     * @param argc 
+     * @param argv 
+     */
     RawHashMapper(int argc, char *argv[]);
     ~RawHashMapper();
 
     /*
-    * Map the reads
+    * Map the raw read, returning the alignments
+    *
     * Same as ri_map_file_frag -> map_worker_pipeline -> map_worker_for, 
     * except it reads from memory rather than the file
-    * and does not perform the pipeline step
+    * and does not perform pipeling or threading
     */
     std::vector<Alignment> map(float* raw_signal, int signal_length);
 
@@ -36,7 +48,6 @@ public:
     void idx_info() const;
 
 private:
-    // ri_idx_t *ri;
     void *_ri; // ri_idx_t*
     void* _opt; // ri_mapopt_t*
 };

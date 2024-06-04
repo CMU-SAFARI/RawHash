@@ -14,7 +14,7 @@ typedef struct mm_bseq_file_s mm_bseq_file_t;
 typedef struct {
 	int l_seq, rid;
 	char *name, *seq, *qual, *comment;
-} mm_bseq1_t;
+} mm_bseq1_t; // reference sequence of length l_seq (basepairs), reference id rid, name, sequence, quality, and comment
 
 mm_bseq_file_t *mm_bseq_open(const char *fn);
 void mm_bseq_close(mm_bseq_file_t *fp);

@@ -18,7 +18,7 @@ That is, the model predicts whether a chunk is in the correct position based on 
 
 
 RI_STORE_SIG: whether to store the signal (generated from a fasta reference)
-RI_I_REV_QUERY: whether the index is queried with the read and its reverse complement (through a revcomp prediction model); if not, need to store reference signal for both forward and reverse signal
+RI_I_STORE_REV: whether the index is queried with the read and its reverse complement (through a revcomp prediction model); if not, need to store reference signal for both forward and reverse signal
 
 Suppose we only store the positive strand of the reference.
 If we query a read from the positive strand, we are fine.

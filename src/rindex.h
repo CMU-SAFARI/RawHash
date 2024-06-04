@@ -17,7 +17,7 @@ typedef struct ri_idx_bucket_s {
 	int32_t n;   // size of the _p_ array
 	uint64_t *p; // position array for seeds appearing >1 times
 	void *h;     // hash table indexing _p_ and seeds appearing once
-} ri_idx_bucket_t;
+} ri_idx_bucket_t; // bucket of hash table
 
 typedef struct ri_idx_seq_s{
 	char *name;      // name of the db sequence
@@ -52,9 +52,9 @@ typedef struct ri_idx_s{
 	ri_sig_t *sig;
 
 	// uint32_t *S;
-	float **F; //forward
+	float **F; //forward signal
 	uint32_t *f_l_sig; //length of the signals (forward)
-	float **R; //reverse
+	float **R; //reverse signal
 	uint32_t *r_l_sig; //length of the signals (reverse)
 
 } ri_idx_t;

@@ -3,7 +3,7 @@ from pathlib import Path
 import cppyy
 import os
 
-os.chdir("/home/mmordig/rawhash_project/rawhash2_new/build/extern")
+# os.chdir("/home/mmordig/rawhash_project/rawhash2_new/build/extern")
 
 header_file = Path("/home/mmordig/rawhash_project/rawhash2_new/src/rawhash_wrapper.hpp")
 library_file = Path("/home/mmordig/rawhash_project/rawhash2_new/build/src/librawhash2_wrapper.so")
@@ -17,7 +17,16 @@ cppyy.load_library("librawhash2_wrapper")
 # cppyy.load_library(str(library_file))
 
 # cppyy.gbl.RawHashMapper(5, [b"hello"])
-args = ["my_program", "-x", "sensitive", "-t", "8", "-p", "/home/mmordig/rawhash_project/rawhash2_new/extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model", "-d", "example_out/ref.ind", "/home/mmordig/rawhash_project/rawhash2_new/test/data/d2_ecoli_r94/ref.fa", ]
+args = [
+    "-x", "sensitive", "-t", "8", "-p", 
+    "/home/mmordig/rawhash_project/rawhash2_new/extern/kmer_models/legacy/legacy_r9.4_180mv_450bps_6mer/template_median68pA.model", 
+    # "-d", "example_out/ref.ind", 
+    "/home/mmordig/rawhash_project/rawhash2_new/test/data/d2_ecoli_r94/ref.fa", 
+    "no-revcomp-query",
+]
+# forwrev_rawhash2_sensitive.paf
+# 0006a106-77eb-4752-b405-38d1635718fa
+args = ["my_dummy_program"] + args
 mapper = cppyy.gbl.RawHashMapper(len(args), args)
 mapper.idx_info()
 #%%
@@ -42,3 +51,5 @@ for (i, alignment) in enumerate(alignments):
     print(f"Alignment {i}: {format_alignment(alignment)}")
 #%%
 1
+
+# --rev-query

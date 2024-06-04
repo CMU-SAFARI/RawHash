@@ -207,22 +207,31 @@ static inline ri_sig_file_t *ri_sig_open_slow5(const char *fn){
 }
 #endif
 
+bool str_ends_with(const char *str, const char *suffix) {
+	if( !str || !suffix ) return 0;
+	size_t str_len = strlen(str);
+	size_t suffix_len = strlen(suffix);
+	if(suffix_len > str_len) return 0;
+	return 0 == strncmp(str + str_len - suffix_len, suffix, suffix_len);
+}
+
 ri_sig_file_t *ri_sig_open(const char *fn){
-	if (strstr(fn, ".fast5")) {
+	if (str_ends_with(fn, ".fast5")) {
 		#ifndef NHDF5RH
 		return ri_sig_open_fast5(fn);
 		#endif
-	} else if (strstr(fn, ".pod5") || strstr(fn, ".pod")) {
+	} else if (str_ends_with(fn, ".pod5") || str_ends_with(fn, ".pod")) {
 		#ifndef NPOD5RH
 		return ri_sig_open_pod5(fn);
 		#endif
-	} else if (strstr(fn, ".slow5") || strstr(fn, ".blow5")) {
+	} else if (str_ends_with(fn, ".slow5") || str_ends_with(fn, ".blow5")) {
 		#ifndef NSLOW5RH
 		return ri_sig_open_slow5(fn);
 		#endif
+	} else {
+		fprintf(stderr, "ERROR: Unknown file format: %s\n", fn);
+		return 0;
 	}
-
-	return 0;
 }
 
 void ri_sig_close(ri_sig_file_t *fp)
@@ -299,8 +308,8 @@ int is_dir(const char *A)
 void find_sfiles(const char *A, ri_char_v *fnames)
 {
 	if (!is_dir(A)) {
-		// todo4: adapt this since slow5 creates .slow5.idx in the same directory, so should be "endswith"
-		if (strstr(A, ".fast5") || strstr(A, ".pod5") || strstr(A, ".pod") || strstr(A, ".slow5") || strstr(A, ".blow5")) {
+		if (str_ends_with(A, ".fast5") || str_ends_with(A, ".pod5") || str_ends_with(A, ".pod") 
+				|| str_ends_with(A, ".slow5") || str_ends_with(A, ".blow5")) {
 			char** cur_fname;
 			rh_kv_pushp(char*, 0, *fnames, &cur_fname);
 			(*cur_fname) = strdup(A);
@@ -318,7 +327,9 @@ void find_sfiles(const char *A, ri_char_v *fnames)
 				if (strcmp(ent->d_name, ".") && strcmp(ent->d_name, ".."))
 					find_sfiles(tmp, fnames);
 			} else {
-				if (strstr(ent->d_name, ".fast5") || strstr(ent->d_name, ".pod5") || strstr(ent->d_name, ".pod") || strstr(ent->d_name, ".slow5") || strstr(ent->d_name, ".blow5")) {
+				if (str_ends_with(ent->d_name, ".fast5") || str_ends_with(ent->d_name, ".pod5") 
+						|| str_ends_with(ent->d_name, ".pod") || str_ends_with(ent->d_name, ".slow5") 
+						|| str_ends_with(ent->d_name, ".blow5")) {
 					char** cur_fname;
 					rh_kv_pushp(char*, 0, *fnames, &cur_fname);
 					(*cur_fname) = strdup(tmp);
