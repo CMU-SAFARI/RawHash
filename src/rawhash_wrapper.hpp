@@ -45,7 +45,7 @@ public:
     /**
      * Get info about the index
     */
-    void idx_info() const;
+    void print_idx_info() const;
 
 private:
     void *_ri; // ri_idx_t*

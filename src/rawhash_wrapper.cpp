@@ -85,7 +85,7 @@ RawHashMapper::~RawHashMapper() {
     delete _opt;
 }
 
-void RawHashMapper::idx_info() const {
+void RawHashMapper::print_idx_info() const {
     fprintf(stderr, "[M::%s] index info\n", __func__); // todo
     ri_idx_stat((ri_idx_t*)_ri);
 }

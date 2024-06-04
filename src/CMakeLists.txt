@@ -52,7 +52,7 @@ set_alternate_linker(mold)
 # todo: currently can only compile rawhash2 or the below, not both
 # this happens because functions like setup_hdf5 define the hdf5 target and the relationship to the target name
 # rather than doing it separately
-set(build_cli OFF)
+set(build_cli ON)
 
 if (build_cli)
     message(STATUS "Building CLI")
