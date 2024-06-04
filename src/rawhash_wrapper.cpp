@@ -92,9 +92,13 @@ void RawHashMapper::idx_info() const {
 
 std::vector<Alignment> RawHashMapper::map(float* raw_signal, int signal_length) {
     // print
-    fprintf(stderr, "[M::%s] mapping\n", __func__);
-    for (int i = 0; i < signal_length; i++) {
-        fprintf(stderr, "%f ", raw_signal[i]);
+    // fprintf(stderr, "[M::%s] mapping\n", __func__);
+
+    if (ri_verbose >= 3) {
+        for (int i = 0; (i < signal_length) && (i <= 10); i++) {
+            fprintf(stderr, "%f ", raw_signal[i]);
+        }
+        fprintf(stderr, "...");
     }
 
     ri_idx_t* ri = (ri_idx_t*)_ri;
@@ -143,7 +147,9 @@ std::vector<Alignment> RawHashMapper::map(float* raw_signal, int signal_length) 
     map_worker_for(&data, 0, 0);
 
     // write out
-    write_out_mappings_to_stdout(reg0, ri);
+    if (ri_verbose >= 3) {
+        write_out_mappings_to_stdout(reg0, ri);
+    }
     std::vector<Alignment> alignments;
     for (int m = 0; m < reg0->n_maps; ++m) {
         if (reg0->maps[m].ref_id < ri->n_seq) {
@@ -156,10 +162,10 @@ std::vector<Alignment> RawHashMapper::map(float* raw_signal, int signal_length) 
             });
         }
     }
-    // todo: dummy alignment
-    alignments.push_back(Alignment {
-        .contig = "fakealignment_chr123", .ref_start = 123, .ref_end = 456, .is_pos_strand = true
-    });
+    // dummy alignment
+    // alignments.push_back(Alignment {
+    //     .contig = "fakealignment_chr123", .ref_start = 123, .ref_end = 456, .is_pos_strand = true
+    // });
     free_mappings_ri_reg1_t(reg0);
 
     ri_tbuf_destroy(buf);

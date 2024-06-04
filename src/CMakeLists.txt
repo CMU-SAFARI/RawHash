@@ -52,39 +52,47 @@ set_alternate_linker(mold)
 # todo: currently can only compile rawhash2 or the below, not both
 # this happens because functions like setup_hdf5 define the hdf5 target and the relationship to the target name
 # rather than doing it separately
+set(build_cli OFF)
 
-set(TARGET_NAME rawhash2)
-add_executable(${TARGET_NAME} main.cpp)
-setup_rawhashlike_target(${TARGET_NAME})
-# setup_pod5(${TARGET_NAME}) # does not seem to work when pod5 is disabled
-target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
-setup_ruclient(${TARGET_NAME})
-setup_hdf5(${TARGET_NAME})
-setup_slow5(${TARGET_NAME})
-setup_tflite(${TARGET_NAME})
+if (build_cli)
+    message(STATUS "Building CLI")
+    
+    set(TARGET_NAME rawhash2)
+    add_executable(${TARGET_NAME} main.cpp)
+    setup_rawhashlike_target(${TARGET_NAME})
+    # setup_pod5(${TARGET_NAME}) # does not seem to work when pod5 is disabled
+    target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
+    setup_ruclient(${TARGET_NAME})
+    setup_hdf5(${TARGET_NAME})
+    setup_slow5(${TARGET_NAME})
+    setup_tflite(${TARGET_NAME})
 
-# # set(TARGET_NAME rawhash2_wrapper_example)
-# # add_executable(${TARGET_NAME} wrapper_example.cpp rawhash_wrapper.cpp rawhash_wrapper.hpp)
-# set(TARGET_NAME rawhash2_wrapper)
-# add_library(${TARGET_NAME} SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
-# setup_rawhashlike_target(${TARGET_NAME})
-# # setup_pod5(${TARGET_NAME})
-# target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
-# setup_ruclient(${TARGET_NAME})
-# setup_hdf5(${TARGET_NAME})
-# setup_slow5(${TARGET_NAME})
-# setup_tflite(${TARGET_NAME})
+else()
+    message(STATUS "Building shared library")
 
-# set(TARGET_NAME rawhash2_usinglib)
-# add_executable(${TARGET_NAME} wrapper_example.cpp)
-# target_link_libraries(${TARGET_NAME} PRIVATE rawhash2_wrapper)
-# # setup_rawhashlike_target(${TARGET_NAME})
-# # # setup_pod5(${TARGET_NAME})
-# # target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
-# # setup_ruclient(${TARGET_NAME})
-# # setup_hdf5(${TARGET_NAME})
-# # setup_slow5(${TARGET_NAME})
-# # setup_tflite(${TARGET_NAME})
+    # set(TARGET_NAME rawhash2_wrapper_example)
+    # add_executable(${TARGET_NAME} wrapper_example.cpp rawhash_wrapper.cpp rawhash_wrapper.hpp)
+    set(TARGET_NAME rawhash2_wrapper)
+    add_library(${TARGET_NAME} SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
+    setup_rawhashlike_target(${TARGET_NAME})
+    # setup_pod5(${TARGET_NAME})
+    target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
+    setup_ruclient(${TARGET_NAME})
+    setup_hdf5(${TARGET_NAME})
+    setup_slow5(${TARGET_NAME})
+    setup_tflite(${TARGET_NAME})
+
+    set(TARGET_NAME rawhash2_usinglib)
+    add_executable(${TARGET_NAME} wrapper_example.cpp)
+    target_link_libraries(${TARGET_NAME} PRIVATE rawhash2_wrapper)
+    # setup_rawhashlike_target(${TARGET_NAME})
+    # # setup_pod5(${TARGET_NAME})
+    # target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
+    # setup_ruclient(${TARGET_NAME})
+    # setup_hdf5(${TARGET_NAME})
+    # setup_slow5(${TARGET_NAME})
+    # setup_tflite(${TARGET_NAME})
+endif()
 
 
 # setup_pod5()
