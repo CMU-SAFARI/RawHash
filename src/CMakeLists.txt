@@ -37,12 +37,10 @@ message(STATUS "External projects build directory: ${EXTERNAL_PROJECTS_BUILD_DIR
 include(../cmake/SetupCCacheMold.cmake)
 include(../cmake/SetupRawHashLikeTarget.cmake)
 include(../cmake/SetupRUClient.cmake)
-# include(../cmake/SetupPOD5.cmake)
+include(../cmake/SetupPOD5.cmake)
 include(../cmake/SetupHDF5.cmake)
 include(../cmake/SetupSLOW5.cmake)
 include(../cmake/SetupTFLite.cmake)
-
-# setup_slow5(${TARGET_NAME})
 
 set(CMAKE_VERBOSE_MAKEFILE TRUE CACHE BOOL "verbose makefile" FORCE) # print compilation commands
 
@@ -60,8 +58,7 @@ if (build_cli)
     set(TARGET_NAME rawhash2)
     add_executable(${TARGET_NAME} main.cpp)
     setup_rawhashlike_target(${TARGET_NAME})
-    # setup_pod5(${TARGET_NAME}) # does not seem to work when pod5 is disabled
-    target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
+    setup_pod5(${TARGET_NAME})
     setup_ruclient(${TARGET_NAME})
     setup_hdf5(${TARGET_NAME})
     setup_slow5(${TARGET_NAME})
@@ -75,8 +72,7 @@ else()
     set(TARGET_NAME rawhash2_wrapper)
     add_library(${TARGET_NAME} SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
     setup_rawhashlike_target(${TARGET_NAME})
-    # setup_pod5(${TARGET_NAME})
-    target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
+    setup_pod5(${TARGET_NAME})
     setup_ruclient(${TARGET_NAME})
     setup_hdf5(${TARGET_NAME})
     setup_slow5(${TARGET_NAME})
