@@ -34,12 +34,16 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-build-
 
+      - name: Set lowercase repository owner
+        id: repo_owner
+        run: echo "::set-output name=owner::${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]'
+
       - name: Build Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           load: true
-          tags: ghcr.io/${{ github.repository_owner }}/build_test:latest
+          tags: ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
@@ -47,7 +51,7 @@ jobs:
 
       - name: Extract build directory from Docker image
         run: |
-          container_id=$(docker create ghcr.io/${{ github.repository_owner }}/build_test:latest)
+          container_id=$(docker create ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest)
           docker cp $container_id:/rawhash2/build ./build
           docker rm $container_id
 
@@ -56,7 +60,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/build_test:latest
+          tags: ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest
 
       - name: Run Docker container
-        run: docker run --rm ghcr.io/${{ github.repository_owner }}/build_test:latest -h
+        run: docker run --rm ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest -h
