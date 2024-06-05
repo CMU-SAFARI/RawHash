@@ -55,12 +55,5 @@ jobs:
           docker cp $container_id:/rawhash2/build ./build
           docker rm $container_id
 
-      - name: Push Docker image to GHCR
-        uses: docker/build-push-action@v4
-        with:
-          context: .
-          push: true
-          tags: ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest
-
       - name: Run Docker container
         run: docker run --rm ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest -h
