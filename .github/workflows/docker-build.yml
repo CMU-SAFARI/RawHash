@@ -26,14 +26,37 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Cache build directory
+        uses: actions/cache@v3
+        with:
+          path: build
+          key: ${{ runner.os }}-build-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-build-
+
       - name: Build Docker image
         uses: docker/build-push-action@v4
         with:
           context: .
           load: true
-          tags: build_test:latest
+          tags: ghcr.io/${{ github.repository_owner }}/build_test:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BUILDKIT_INLINE_CACHE=1
+
+      - name: Extract build directory from Docker image
+        run: |
+          container_id=$(docker create ghcr.io/${{ github.repository_owner }}/build_test:latest)
+          docker cp $container_id:/rawhash2/build ./build
+          docker rm $container_id
+
+      - name: Push Docker image to GHCR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/build_test:latest
 
       - name: Run Docker container
-        run: docker run --rm build_test -h
+        run: docker run --rm ghcr.io/${{ github.repository_owner }}/build_test:latest -h

@@ -7,10 +7,10 @@ RUN apt-get update && apt-get install -y \
 WORKDIR /rawhash2
 COPY . /rawhash2
 
-RUN mkdir build && cd build \
+RUN mkdir -p build && cd build \
     && cmake .. \
     && make -j 1
 
-ENTRYPOINT ["./build/bin/rawhash2_usinglib"]
+ENTRYPOINT ["./build/bin/rawhash2"]
 
 LABEL Name=rawhash2 Version=0.0.1
