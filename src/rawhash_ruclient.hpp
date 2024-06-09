@@ -15,12 +15,12 @@ struct SingleChannelCalibration {
 	double offset;
 };
 
-struct Alignment {
-	char* contig;
-	uint32_t ref_start;
-	uint32_t ref_end;
-	bool pos_strand;
-};
+// struct Alignment {
+// 	char* contig;
+// 	uint32_t ref_start;
+// 	uint32_t ref_end;
+// 	bool pos_strand;
+// };
 
 typedef DecisionMaker::ChunkType ChunkType;
 

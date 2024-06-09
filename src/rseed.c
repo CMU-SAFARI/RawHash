@@ -7,8 +7,6 @@
 
 void ri_seed_select(int32_t n, ri_seed_t *a, int len, int max_occ, int max_max_occ, int dist)
 { // for high-occ minimizers, choose up to max_high_occ in each high-occ streak
-	extern void ks_heapdown_uint64_t(size_t i, size_t n, uint64_t*);
-	extern void ks_heapmake_uint64_t(size_t n, uint64_t*);
 	int32_t i, last0, m;
 	uint64_t b[MAX_MAX_HIGH_OCC]; // this is to avoid a heap allocation
 
@@ -135,7 +133,7 @@ ri_seed_t *ri_collect_matches(void *km,
 		}
 	// }
 
-	fprintf(stderr, "n_seed_hits: %u n_flt: %u ratio: %f\n", n_seed_hits, n_flt, (float)n_flt/n_seed_hits);
+	// fprintf(stderr, "n_seed_hits: %u n_flt: %u ratio: %f\n", n_seed_hits, n_flt, (float)n_flt/n_seed_hits);
     for (i = 0, n_seed_m = 0, *rep_len = 0, *n_seed_pos = 0; i < n_seed_m0; ++i) {
 	// for (i = 0, n_seed_m = 0, *n_seed_pos = 0; i < n_seed_m0; ++i) {
 		ri_seed_t *q = &seed_hits[i];

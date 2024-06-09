@@ -311,7 +311,7 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 		
 		if(p->ri->flag&RI_I_OUT_QUANTIZE){
 			if(s->a.a) ri_kfree(0, s->a.a);
-			free(s); s = 0;
+			free(s); s = 0; // so pipeline will stop at this stage
 		}
 		return s;
     } else if (step == 2) { // dispatch sketch to buckets

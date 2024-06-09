@@ -17,6 +17,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <array>
 #include <vector>
 #include <deque>
 #include <set>

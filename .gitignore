@@ -1,4 +1,9 @@
 bin/
+build/
+run_dir/
+.venv/
+example_out/
+__pycache__/
 
 test/data/d1_*
 test/data/d2_*
@@ -72,7 +77,7 @@ test/eval/*.summary
 */.DS_Store
 test/*.time
 test/*.idx
-src/*.o
+#src/*.o
 
 extern/pod5*
 

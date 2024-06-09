@@ -80,6 +80,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"out-quantize",		ko_no_argument,  		368 },
 	{ (char*)"no-event-detection",	ko_no_argument,  		369 },
 	{ (char*)"version",				ko_no_argument, 	  	370 },
+	{ (char*)"no-revcomp-query",	ko_no_argument, 	  	371 },
 	{ 0, 0, 0 }
 };
 
@@ -388,7 +389,7 @@ CLIParsedArgs parse_args(int argc, char *argv[]) {
 
 			opt.chain_gap_scale = 1.2f;
 		}
-		else if (c == 362) {ipt.flag |= RI_I_REV_QUERY;}// --rev-query
+		else if (c == 362) {ipt.flag |= RI_I_REV_QUERY;}// --rev-query, better name: --idx-dont-store-rev, or negate
 		else if (c == 363) {opt.model_map_path = o.arg;}// --map-model
 		else if (c == 364) {ipt.fine_min = atof(o.arg);}// --fine-min
 		else if (c == 365) {ipt.fine_max = atof(o.arg);}// --fine-max
@@ -397,6 +398,7 @@ CLIParsedArgs parse_args(int argc, char *argv[]) {
 		else if (c == 368) {ipt.flag |= RI_I_OUT_QUANTIZE; ipt.flag |= RI_I_SIG_TARGET;}// --out-quantize
 		else if (c == 369) {ipt.flag |= RI_I_NO_EVENT_DETECTION;}// --no-event-detection
 		else if (c == 370) {puts(RH_VERSION); exit(EXIT_SUCCESS);}// --version
+		else if (c == 371) {opt.flag |= RI_M_DONT_QUERY_REVCOMP;}// --no-revcomp-query, only has an effect when "--rev-query" is used, to avoid querying the index with the revcomp
 		else if (c == 'V') {puts(RH_VERSION); exit(EXIT_SUCCESS);}
 	}
 

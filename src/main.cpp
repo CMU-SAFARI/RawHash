@@ -46,7 +46,6 @@ int main(int argc, char *argv[])
 	ketopt_t& o = parsed_args.o;
 
 	ri_idx_reader_t *idx_rdr;
-	ri_idx_t *ri;
 	idx_rdr = ri_idx_reader_open(argv[o.ind], &ipt, idx_out_filename);
 	if (idx_rdr == 0) {
 		fprintf(stderr, "[ERROR] failed to open file '%s': %s\n", argv[o.ind], strerror(errno));
@@ -59,17 +58,18 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
+	// load the pore model
 	ri_pore_t pore;
 	pore.pore_vals = NULL;
 	pore.pore_inds = NULL;
 	pore.max_val = -5000.0;
 	pore.min_val = 5000.0;
-	if(!(ipt.flag&RI_I_OUT_QUANTIZE)){
-		if(!idx_rdr->is_idx && fpore == 0){
+	if(!(ipt.flag&RI_I_OUT_QUANTIZE)) {
+		if(!idx_rdr->is_idx && fpore == 0) {
 			fprintf(stderr, "[ERROR] missing input: please specify a pore model file with -p when generating the index from a sequence file\n");
 			ri_idx_reader_close(idx_rdr);
 			exit(EXIT_FAILURE);
-		}else if(!idx_rdr->is_idx && fpore){
+		} else if(!idx_rdr->is_idx && fpore) {
 			load_pore(fpore, ipt.k, ipt.lev_col, &pore);
 			if(!pore.pore_vals){
 				fprintf(stderr, "[ERROR] cannot parse the k-mer pore model file. Please see the example k-mer model files provided in the RawHash repository.\n");
@@ -81,6 +81,7 @@ int main(int argc, char *argv[])
 
 	#ifdef RUCLIENT_ENABLED
 	// todo1: remove
+	// try to read the port from a predefined file
 	int& port = ru_server_port;
 	if (port == 0) {
         std::ifstream port_file("/home/mmordig/rawhash_project/ru_python/example_run/server_run/ont_device_server_port.txt");
@@ -97,21 +98,23 @@ int main(int argc, char *argv[])
 	log("Using port " + std::to_string(port));
 	#endif
 
+	// position o.ind is the index file, argc is 1-based
+	ri_idx_t *ri;
+	bool num_query_files = argc - (o.ind + 1);
 	if (ru_server_port == -1) {
 		// offline processing
 		while ((ri = ri_idx_reader_read(idx_rdr, &pore, n_threads)) != 0) {
-			int ret;
 			if (ri_verbose >= 3)
 				fprintf(stderr, "[M::%s::%.3f*%.2f] loaded/built the index for %d target sequence(s)\n",
 						__func__, ri_realtime() - ri_realtime0, ri_cputime() / (ri_realtime() - ri_realtime0), ri->n_seq);
-			if (argc != o.ind + 1) ri_mapopt_update(&opt, ri); // only update the index if it is used for querying later, todo4: can be moved down to before "ret = 0"
+			if (num_query_files > 0) ri_mapopt_update(&opt, ri); // only update the index if it is used for querying later, todo4: can be moved down to before "ret = 0"
 			if (ri_verbose >= 3) ri_idx_stat(ri);
-			if (argc - (o.ind + 1) == 0) {
+			if (num_query_files == 0) {
 				fprintf(stderr, "[INFO] no files to query index on, just created the index\n");
 				ri_idx_destroy(ri);
 				continue; // no query files, just creating the index
 			}
-			ret = 0;
+			int ret = 0;
 			// if (!(opt.flag & MM_F_FRAG_MODE)) { //TODO: enable frag mode directly from options
 			// for (i = o.ind + 1; i < argc; ++i) {
 			// 	ret = ri_map_file(ri, argv[i], &opt, n_threads);
@@ -119,7 +122,7 @@ int main(int argc, char *argv[])
 			// }
 			// }
 			// else { //TODO: enable frag mode directly from options
-				ret = ri_map_file_frag(ri, argc - (o.ind + 1), (const char**)&argv[o.ind + 1], &opt, n_threads);
+				ret = ri_map_file_frag(ri, num_query_files, (const char**)&argv[o.ind + 1], &opt, n_threads);
 			// }
 			ri_idx_destroy(ri);
 			if (ret < 0) {
