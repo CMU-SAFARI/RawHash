@@ -14,10 +14,12 @@ def get_read_signal(slow5_filename, read_id: str):
     with contextlib.closing(pyslow5.Open(slow5_filename, "r")) as s5:
         return s5.get_read(read_id, pA=True)["signal"]
 
-def prepare_signal_for_rawhash(raw_signal: np.ndarray[float]):
+def prepare_signal_for_rawhash(raw_signal: np.ndarray):
     """
     Remove outliers, convert to numpy
     raw_signal should be floats (with offset, range, digitisation scaling)
+    
+    raw_signal: np.ndarray[float]
     """
     raw_signal = raw_signal[(raw_signal > 30.) & (raw_signal < 200.)]
     return raw_signal
@@ -55,7 +57,10 @@ def get_rawhash_mapper(rawhash_args: List[str]) -> RawHashMapper:
     mapper = cppyy.gbl.RawHashMapper(len(args), args)
     return mapper
 
-def get_rawhash_alignments(mapper: RawHashMapper, raw_signal: np.ndarray[float]) -> List[Alignment]:
+def get_rawhash_alignments(mapper: RawHashMapper, raw_signal: np.ndarray) -> List[Alignment]:
+    """
+    raw_signal: np.ndarray[float]
+    """
     raw_signal = np.ascontiguousarray(raw_signal, dtype=np.float32)
     alignments = mapper.map(cppyy.ll.cast["float*"](raw_signal.ctypes.data), len(raw_signal))
     # return alignments
