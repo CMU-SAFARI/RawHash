@@ -41,7 +41,8 @@ rawhash2 -x ${PRESETX} -t ${THREAD} -p "${PORE}" -d "${OUTDIR}/${PREFIX}_rawhash
 # map
 rawhash2 -x ${PRESETX} -t ${THREAD} -o "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.paf" ${PARAMS} "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${SIGNALS}
 
-
+# given minimap2 gt mappings and single signal blow5, create new signal blow5 containing only reads that were mapped to the reverse strand
+# also output true mappings for this subset of reads
 # awk '$5 == "-" {print $1}' /home/mmordig/rawhash_project/rawhash2_new/test/evaluation/read_mapping/d2_ecoli_r94/true_mappings.paf > revstrand_readids.txt
 # slow5tools skim --rid /home/mmordig/rawhash_project/rawhash2_new/test/data/d2_ecoli_r94/small_slow5_files/barcode02_r0barcode02b0_0.blow5 > small_read_ids.txt
 # # intersect both files
@@ -54,5 +55,6 @@ rawhash2 -x ${PRESETX} -t ${THREAD} -o "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.
 #     /home/mmordig/rawhash_project/rawhash2_new/test/evaluation/read_mapping/d2_ecoli_r94/true_mappings.paf \
 #     > revcomp_true_mappings.paf
 
+# pre-task: create gt mappings
 # bash ../../../scripts/run_minimap2.sh . ../../../data/d2_ecoli_r94/reads.fasta ../../../data/d2_ecoli_r94/ref.fa ${THREAD}
 # minimap2 -x map-ont -t ${THREAD} -o "${OUTDIR}/true_mappings.paf" ${REF} ${READS}

@@ -2,9 +2,10 @@
 
 # Make sure to compile rawhash properly, both the CLI and the shared lib!!! Otherwise, the kernel may crash
 
+from pathlib import Path
 import sys
 sys.path.extend(["/home/mmordig/rawhash_project/rawhash2_new/python_wrapper"])
-from rawhash_wrapper import *
+from rawhash_wrapper import get_read_signal, load_rawhash_wrapper_lib, get_rawhash_mapper, prepare_signal_for_rawhash, get_rawhash_alignments, parse_paf_line
 
 #%%
 rawhash_args = [
@@ -44,7 +45,7 @@ alignments = get_rawhash_alignments(mapper, raw_signal)
 #%%
 
 for (i, alignment) in enumerate(alignments):
-    print(f"Alignment {i}: {Alignment.from_cppyy(alignment)}")
+    print(f"Alignment {i}: {alignment}")
     
 gt_paf_filename = "/home/mmordig/rawhash_project/rawhash2_new/example_out/forwrev_rawhash2_sensitive.paf"
 with open(gt_paf_filename) as f:
