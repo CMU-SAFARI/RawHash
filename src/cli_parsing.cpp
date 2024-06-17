@@ -81,6 +81,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"no-event-detection",	ko_no_argument,  		369 },
 	{ (char*)"version",				ko_no_argument, 	  	370 },
 	{ (char*)"no-revcomp-query",	ko_no_argument, 	  	371 },
+	{ (char*)"out-events",			ko_no_argument,  		372 },
 	{ 0, 0, 0 }
 };
 
@@ -399,7 +400,13 @@ CLIParsedArgs parse_args(int argc, char *argv[]) {
 		else if (c == 369) {ipt.flag |= RI_I_NO_EVENT_DETECTION;}// --no-event-detection
 		else if (c == 370) {puts(RH_VERSION); exit(EXIT_SUCCESS);}// --version
 		else if (c == 371) {opt.flag |= RI_M_DONT_QUERY_REVCOMP;}// --no-revcomp-query, only has an effect when "--rev-query" is used, to avoid querying the index with the revcomp
+		else if (c == 372) {ipt.flag |= RI_I_OUT_EVENTS; ipt.flag |= RI_I_SIG_TARGET;}// --out-events
 		else if (c == 'V') {puts(RH_VERSION); exit(EXIT_SUCCESS);}
+	}
+
+	if ((ipt.flag&RI_I_OUT_QUANTIZE) && (ipt.flag&RI_I_OUT_EVENTS)) {
+		fprintf(stderr, "[ERROR] --out-quantize and --out-events cannot be used together\n");
+		exit(EXIT_FAILURE);
 	}
 
 	if (argc == o.ind || fp_help == stdout) {
@@ -484,6 +491,7 @@ CLIParsedArgs parse_args(int argc, char *argv[]) {
 
 		fprintf(fp_help, "\n  Experimental/Debugging Parameters:\n");
 		fprintf(fp_help, "    --out-quantize     	Output the quantized values from raw signals provided as input. Mapping is not performed and the index file is not needed.\n");
+		fprintf(fp_help, "    --out-events     	Output the events values from raw signals provided as input. Mapping is not performed and the index file is not needed.\n");
 		fprintf(fp_help, "    --no-event-detection  Do not perform event detection. This can be set if your raw signal is already segmented.\n");
 		
 		fprintf(fp_help, "\n  Presets:\n");

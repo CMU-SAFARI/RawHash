@@ -52,7 +52,7 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (!idx_rdr->is_idx && idx_out_filename == 0 && argc - o.ind < 2 && !(ipt.flag&RI_I_OUT_QUANTIZE)) {
+	if (!idx_rdr->is_idx && idx_out_filename == 0 && argc - o.ind < 2 && !(ipt.flag&(RI_I_OUT_QUANTIZE|RI_I_OUT_EVENTS))) {
 		fprintf(stderr, "[ERROR] missing input: please specify a query FAST5/SLOW5/POD5 file(s) to map or option -d to store the index in a file before running the mapping\n");
 		ri_idx_reader_close(idx_rdr);
 		exit(EXIT_FAILURE);
@@ -64,7 +64,7 @@ int main(int argc, char *argv[])
 	pore.pore_inds = NULL;
 	pore.max_val = -5000.0;
 	pore.min_val = 5000.0;
-	if(!(ipt.flag&RI_I_OUT_QUANTIZE)) {
+	if(!(ipt.flag&(RI_I_OUT_QUANTIZE|RI_I_OUT_EVENTS))) {
 		if(!idx_rdr->is_idx && fpore == 0) {
 			fprintf(stderr, "[ERROR] missing input: please specify a pore model file with -p when generating the index from a sequence file\n");
 			ri_idx_reader_close(idx_rdr);

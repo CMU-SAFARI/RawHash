@@ -299,9 +299,17 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 					s_values = detect_events(0, t->l_sig, t->sig, p->ri->window_length1, p->ri->window_length2, p->ri->threshold1, p->ri->threshold2, p->ri->peak_height, &s_sum, &s_std, &n_events_sum, &s_len);
 				else s_values = normalize_signal(0, t->sig, t->l_sig, &s_sum, &s_std, &n_events_sum, &s_len);
 				
-				short out = (p->ri->flag&RI_I_OUT_QUANTIZE)?1:0;
-				if(out) fprintf(stdout, "%s\n", t->name);
-				ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, out);
+				short out_quantized = (p->ri->flag&RI_I_OUT_QUANTIZE)?1:0;
+				bool out_events = p->ri->flag&RI_I_OUT_EVENTS;
+				if(out_quantized || out_events) fprintf(stdout, "%s\n", t->name);
+				if (out_events) {
+					for (int j = 0; j < s_len; ++j) {
+						fprintf(stdout, "%f ", s_values[j]);
+					}
+					fprintf(stdout, "\n");
+				} else {
+					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, out_quantized);
+				}
 
 				if(s_values)free(s_values);
 			}
@@ -309,7 +317,7 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 		}
 		free(s->sig); s->sig = 0;
 		
-		if(p->ri->flag&RI_I_OUT_QUANTIZE){
+		if(p->ri->flag&(RI_I_OUT_QUANTIZE|RI_I_OUT_EVENTS)){
 			if(s->a.a) ri_kfree(0, s->a.a);
 			free(s); s = 0; // so pipeline will stop at this stage
 		}
@@ -827,7 +835,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	if(!(flag&RI_I_SIG_TARGET)) return 0;
 
 	pipeline_t pl;
-	if (fp == 0 || *fp == 0 || n_f <= 0 || cur_f > n_f || (cur_f == n_f && (*fp)->cur_read >= (*fp)->num_read) || ((!pore || !pore->pore_vals) && !(flag&RI_I_OUT_QUANTIZE))) return 0;
+	if (fp == 0 || *fp == 0 || n_f <= 0 || cur_f > n_f || (cur_f == n_f && (*fp)->cur_read >= (*fp)->num_read) || ((!pore || !pore->pore_vals) && !(flag&(RI_I_OUT_QUANTIZE|RI_I_OUT_EVENTS)))) return 0;
 	memset(&pl, 0, sizeof(pipeline_t));
 	pl.mini_batch_size = (uint64_t)mini_batch_size < batch_size? mini_batch_size : batch_size;
 	pl.batch_size = batch_size;
@@ -837,7 +845,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.cur_f = cur_f;
 	pl.ri = ri_idx_init(diff, b, w, e, n, q, k, fine_min, fine_max, fine_range, flag);
 
-	if(!(pl.ri->flag&RI_I_OUT_QUANTIZE)){
+	if(!(pl.ri->flag&(RI_I_OUT_QUANTIZE|RI_I_OUT_EVENTS))){
 		pl.ri->pore = (ri_pore_t*)ri_kmalloc(pl.ri->km, sizeof(ri_pore_t));
 		memcpy(pl.ri->pore, pore, sizeof(ri_pore_t));
 		pl.ri->pore->pore_vals = (float*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(float));
@@ -854,13 +862,13 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 
 	if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
 
-	int n_steps = (pl.ri->flag&RI_I_OUT_QUANTIZE)?2:3;
+	int n_steps = (pl.ri->flag&(RI_I_OUT_QUANTIZE|RI_I_OUT_EVENTS))?2:3;
 	kt_pipeline(n_threads < n_steps? n_threads : n_steps, worker_sig_pipeline, &pl, n_steps);
 
 	*fp = pl.sfp;
 	cur_f = pl.cur_f;
 
-	if(pl.ri->flag&RI_I_OUT_QUANTIZE) {ri_idx_destroy(pl.ri); pl.ri = 0;}
+	if(pl.ri->flag&(RI_I_OUT_QUANTIZE|RI_I_OUT_EVENTS)) {ri_idx_destroy(pl.ri); pl.ri = 0;}
 	else ri_idx_post(pl.ri, n_threads);
 
 	return pl.ri;

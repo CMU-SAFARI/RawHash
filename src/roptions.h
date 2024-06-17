@@ -11,9 +11,10 @@
 #define RI_I_SYNCMER	0x8 // unused
 #define RI_I_STORE_SIG	0x10 // whether to store the signal (generated from a fasta reference)
 #define RI_I_SIG_TARGET	0x20 // whether the index consists of raw signals rather than nucleotides
-#define RI_I_REV_QUERY	0x40 // whether the index should NOT store the reverse strand, this assumes that we query the index with the revcomp of the read as well
+#define RI_I_REV_QUERY	0x40 // better name: RI_I_STORE_FORW_ONLY, whether the index should NOT store the reverse strand, this assumes that we query the index with the revcomp of the read as well
 #define RI_I_OUT_QUANTIZE 0x80 // quantize raw signals (index not needed)
 #define RI_I_NO_EVENT_DETECTION 0x100 // whether the signal are raw signals, or events (which will be normalized only, removing outliers)
+#define RI_I_OUT_EVENTS 0x200 // output event signals given raw signal (index not needed)
 
 #define RI_M_SEQUENCEUNTIL	0x1
 #define RI_M_RMQ			0x2
@@ -31,7 +32,7 @@
 #define RI_M_LOG_NUM_ANCHORS	0x1000
 //Overlapping related
 #define RI_M_ALL_CHAINS			0x2000
-#define RI_M_DONT_QUERY_REVCOMP	0x4000 // whether to transform the read to its revcomp and query index (defaults to RI_I_REV_QUERY),
+#define RI_M_DONT_QUERY_REVCOMP	0x4000 // better name: RI_M_PREDICT_REV_COMP, whether to transform the read to its revcomp and query index (defaults to RI_I_REV_QUERY),
 
 //Characterization related
 #define RI_M_OUT_ALL_CHAINS 0x4000

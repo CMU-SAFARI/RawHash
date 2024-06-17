@@ -35,11 +35,11 @@ PREFIX="forwrev"
 mkdir -p ${OUTDIR}
 
 
-# if complaining about shared lib, need to recompile target
-# index
-rawhash2 -x ${PRESETX} -t ${THREAD} -p "${PORE}" -d "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${PARAMS} ${REF}
-# map
-rawhash2 -x ${PRESETX} -t ${THREAD} -o "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.paf" ${PARAMS} "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${SIGNALS}
+# # if complaining about shared lib, need to recompile target
+# # index
+# rawhash2 -x ${PRESETX} -t ${THREAD} -p "${PORE}" -d "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${PARAMS} ${REF}
+# # map
+# rawhash2 -x ${PRESETX} -t ${THREAD} -o "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.paf" ${PARAMS} "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.ind" ${SIGNALS}
 
 # given minimap2 gt mappings and single signal blow5, create new signal blow5 containing only reads that were mapped to the reverse strand
 # also output true mappings for this subset of reads
@@ -54,6 +54,9 @@ rawhash2 -x ${PRESETX} -t ${THREAD} -o "${OUTDIR}/${PREFIX}_rawhash2_${PRESETX}.
 # awk 'NR==FNR{a[$1];next}($1 in a)' revstrand_readids_intersect.txt \
 #     /home/mmordig/rawhash_project/rawhash2_new/test/evaluation/read_mapping/d2_ecoli_r94/true_mappings.paf \
 #     > revcomp_true_mappings.paf
+
+# options not needed: # rawhash2 -x ${PRESETX} -t ${THREAD} -p "${PORE}" --out-events revcomp_reads.blow5 > revcomp_events.txt
+# rawhash2 --out-events revcomp_reads.blow5 > revcomp_events.txt
 
 # pre-task: create gt mappings
 # bash ../../../scripts/run_minimap2.sh . ../../../data/d2_ecoli_r94/reads.fasta ../../../data/d2_ecoli_r94/ref.fa ${THREAD}
