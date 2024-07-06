@@ -1,10 +1,10 @@
 #pass DEBUG=1 to make to enable debugging
 ifdef DEBUG
-	CFLAGS=-Wall -O2 -fsanitize=address -g -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=--std=c++11 -Wall -O2 -fsanitize=address -g -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS=-Wall -O2 -fsanitize=address -g -Wc++-compat -march=native -pthread -DHAVE_KALLOC
+	CPPFLAGS=--std=c++11 -Wall -O2 -fsanitize=address -g -march=native -pthread -DHAVE_KALLOC
 else
-	CFLAGS=-Wall -O3 -Wc++-compat -fopenmp -march=native -pthread -DHAVE_KALLOC
-	CPPFLAGS=-std=c++11 -Wall -O3 -fopenmp -march=native -pthread -DHAVE_KALLOC
+	CFLAGS=-Wall -O3 -Wc++-compat -march=native -pthread -DHAVE_KALLOC
+	CPPFLAGS=-std=c++11 -Wall -O3 -march=native -pthread -DHAVE_KALLOC
 endif
 
 #pass PROFILE=1 to make to enable profiling
@@ -182,7 +182,7 @@ hdf5:
 
 slow5:
 	@if [ "$(NOSLOW5)" != "1" ] && [ "$(SLOW5_COMPILE)" != "0" ]; then \
-		make -C ${SLOW5_DIR}; \
+		make -C ${SLOW5_DIR} slow5_mt=1 zstd=1; \
 	fi
 
 pod5: check_zstd

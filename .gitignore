@@ -7,6 +7,7 @@ test/data/d4_*
 test/data/d5_*
 test/data/d6_*
 test/data/d7_*
+test/data/d8_*
 test/data/*/*.fa
 test/data/*/*.fasta
 test/data/*/*.tar
@@ -76,3 +77,8 @@ src/*.o
 extern/pod5*
 
 test/evaluation/rawsamble/
+
+extern/tensorflow/
+
+test/evaluation/read_mapping/*_parameters/
+test/evaluation/read_mapping/s_modify.py

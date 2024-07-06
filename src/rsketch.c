@@ -246,7 +246,7 @@ void ri_sketch_reg_rev(void *km,
 	if(sigBufFull && !out && streak >= e) rh_kv_push(mm128_t, km, *p, sigBuf[sigBufPos]);
 
     for (f_pos = 1; f_pos < len; ++f_pos) {
-        if((fabs(s_values[f_pos] - s_values[l_sigpos]) < diff)) {streak = 0; continue;}
+        if(streak > 0 && (fabs(s_values[f_pos] - s_values[l_sigpos]) < diff)) {streak = 0; continue;}
 
 		l_sigpos = f_pos;
 
@@ -254,7 +254,7 @@ void ri_sketch_reg_rev(void *km,
 		if(out) fprintf(stdout, ",%u", f_tmpQuantSignal);
 
 		// sigBuf[sigBufPos].y = id_shift | ((uint32_t)(len-f_pos-1))<<RI_POS_SHIFT | strand;
-		sigBuf[sigBufPos].y = id_shift | f_pos<<RI_POS_SHIFT | strand;
+		sigBuf[sigBufPos].y = id_shift | (uint32_t)f_pos<<RI_POS_SHIFT | strand;
 		if(++sigBufPos == e) {sigBufFull = 1; sigBufPos = 0;}
 
 		quantVal = (quantVal<<quant_bit|f_tmpQuantSignal)&mask_events;

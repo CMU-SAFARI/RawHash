@@ -40,7 +40,7 @@ static void ri_tbuf_destroy(ri_tbuf_t *b)
 
 /**
  * Find seed matches between a chunk of a raw signal and a reference genome
- *
+ * 
  * @param km     		thread-local memory pool; using NULL falls back to malloc()
  * @return seed_hits    seed hits
  *               		a[i].x = strand | ref_id | ref_pos
@@ -88,16 +88,16 @@ static mm128_t *collect_seed_hits(void *km,
 			p->x = (hits[k]&mask_id_shift) | ref_pos;
 			if(hits[k]&1) p->x |= 1ULL<<63; // reverse reference strand
 			
-			if(ri->flag&RI_I_REV_QUERY && s_match->q_pos&1 == 1){
-				int32_t rlen;
-				if(ri->flag&RI_I_REV_QUERY) rlen = ri->sig[hits[k]>>32].l_sig;
-				else rlen = ri->seq[hits[k]>>32].len;
+			// if(ri->flag&RI_I_REV_QUERY && s_match->q_pos&1 == 1){
+			// 	int32_t rlen;
+			// 	if(ri->flag&RI_I_REV_QUERY) rlen = ri->sig[hits[k]>>32].l_sig;
+			// 	else rlen = ri->seq[hits[k]>>32].len;
 
-				p->x = 1ULL<<63 | (hits[k]&mask_id_shift) | (rlen - (ref_pos + 1 - s_match->q_span) - 1);
+			// 	p->x = 1ULL<<63 | (hits[k]&mask_id_shift) | (rlen - (ref_pos + 1 - s_match->q_span) - 1);
+			// 	p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
+			// }else{
 				p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
-			}else{
-				p->y = (uint64_t)s_match->seg_id << RI_SEED_SEG_SHIFT | (uint64_t)s_match->q_span << RI_ID_SHIFT | (uint32_t)((s_match->q_pos>>RI_POS_SHIFT)+reg->offset);
-			}
+			// }
 
 			if (s_match->is_tandem) p->y |= RI_SEED_TANDEM;
 			if (is_self) p->y |= RI_SEED_SELF;
@@ -240,27 +240,37 @@ void ri_map_frag(const ri_idx_t *ri,
 	mm128_v riv = {0,0,0};
 	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, 0);
 
-	if(ri->flag&RI_I_REV_QUERY){
-		uint32_t span = ri->k+ri->e-1;
-		mm128_v riv_rev = {0,0,0};
-		mm128_t rev_anchor = {0,0};
-		ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv_rev, 0);
+	// if(ri->flag&RI_I_REV_QUERY){
+	// 	uint32_t span = ri->k+ri->e-1;
+	// 	mm128_v riv_rev = {0,0,0};
+	// 	mm128_t rev_anchor = {0,0};
+	// 	short ext = 0;
+	// 	ri_sketch_rev(b->km, events, 0, 1, n_events, ri->diff, ri->w, ri->e+ext, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv_rev, 0);
 
-		rh_kv_resize(mm128_t, b->km, riv, riv.n + riv_rev.n);
+	// 	// rh_kv_resize(mm128_t, b->km, riv, riv.n + riv_rev.n);
+	// 	rh_kv_resize(mm128_t, b->km, riv, riv_rev.n);
 
-		for(int i = 0; i < riv_rev.n; ++i){
-			const uint64_t *cr;
-			mm128_t *p = &(riv_rev.a[i]);
-			cr = ri_idx_rev_get(ri, p->x);
-			if(cr){
-				rev_anchor.y = p->y;
-				rev_anchor.x = ((*cr)<<RI_HASH_SHIFT) | span;
-				rh_kv_push(mm128_t, b->km, riv, rev_anchor);
-			}
-		}
+	// 	// fprintf(stderr, "n_events: %u rev.n: %u ", n_events, riv_rev.n);
 
-		if(riv_rev.a){ri_kfree(b->km, riv_rev.a); riv_rev.a = NULL; riv_rev.n = riv_rev.m = 0;}
-	}
+	// 	for(int i = 0; i < riv_rev.n; ++i){
+	// 		const uint64_t *cr;
+	// 		mm128_t *p = &(riv_rev.a[i]);
+			
+	// 		int t;
+	// 		cr = ri_idx_rev_get(ri, p->x, &t);
+			
+	// 		if (t == 0 || t > opt->rev_col_limit) continue;
+	// 		for(int k = 0; k < t; ++k){
+	// 			// fprintf(stderr, "cr: %lu k: %d, ", (cr[k]), k);
+	// 			rev_anchor.y = p->y;
+	// 			rev_anchor.x = ((cr[k])<<RI_HASH_SHIFT) | span;
+	// 			rh_kv_push(mm128_t, b->km, riv, rev_anchor);
+	// 		}
+	// 	}
+	// 	// fprintf(stderr, "\n");
+
+	// 	if(riv_rev.a){ri_kfree(b->km, riv_rev.a); riv_rev.a = NULL; riv_rev.n = riv_rev.m = 0;}
+	// }
 	
 	if(events){ri_kfree(b->km, events); events = NULL;}
 	// if (opt->q_occ_frac > 0.0f) ri_seed_mz_flt(b->km, &riv, opt->mid_occ, opt->q_occ_frac);
@@ -300,16 +310,16 @@ void ri_map_frag(const ri_idx_t *ri,
 	float chn_pen_gap = opt->chain_gap_scale * 0.01 * (ri->e + ri->k - 1), chn_pen_skip = opt->chain_skip_scale * 0.01 * (ri->e + ri->k - 1);
 	if(!(opt->flag & RI_M_RMQ))
 		seed_hits = mg_lchain_dp(opt->max_target_gap_length, opt->max_query_gap_length, opt->bw, opt->max_num_skips, 
-								opt->max_chain_iter, opt->min_num_anchors,opt->min_chaining_score,chn_pen_gap,
-								chn_pen_skip,&n_seed_pos,seed_hits, &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
+								opt->max_chain_iter, opt->min_num_anchors, opt->min_chaining_score, chn_pen_gap,
+								chn_pen_skip, &n_seed_pos, seed_hits, &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
 	else
 		seed_hits = mg_lchain_rmq(max_gap, opt->rmq_inner_dist, opt->bw, opt->max_num_skips, opt->rmq_size_cap,
-							 	  opt->min_num_anchors,opt->min_chaining_score,chn_pen_gap,chn_pen_skip,&n_seed_pos,
+							 	  opt->min_num_anchors, opt->min_chaining_score, chn_pen_gap, chn_pen_skip, &n_seed_pos,
 								  seed_hits, &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
 
 	if(opt->bw_long > opt->bw){
 		seed_hits = mg_lchain_rmq(max_gap, opt->rmq_inner_dist, opt->bw_long, opt->max_num_skips, opt->rmq_size_cap,
-							 	  opt->min_num_anchors,opt->min_chaining_score,chn_pen_gap,chn_pen_skip,&n_seed_pos,
+							 	  opt->min_num_anchors, opt->min_chaining_score, chn_pen_gap, chn_pen_skip, &n_seed_pos,
 								  seed_hits, &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
 	}
 
@@ -591,7 +601,7 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 		while(pl->fp && pl->fp->cur_read == pl->fp->num_read){
 			ri_sig_close(pl->fp);
 			if(pl->cur_f < pl->n_f){
-				if((pl->fp = open_sig(pl->f[pl->cur_f++])) == 0) break;
+				if((pl->fp = open_sig(pl->f[pl->cur_f++], pl->io_n_threads)) == 0) break;
 			}else if(pl->cur_fp < pl->n_fp){
 				if(pl->f){
 					for(int i = 0; i < pl->n_f; ++i) 
@@ -604,7 +614,7 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 				rh_kv_resize(char*, 0, fnames, 256);
 				find_sfiles(pl->fn[pl->cur_fp++], &fnames);
 				pl->f =  fnames.a;
-				if(!fnames.n || ((pl->fp = open_sig(pl->f[pl->cur_f++])) == 0)) break;
+				if(!fnames.n || ((pl->fp = open_sig(pl->f[pl->cur_f++], pl->io_n_threads)) == 0)) break;
 				pl->n_f = fnames.n;
 				// ++n_read;
 			}else {pl->fp = 0; break;}
@@ -614,7 +624,7 @@ ri_sig_t** ri_sig_read_frag(pipeline_mt *pl,
 		
 		ri_sig_t *s = (ri_sig_t*)calloc(1, sizeof(ri_sig_t));
 		rh_kv_push(ri_sig_t*, 0, rsigv, s);
-		ri_read_sig(pl->fp, s);
+		ri_read_sig(pl->fp, s, 1);
 		size += s->l_sig;
 
 		if(size >= chunk_size) break;
@@ -774,16 +784,18 @@ static void *map_worker_pipeline(void *shared,
 int ri_map_file(const ri_idx_t *idx,
 				const char *fn,
 				const ri_mapopt_t *opt,
-				int n_threads)
+				int n_threads,
+				int io_n_threads)
 {
-	return ri_map_file_frag(idx, 1, &fn, opt, n_threads);
+	return ri_map_file_frag(idx, 1, &fn, opt, n_threads, io_n_threads);
 }
 
 int ri_map_file_frag(const ri_idx_t *idx,
 					int n_segs,
 					const char **fn,
 					const ri_mapopt_t *opt,
-					int n_threads)
+					int n_threads,
+					int io_n_threads)
 {
 	int pl_threads;
 	pipeline_mt pl;
@@ -795,16 +807,17 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	rh_kv_resize(char*, 0, fnames, 256);
 	find_sfiles(fn[0], &fnames);
 	pl.f =  fnames.a;
-	if(!fnames.n || ((pl.fp = open_sig(pl.f[0])) == 0)){rh_kv_destroy(fnames); return -1;}
+	pl.io_n_threads = io_n_threads > 1?io_n_threads:1;
+	pl.n_threads = (n_threads - pl.io_n_threads > 1)?(n_threads - pl.io_n_threads):1;
+	pl.mini_batch_size = opt->mini_batch_size;
+	pl_threads = (pl.io_n_threads > 1 || n_threads > 1)?2:1;
+	if(!fnames.n || ((pl.fp = open_sig(pl.f[0], pl.io_n_threads)) == 0)){rh_kv_destroy(fnames); return -1;}
 	if (pl.fp == 0){rh_kv_destroy(fnames); return -1;}
 	pl.fn = fn;
 	pl.n_f = fnames.n;
 	pl.cur_fp = 1;
 	pl.cur_f = 1;
 	pl.opt = opt, pl.ri = idx;
-	pl.n_threads = n_threads > 1? n_threads : 1;
-	pl.mini_batch_size = opt->mini_batch_size;
-	pl_threads = pl.n_threads == 1?1:2;
 	pl.su_stop = 0;
 
 	if(opt->flag & RI_M_SEQUENCEUNTIL){

@@ -129,6 +129,10 @@ typedef struct ri_mapopt_s{
 	int64_t flag;    // see ri_F_* macros
 	int64_t mini_batch_size; // size of a batch of query bases to process in parallel
 
+	//Reverse complementing
+	uint32_t rev_col_limit;
+	float chn_rev_bump;
+
 	//Event detector options
 	uint32_t window_length1;
 	uint32_t window_length2;

@@ -99,6 +99,10 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->dtw_match_bonus = 0.4f;
 	opt->dtw_min_score = 20.0f;
 
+	//Reverse complementing
+	opt->rev_col_limit = 100;
+	opt->chn_rev_bump = 1.0f;
+
 	//Default options for event detection.
 	opt->window_length1 = 3; //--seg-window-length1
     opt->window_length2 = 9; //--seg-window-length2

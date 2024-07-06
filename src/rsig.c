@@ -167,7 +167,7 @@ static inline ri_sig_file_t *ri_sig_open_pod5(const char *fn){
 #endif
 
 #ifndef NSLOW5RH
-static inline ri_sig_file_t *ri_sig_open_slow5(const char *fn){
+static inline ri_sig_file_t *ri_sig_open_slow5(const char *fn, int io_n_threads){
 	
 	ri_sig_file_t *fp;
 
@@ -189,14 +189,24 @@ static inline ri_sig_file_t *ri_sig_open_slow5(const char *fn){
 	#endif
 	
 	fp->sp = sp;
-	fp->num_read = 1;
+	fp->slow5_mt = slow5_init_mt(io_n_threads, fp->sp); //TODO: make it multi-threaded if user requests
+	fp->slow5_batch = slow5_init_batch(4096); //TODO make batch size a variable?
+	fp->num_read = slow5_get_next_batch(fp->slow5_mt, fp->slow5_batch, 4096);
 	fp->cur_read = 0;
+
+	if(fp->num_read <= 0){
+		fp->num_read = 0;
+		fprintf(stderr, "ERROR: Failed to read the first batch of reads from %s\n", fn);
+		slow5_close(fp->sp);
+		free(fp);
+		return 0;
+	}
 
 	return fp;
 }
 #endif
 
-ri_sig_file_t *ri_sig_open(const char *fn){
+ri_sig_file_t *ri_sig_open(const char *fn, int io_n_threads){
 	if (strstr(fn, ".fast5")) {
 		#ifndef NHDF5RH
 		return ri_sig_open_fast5(fn);
@@ -207,7 +217,7 @@ ri_sig_file_t *ri_sig_open(const char *fn){
 		#endif
 	} else if (strstr(fn, ".slow5") || strstr(fn, ".blow5")) {
 		#ifndef NSLOW5RH
-		return ri_sig_open_slow5(fn);
+		return ri_sig_open_slow5(fn, io_n_threads);
 		#endif
 	}
 
@@ -239,6 +249,8 @@ void ri_sig_close(ri_sig_file_t *fp)
 
 	#ifndef NSLOW5RH
 	if(fp->sp){
+		slow5_free_batch(fp->slow5_batch);
+    	slow5_free_mt(fp->slow5_mt);
 		slow5_close(fp->sp);
 	}
 	#endif
@@ -246,11 +258,11 @@ void ri_sig_close(ri_sig_file_t *fp)
 	free(fp);
 }
 
-ri_sig_file_t *open_sig(const char *fn) //TODO: make this a part of the pipeline. Sequntially reading from many FAST5 files creates an overhead
+ri_sig_file_t *open_sig(const char *fn, int io_n_threads)
 {
 	ri_sig_file_t *fp;
 	fp = (ri_sig_file_t*)calloc(1,sizeof(ri_sig_file_t));
-	if ((fp = ri_sig_open(fn)) == 0) {
+	if ((fp = ri_sig_open(fn, io_n_threads)) == 0) {
 		fprintf(stderr, "ERROR: failed to open file '%s': %s\n", fn, strerror(errno));
 		ri_sig_close(fp);
 		return 0;
@@ -258,13 +270,13 @@ ri_sig_file_t *open_sig(const char *fn) //TODO: make this a part of the pipeline
 	return fp;
 }
 
-ri_sig_file_t **open_sigs(int n, const char **fn) //TODO: make this a part of the pipeline. Sequntially reading from many FAST5 files creates an overhead
+ri_sig_file_t **open_sigs(int n, const char **fn, int io_n_threads)
 {
 	ri_sig_file_t **fp;
 	int i, j;
 	fp = (ri_sig_file_t**)calloc(n, sizeof(ri_sig_file_t*));
 	for (i = 0; i < n; ++i) {
-		if ((fp[i] = ri_sig_open(fn[i])) == 0) {
+		if ((fp[i] = ri_sig_open(fn[i], io_n_threads)) == 0) {
 			fprintf(stderr, "ERROR: failed to open file '%s': %s\n", fn[i], strerror(errno));
 			for (j = 0; j < i; ++j) ri_sig_close(fp[j]);
 			free(fp);
@@ -399,15 +411,6 @@ static inline void ri_read_sig_pod5(ri_sig_file_t* fp, ri_sig_t* s){
 		return;
 	}
 
-	// Retrieves the digitisation and range for the channel
-	// CalibrationExtraData_t calibration_extra_info;
-	// pod5_get_calibration_extra_info(fp->batch, fp->pod5_row, &calibration_extra_info);
-	// float scale = calibration_extra_info.range / (float)calibration_extra_info.digitisation;
-
-	//This is same as read_data.num_samples
-	// unsigned long int sample_count = 0;
-	// pod5_get_read_complete_sample_count(fp->pp, fp->batch, fp->pod5_row, &sample_count);
-
 	int16_t *sig = (int16_t*)malloc(read_data.num_samples * sizeof(int16_t));
 	float *sigF = (float*)malloc(read_data.num_samples * sizeof(float));
 	
@@ -436,12 +439,6 @@ static inline void ri_read_sig_pod5(ri_sig_file_t* fp, ri_sig_t* s){
 	memcpy(s->sig, sigF, l_sig*sizeof(float));
 	s->name = strdup(read_id_tmp);
 	free(sigF);
-
-	// fprintf(stderr, "%s %lu\n", read_id_tmp, s->l_sig);
-	// for(int i = 0; i < s->l_sig; i++){
-	// 	fprintf(stderr, "%f ", s->sig[i]);
-	// }
-	// fprintf(stderr, "\n");
 
 	pod5_release_run_info(run_info_data);
 
@@ -484,11 +481,13 @@ static inline void ri_read_sig_slow5(ri_sig_file_t* fp, ri_sig_t* s){
 
 	slow5_file_t *sp = fp->sp;
 	slow5_rec_t *rec = NULL;
-	int ret = 0;
-	if ((ret = slow5_get_next(&rec, sp)) < 0) {
-		fp->cur_read = fp->num_read;
-		return;
-	}
+	// int ret = 0;
+	// if ((ret = slow5_get_next(&rec, sp)) < 0) {
+	// 	fp->cur_read = fp->num_read;
+	// 	return;
+	// }
+
+	rec = (fp->slow5_batch->slow5_rec)[fp->cur_read];
 
 	s->name = strdup(rec->read_id);
 	float *sigF = (float*)malloc(rec->len_raw_signal * sizeof(float));
@@ -505,21 +504,33 @@ static inline void ri_read_sig_slow5(ri_sig_file_t* fp, ri_sig_t* s){
 
 	fp->cur_read++;
 
-	if(ret != SLOW5_ERR_EOF){  //check if proper end of file has been reached
-		fp->num_read++;
-    }else{
-		fp->cur_read = fp->num_read;
-	}
+	// if(ret != SLOW5_ERR_EOF){  //check if proper end of file has been reached
+	// 	fp->num_read++;
+    // }else{
+	// 	fp->cur_read = fp->num_read;
+	// }
+
+	// if(fp->cur_read >= fp->num_read){
+	// 	fp->num_read = slow5_get_next_batch(fp->slow5_mt, fp->slow5_batch, 4096);
+	// 	fp->cur_read = 0;
+
+	// 	if(fp->num_read <= 0){
+	// 		fp->num_read = 0;
+	// 		// fprintf(stderr, "ERROR: Failed to read the next batch of reads\n");
+	// 		// slow5_rec_free(rec);
+	// 		// return;
+	// 	}
+	// }
 
 	s->sig = (float*)calloc(l_sig, sizeof(float));
 	s->l_sig = l_sig;
 	memcpy(s->sig, sigF, l_sig*sizeof(float));
 	free(sigF);
-	slow5_rec_free(rec);
+	// slow5_rec_free(rec);
 }
 #endif
 
-void ri_read_sig(ri_sig_file_t* fp, ri_sig_t* s){
+void ri_read_sig(ri_sig_file_t* fp, ri_sig_t* s, int io_n_threads){
 
 	assert(fp->cur_read < fp->num_read);
 

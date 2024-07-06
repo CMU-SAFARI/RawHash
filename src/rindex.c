@@ -72,13 +72,14 @@ void ri_idx_destroy(ri_idx_t *ri){
 	if (ri->h) kh_destroy(str, (khash_t(str)*)ri->h);
 	if (ri->B) {
 		for (i = 0; i < 1U<<ri->b; ++i) {
-			free(ri->B[i].p);
+			if(ri->B[i].p)free(ri->B[i].p);
 			free(ri->B[i].a.a);
 			kh_destroy(idx, (idxhash_t*)ri->B[i].h);
 		}
 	}
 	if(ri->flag&RI_I_SIG_TARGET && ri->P){
 		for (i = 0; i < 1U<<ri->b; ++i) {
+			if(ri->P[i].p)free(ri->P[i].p);
 			free(ri->P[i].a.a);
 			kh_destroy(idx_rev, (idx_revhash_t*)ri->P[i].h);
 		}
@@ -133,10 +134,10 @@ static void *worker_pipeline(void *shared, int step, void *in)
 			p->ri->F = (float**)ri_krealloc(p->ri->km, p->ri->F,seq_c * sizeof(float*));
 			p->ri->f_l_sig = (uint32_t*)ri_krealloc(p->ri->km, p->ri->f_l_sig,seq_c * sizeof(uint32_t));
 
-			if(!(p->ri->flag&RI_I_REV_QUERY)){
+			// if(!(p->ri->flag&RI_I_REV_QUERY)){
 				p->ri->R = (float**)ri_krealloc(p->ri->km, p->ri->R,seq_c * sizeof(float*));
 				p->ri->r_l_sig = (uint32_t*)ri_krealloc(p->ri->km, p->ri->r_l_sig,seq_c * sizeof(uint32_t));
-			}
+			// }
 
 			for (i = 0; i < s->n_seq; ++i) {
 				mm_bseq1_t* t = &s->seq[i];
@@ -150,17 +151,17 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 					p->ri->f_l_sig[r_id] = s_len;
 
-					if(!(p->ri->flag&RI_I_REV_QUERY)){
+					// if(!(p->ri->flag&RI_I_REV_QUERY)){
 						p->ri->R[r_id] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
 						s_values = p->ri->R[r_id];
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
 						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 						p->ri->r_l_sig[r_id] = s_len;
-					}
+					// }
 				}
 				free(t->seq); free(t->name);
 			}
-		}else{
+		} else{
 			for (i = 0; i < s->n_seq; ++i) {
 				mm_bseq1_t* t = &s->seq[i];
 				if (t->l_seq > 0){
@@ -170,10 +171,10 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 0, &s_len, s_values);
 					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 
-					if(!(p->ri->flag&RI_I_REV_QUERY)){
+					// if(!(p->ri->flag&RI_I_REV_QUERY)){
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
 						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
-					}
+					// }
 
 					free(s_values);
 				}
@@ -210,7 +211,7 @@ ri_sig_t** ri_sig_read(pipeline_t *pl,
 		while(pl->sfp && pl->sfp->cur_read == pl->sfp->num_read){
 			ri_sig_close(pl->sfp);
 			if(pl->cur_f < pl->n_f){
-				if((pl->sfp = open_sig(pl->sf[pl->cur_f++])) == 0) break;
+				if((pl->sfp = open_sig(pl->sf[pl->cur_f++], 1)) == 0) break;
 			}else {pl->sfp = 0; break;}
 		}
 
@@ -218,7 +219,7 @@ ri_sig_t** ri_sig_read(pipeline_t *pl,
 		
 		ri_sig_t *s = (ri_sig_t*)calloc(1, sizeof(ri_sig_t));
 		rh_kv_push(ri_sig_t*, 0, rsigv, s);
-		ri_read_sig(pl->sfp, s);
+		ri_read_sig(pl->sfp, s, 1);
 		size += s->l_sig;
 
 		if(size >= chunk_size) break;
@@ -365,6 +366,50 @@ static void worker_post(void *g, long i, int tid){
 	b->a.n = b->a.m = 0, b->a.a = 0;
 }
 
+// static void worker_post_P(void *g, long i, int tid){
+// 	int n, n_keys;
+// 	size_t j, start_a, start_p;
+// 	idx_revhash_t *h = 0;
+// 	ri_idx_t *ri = (ri_idx_t*)g;
+// 	ri_idx_bucket_t *b = &ri->P[i];
+// 	if (b->a.n == 0) return;
+
+// 	// sort by hash values of reverse values
+// 	radix_sort_128x(b->a.a, b->a.a + b->a.n);
+
+// 	// count and preallocate
+// 	for (j = 1, n = 1, n_keys = 0, b->n = 0; j <= b->a.n; ++j) {
+// 		if (j == b->a.n || b->a.a[j].x != b->a.a[j-1].x) {
+// 			if(n == 1)++n_keys;
+// 			n = 1;
+// 		} else ++n;
+// 	}
+// 	h = kh_init(idx_rev);
+// 	kh_resize(idx_rev, h, n_keys);
+// 	// b->p = (uint64_t*)calloc(b->n, 8);
+
+// 	// create the hash table
+// 	for (j = 1, n = 1, start_a = start_p = 0; j <= b->a.n; ++j) {
+// 		if (j == b->a.n || b->a.a[j].x != b->a.a[j-1].x) {
+// 			if(n == 1){
+// 				khint_t itr;
+// 				int absent;
+// 				mm128_t *p = &b->a.a[j-1];
+// 				itr = kh_put(idx_rev, h, p->x>>ri->b<<1, &absent);
+// 				assert(absent);
+// 				kh_key(h, itr) |= 1;
+// 				kh_val(h, itr) = p->y;
+// 			}
+// 			n = 1;
+// 		} else ++n;
+// 	}
+// 	b->h = h;
+
+// 	// deallocate and clear b->a
+// 	ri_kfree(0, b->a.a);
+// 	b->a.n = b->a.m = 0, b->a.a = 0;
+// }
+
 static void worker_post_P(void *g, long i, int tid){
 	int n, n_keys;
 	size_t j, start_a, start_p;
@@ -373,36 +418,46 @@ static void worker_post_P(void *g, long i, int tid){
 	ri_idx_bucket_t *b = &ri->P[i];
 	if (b->a.n == 0) return;
 
-	// sort by hash values of reverse values
+	// sort by hash values of sketches (e.g., minimizer hash value)
 	radix_sort_128x(b->a.a, b->a.a + b->a.n);
 
 	// count and preallocate
 	for (j = 1, n = 1, n_keys = 0, b->n = 0; j <= b->a.n; ++j) {
+		//canf: make sure to shift b->a.a[j].x accordingly if we store more data there
 		if (j == b->a.n || b->a.a[j].x != b->a.a[j-1].x) {
-			if(n == 1)++n_keys;
+			++n_keys;
+			if (n > 1) b->n += n;
 			n = 1;
 		} else ++n;
 	}
 	h = kh_init(idx_rev);
 	kh_resize(idx_rev, h, n_keys);
-	// b->p = (uint64_t*)calloc(b->n, 8);
+	b->p = (uint64_t*)calloc(b->n, 8);
 
 	// create the hash table
 	for (j = 1, n = 1, start_a = start_p = 0; j <= b->a.n; ++j) {
 		if (j == b->a.n || b->a.a[j].x != b->a.a[j-1].x) {
-			if(n == 1){
-				khint_t itr;
-				int absent;
-				mm128_t *p = &b->a.a[j-1];
-				itr = kh_put(idx_rev, h, p->x>>ri->b<<1, &absent);
-				assert(absent);
+			khint_t itr;
+			int absent;
+			mm128_t *p = &b->a.a[j-1];
+			itr = kh_put(idx_rev, h, p->x>>ri->b<<1, &absent);
+			assert(absent && j == start_a + n);
+			if (n == 1) {
 				kh_key(h, itr) |= 1;
 				kh_val(h, itr) = p->y;
+			} else {
+				int k;
+				for (k = 0; k < n; ++k)
+					b->p[start_p + k] = b->a.a[start_a + k].y;
+				radix_sort_64(&b->p[start_p], &b->p[start_p + n]); // sort by position; needed as in-place radix_sort_128x() is not stable
+				kh_val(h, itr) = (uint64_t)start_p<<32 | n;
+				start_p += n;
 			}
-			n = 1;
+			start_a = j, n = 1;
 		} else ++n;
 	}
 	b->h = h;
+	assert(b->n == (int32_t)start_p);
 
 	// deallocate and clear b->a
 	ri_kfree(0, b->a.a);
@@ -411,8 +466,32 @@ static void worker_post_P(void *g, long i, int tid){
  
 static void ri_idx_post(ri_idx_t *ri, int n_threads){
 	kt_for(n_threads, worker_post, ri, 1<<ri->b);
-	if(ri->flag&RI_I_REV_QUERY)
-		kt_for(n_threads, worker_post_P, ri, 1<<ri->b);
+	// if(ri->flag&RI_I_REV_QUERY)
+	// 	kt_for(n_threads, worker_post_P, ri, 1<<ri->b);
+
+	// int* histogram = (int*)calloc(201, sizeof(int));
+
+	// for(int i = 0; i < 1<<ri->b; ++i){
+	// 	ri_idx_bucket_t *b = &ri->P[i];
+	// 	khint_t k;
+	// 	idx_revhash_t *h = (idx_revhash_t*)b->h;
+	// 	uint32_t size = h? h->size : 0;
+	// 	if (size == 0) continue;
+	// 	for (k = 0; k < kh_end(h); ++k) {
+	// 		uint32_t x;
+	// 		if (!kh_exist(h, k)) continue;
+	// 		x = (uint32_t)kh_val(h, k);
+	// 		if(kh_key(h, k)&1) histogram[0]++;
+	// 		else if(x < 201) histogram[x-1]++;
+	// 		else histogram[200]++;
+	// 	}
+	// }
+
+	// for(int i = 0; i < 201; i++){
+	// 	fprintf(stderr, "histogram[%d]: %d\n", i, histogram[i]);
+	// }
+
+	// free(histogram);
 }
 
 void ri_idx_sort(ri_idx_t *ri, int n_threads){
@@ -438,15 +517,33 @@ const uint64_t *ri_idx_get(const ri_idx_t *ri, uint64_t hashval, int *n){
 	}
 }
 
-const uint64_t *ri_idx_rev_get(const ri_idx_t *ri, uint64_t hashval){
-	uint64_t mask = (1ULL<<ri->b) - 1;
+// const uint64_t *ri_idx_rev_get(const ri_idx_t *ri, uint64_t hashval){
+// 	uint64_t mask = (1ULL<<ri->b) - 1;
+// 	khint_t k;
+// 	ri_idx_bucket_t *b = &ri->P[hashval&mask];
+// 	idx_revhash_t *h = (idx_revhash_t*)b->h;
+// 	if (h == 0) return 0;
+// 	k = kh_get(idx_rev, h, hashval>>ri->b<<1);
+// 	if (k == kh_end(h)) return 0;
+// 	return &kh_val(h, k);
+// }
+
+const uint64_t *ri_idx_rev_get(const ri_idx_t *ri, uint64_t hashval, int *n){
+	int mask = (1<<ri->b) - 1;
 	khint_t k;
 	ri_idx_bucket_t *b = &ri->P[hashval&mask];
 	idx_revhash_t *h = (idx_revhash_t*)b->h;
+	*n = 0;
 	if (h == 0) return 0;
 	k = kh_get(idx_rev, h, hashval>>ri->b<<1);
 	if (k == kh_end(h)) return 0;
-	return &kh_val(h, k);
+	if (kh_key(h, k)&1) { // special casing when there is only one k-mer
+		*n = 1;
+		return &kh_val(h, k);
+	} else {
+		*n = (uint32_t)kh_val(h, k);
+		return &b->p[kh_val(h, k)>>32];
+	}
 }
 
 void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
@@ -498,21 +595,21 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 			fwrite(&(ri->f_l_sig[i]), 4, 1, idx_file);
 			fwrite(ri->F[i], 4, ri->f_l_sig[i], idx_file);
 			ri_kfree(ri->km, ri->F[i]);
-			if(!(ri->flag&RI_I_REV_QUERY)){
+			// if(!(ri->flag&RI_I_REV_QUERY)){
 				fwrite(&(ri->r_l_sig[i]), 4, 1, idx_file);
 				fwrite(ri->R[i], 4, ri->r_l_sig[i], idx_file);
 				ri_kfree(ri->km, ri->R[i]);
-			}
+			// }
 		}
 	}
 
 	if(ri->flag & RI_I_STORE_SIG){
 		ri_kfree(ri->km, ri->F);
 		ri_kfree(ri->km, ri->f_l_sig);
-		if(!(ri->flag&RI_I_REV_QUERY)){
+		// if(!(ri->flag&RI_I_REV_QUERY)){
 			ri_kfree(ri->km, ri->R);
 			ri_kfree(ri->km, ri->r_l_sig);
-		}
+		// }
 	}
 
 	for (i = 0; i < 1U<<ri->b; ++i) {
@@ -532,24 +629,24 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 		}
 	}
 
-	if(ri->flag&RI_I_REV_QUERY){
-		for (i = 0; i < 1U<<ri->b; ++i) {
-			ri_idx_bucket_t *b = &ri->P[i];
-			khint_t k;
-			idx_revhash_t *h = (idx_revhash_t*)b->h;
-			uint32_t size = h? h->size : 0;
-			// fwrite(&b->n, 4, 1, idx_file);
-			// fwrite(b->p, 8, b->n, idx_file);
-			fwrite(&size, 4, 1, idx_file);
-			if (size == 0) continue;
-			for (k = 0; k < kh_end(h); ++k) {
-				uint64_t x[2];
-				if (!kh_exist(h, k)) continue;
-				x[0] = kh_key(h, k), x[1] = kh_val(h, k);
-				fwrite(x, 8, 2, idx_file);
-			}
-		}
-	}
+	// if(ri->flag&RI_I_REV_QUERY){
+	// 	for (i = 0; i < 1U<<ri->b; ++i) {
+	// 		ri_idx_bucket_t *b = &ri->P[i];
+	// 		khint_t k;
+	// 		idx_revhash_t *h = (idx_revhash_t*)b->h;
+	// 		uint32_t size = h? h->size : 0;
+	// 		fwrite(&b->n, 4, 1, idx_file);
+	// 		fwrite(b->p, 8, b->n, idx_file);
+	// 		fwrite(&size, 4, 1, idx_file);
+	// 		if (size == 0) continue;
+	// 		for (k = 0; k < kh_end(h); ++k) {
+	// 			uint64_t x[2];
+	// 			if (!kh_exist(h, k)) continue;
+	// 			x[0] = kh_key(h, k), x[1] = kh_val(h, k);
+	// 			fwrite(x, 8, 2, idx_file);
+	// 		}
+	// 	}
+	// }
 
 	fflush(idx_file);
 }
@@ -588,10 +685,10 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 	if(ri->flag & RI_I_STORE_SIG){
 		ri->F = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
 		ri->f_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
-		if(!(ri->flag&RI_I_REV_QUERY)){
+		// if(!(ri->flag&RI_I_REV_QUERY)){
 			ri->R = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
 			ri->r_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
-		}
+		// }
 	}
 
 	for (i = 0; i < ri->n_seq; ++i) {
@@ -625,11 +722,11 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 			ri->F[i] = (float*)ri_kmalloc(ri->km, ri->f_l_sig[i] * sizeof(float));
 			fread(ri->F[i], 4, ri->f_l_sig[i], idx_file);
 
-			if(!(ri->flag&RI_I_REV_QUERY)){
+			// if(!(ri->flag&RI_I_REV_QUERY)){
 				fread(&(ri->r_l_sig[i]), 4, 1, idx_file);
 				ri->R[i] = (float*)ri_kmalloc(ri->km, ri->r_l_sig[i] * sizeof(float));
 				fread(ri->R[i], 4, ri->r_l_sig[i], idx_file);
-			}
+			// }
 		}
 	}
 	
@@ -655,26 +752,29 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 		}
 	}
 
-	if(ri->flag&RI_I_REV_QUERY){
-		for (i = 0; i < 1U<<ri->b; ++i) {
-			ri_idx_bucket_t *b = &ri->P[i];
-			uint32_t j, size;
-			khint_t k;
-			idxhash_t *h;
-			fread(&size, 4, 1, idx_file);
-			if (size == 0) continue;
-			b->h = h = kh_init(idx);
-			kh_resize(idx, h, size);
-			for (j = 0; j < size; ++j) {
-				uint64_t x[2];
-				int absent;
-				fread(x, 8, 2, idx_file);
-				k = kh_put(idx, h, x[0], &absent);
-				assert(absent);
-				kh_val(h, k) = x[1];
-			}
-		}
-	}
+	// if(ri->flag&RI_I_REV_QUERY){
+	// 	for (i = 0; i < 1U<<ri->b; ++i) {
+	// 		ri_idx_bucket_t *b = &ri->P[i];
+	// 		uint32_t j, size;
+	// 		khint_t k;
+	// 		idx_revhash_t *h;
+	// 		fread(&b->n, 4, 1, idx_file);
+	// 		b->p = (uint64_t*)malloc(b->n * 8);
+	// 		fread(b->p, 8, b->n, idx_file);
+	// 		fread(&size, 4, 1, idx_file);
+	// 		if (size == 0) continue;
+	// 		b->h = h = kh_init(idx_rev);
+	// 		kh_resize(idx_rev, h, size);
+	// 		for (j = 0; j < size; ++j) {
+	// 			uint64_t x[2];
+	// 			int absent;
+	// 			fread(x, 8, 2, idx_file);
+	// 			k = kh_put(idx_rev, h, x[0], &absent);
+	// 			assert(absent);
+	// 			kh_val(h, k) = x[1];
+	// 		}
+	// 	}
+	// }
 
 	return ri;
 }
@@ -698,7 +798,7 @@ ri_idx_reader_t* ri_idx_reader_open(const char *fn, const ri_idxopt_t *ipt, cons
 		rh_kv_resize(char*, 0, fnames, 256);
 		find_sfiles(fn, &fnames);
 		r->sf =  fnames.a;
-		if(!fnames.n || ((r->sfp = open_sig(r->sf[0])) == 0)) return 0;
+		if(!fnames.n || ((r->sfp = open_sig(r->sf[0], 1)) == 0)) return 0;
 		if (r->sfp == 0) return 0;
 		r->n_f = fnames.n;
 		r->cur_f = 1;
@@ -732,59 +832,76 @@ static inline uint64_t hash64(uint64_t key, uint64_t mask){
     return key;
 }
 
-static void generate_kmers(ri_idx_t* ri) {
-	const short span = ri->e + ri->k - 1;
+// static void generate_kmers(ri_idx_t* ri) {
+// 	short ext = 0;
+// 	int32_t eL = ri->e + ext;
+// 	const short span = eL + ri->k - 1;
 
-	const uint64_t mask = (1ULL<<32)-1, mask_quant_bit = (1ULL<<ri->q)-1, maskQ = (1U << (2*ri->k))-1,  mask_events = (1ULL<<(ri->q*ri->e))-1, maskBucket = (1ULL<<ri->b) - 1;
+// 	const uint64_t mask = (1ULL<<32)-1, mask_quant_bit = (1ULL<<ri->q)-1, maskQ = (1U << (2*ri->k))-1, mask_eventsL = (1ULL<<(ri->q*eL))-1, mask_events = (1ULL<<(ri->q*ri->e))-1, maskBucket = (1ULL<<ri->b) - 1;
 	
-	const uint32_t n_buckets = 1UL<<ri->q;
-	uint32_t f_tmpQuantSignal = 0, qmer = 0;
-	uint64_t quantVal = 0, r_quantVal = 0;
+// 	const uint32_t n_buckets = 1U<<ri->q;
+// 	uint32_t f_tmpQuantSignal = 0, qmer = 0;
+// 	uint64_t quantVal = 0, r_quantVal = 0;
+// 	// int gen_count = 0;
 	
-	mm128_t kmerVal;
-	float prev_val;
-	int fail = 0;
-    for (uint32_t i = 0; i < (1U<<2*span); i++) {
-		qmer = (i >> (2 * (ri->e-1)))&maskQ;
-		prev_val = ri->pore->pore_vals[qmer];
-		f_tmpQuantSignal = dynamic_quantize(prev_val, ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
-		quantVal = f_tmpQuantSignal&mask_events;
-		for (int j = 1; j < ri->e; j++) {
-			qmer = (i >> (2 * (ri->e-1-j)))&maskQ;
-			if((fabs(ri->pore->pore_vals[qmer] - prev_val) < ri->diff)) {fail = 1; break;};
-			prev_val = ri->pore->pore_vals[qmer];
+// 	mm128_t kmerVal;
+// 	float prev_val;
+// 	int fail = 0;
+//     for (uint64_t i = 0; i < (1UL<<2*span); i++) {
+// 		qmer = (i >> (2 * (eL-1)))&maskQ;
+// 		prev_val = ri->pore->pore_vals[qmer];
+// 		f_tmpQuantSignal = dynamic_quantize(prev_val, ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
+// 		quantVal = f_tmpQuantSignal&mask_eventsL;
 
-			f_tmpQuantSignal = dynamic_quantize(ri->pore->pore_vals[qmer], ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
-			quantVal = (quantVal<<ri->q|f_tmpQuantSignal)&mask_events;
-    	}
+// 		for (int j = 1; j < eL; j++) {
+// 			qmer = (i >> (2 * (eL-1-j)))&maskQ;
+// 			if((fabs(ri->pore->pore_vals[qmer] - prev_val) < ri->diff)) {fail = 1; break;};
+// 			prev_val = ri->pore->pore_vals[qmer];
 
-		if(fail == 0){
-			//reverse complementing
-			uint32_t x = i, y = 0;
-			for (short j = 0; j < span; j++) {
-				y = (y<<2) | ((x&3)^3);
-				x >>= 2;
-			}
+// 			f_tmpQuantSignal = dynamic_quantize(ri->pore->pore_vals[qmer], ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
+// 			quantVal = (quantVal<<ri->q|f_tmpQuantSignal)&mask_eventsL;
+//     	}
 
-			r_quantVal = 0;
-			for (int j = 0; j < ri->e; j++) {
-				qmer = (y >> (2 * (ri->e-1-j)))&maskQ;
-				f_tmpQuantSignal = dynamic_quantize(ri->pore->pore_vals[qmer], ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
-				r_quantVal = (r_quantVal<<ri->q|f_tmpQuantSignal)&mask_events;
-			}
+// 		if(fail == 0){
+// 			//reverse complementing
+// 			uint64_t x = i, y = 0;
+// 			for (short j = 0; j < span - ext; j++) {
+// 				y = (y<<2) | ((x&3)^3);
+// 				x >>= 2;
+// 			}
 
-			kmerVal.x = quantVal;
-			kmerVal.y = hash64(r_quantVal, mask);
-			// kmerVal.y = quantVal;
-			mm128_v *p = &ri->P[quantVal&maskBucket].a;
-			rh_kv_push(mm128_t, 0, *p, kmerVal);
-		}
-		fail = 0;
-    }
-	// if(riv.a){ri_kfree(0, riv.a); riv.a = NULL; riv.n = riv.m = 0;}
-}
+// 			r_quantVal = 0;
 
-ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
+// 			qmer = (y >> (2 * (ri->e-1)))&maskQ;
+// 			prev_val = ri->pore->pore_vals[qmer];
+// 			f_tmpQuantSignal = dynamic_quantize(prev_val, ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
+// 			r_quantVal = f_tmpQuantSignal&mask_events;
+// 			for (int j = 1; j < ri->e; j++) {
+// 				qmer = (y >> (2 * (ri->e-1-j)))&maskQ;
+// 				if((fabs(ri->pore->pore_vals[qmer] - prev_val) < ri->diff)) {fail = 1; break;};
+// 				prev_val = ri->pore->pore_vals[qmer];
+// 				f_tmpQuantSignal = dynamic_quantize(ri->pore->pore_vals[qmer], ri->fine_min, ri->fine_max, ri->fine_range, n_buckets)&mask_quant_bit;
+// 				r_quantVal = (r_quantVal<<ri->q|f_tmpQuantSignal)&mask_events;
+// 			}
+
+// 			if(fail == 0){
+// 				kmerVal.x = quantVal;
+// 				kmerVal.y = hash64(r_quantVal, mask);
+// 				// fprintf(stderr, "qmer: %u, quantval: %lu, r_quantval: %lu, hash: %lu\n", i, kmerVal.x, r_quantVal, kmerVal.y);
+// 				// kmerVal.y = quantVal;
+// 				mm128_v *p = &ri->P[quantVal&maskBucket].a;
+// 				rh_kv_push(mm128_t, 0, *p, kmerVal);
+// 				// gen_count++;
+// 			}
+// 		}
+// 		fail = 0;
+//     }
+
+// 	// fprintf(stderr, "Generated %d kmers\n", gen_count);
+// 	// if(riv.a){ri_kfree(0, riv.a); riv.a = NULL; riv.n = riv.m = 0;}
+// }
+
+ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, int flag, int mini_batch_size, int n_threads, int io_n_threads, uint64_t batch_size)
 {
 	if(flag&RI_I_SIG_TARGET) return 0;
 
@@ -803,7 +920,7 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	pl.ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(ri_porei_t));
 	memcpy(pl.ri->pore->pore_inds, pore->pore_inds, pore->n_pore_vals * sizeof(ri_porei_t));
 
-	if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
+	// if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
 
 	kt_pipeline(n_threads < 3? n_threads : 3, worker_pipeline, &pl, 3);
 	ri_idx_post(pl.ri, n_threads);
@@ -811,7 +928,7 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	return pl.ri;
 }
 
-ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, int flag, int mini_batch_size, int n_threads, uint64_t batch_size)
+ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_pore_t* pore, float diff, int b, int w, int e, int n, int q, int k, float fine_min, float fine_max, float fine_range, uint32_t window_length1, uint32_t window_length2, float threshold1, float threshold2, float peak_height, int flag, int mini_batch_size, int n_threads, int io_n_threads, uint64_t batch_size)
 {
 	if(!(flag&RI_I_SIG_TARGET)) return 0;
 
@@ -841,7 +958,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.ri->threshold2 = threshold2;
 	pl.ri->peak_height = peak_height;
 
-	if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
+	// if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
 
 	int n_steps = (pl.ri->flag&RI_I_OUT_QUANTIZE)?2:3;
 	kt_pipeline(n_threads < n_steps? n_threads : n_steps, worker_sig_pipeline, &pl, n_steps);
@@ -855,15 +972,15 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	return pl.ri;
 }
 
-ri_idx_t* ri_idx_reader_read(ri_idx_reader_t* r, ri_pore_t* pore, int n_threads){
+ri_idx_t* ri_idx_reader_read(ri_idx_reader_t* r, ri_pore_t* pore, int n_threads, int io_n_threads){
 
 	ri_idx_t *ri = 0;
 	if (r->is_idx) {
 		ri = ri_idx_load(r->fp.idx);
 	} else if(r->opt.flag&RI_I_SIG_TARGET) {
-		ri = ri_idx_siggen(&(r->sfp), r->sf, r->cur_f, r->n_f, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.k, r->opt.fine_min, r->opt.fine_max, r->opt.fine_range, r->opt.window_length1, r->opt.window_length2, r->opt.threshold1, r->opt.threshold2, r->opt.peak_height, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
+		ri = ri_idx_siggen(&(r->sfp), r->sf, r->cur_f, r->n_f, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.k, r->opt.fine_min, r->opt.fine_max, r->opt.fine_range, r->opt.window_length1, r->opt.window_length2, r->opt.threshold1, r->opt.threshold2, r->opt.peak_height, r->opt.flag, r->opt.mini_batch_size, n_threads, io_n_threads, r->opt.batch_size);
 	} else{
-		ri = ri_idx_gen(r->fp.seq, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.k, r->opt.fine_min, r->opt.fine_max, r->opt.fine_range, r->opt.flag, r->opt.mini_batch_size, n_threads, r->opt.batch_size);
+		ri = ri_idx_gen(r->fp.seq, pore, r->opt.diff, r->opt.b, r->opt.w, r->opt.e, r->opt.n, r->opt.q, r->opt.k, r->opt.fine_min, r->opt.fine_max, r->opt.fine_range, r->opt.flag, r->opt.mini_batch_size, n_threads, io_n_threads, r->opt.batch_size);
 	}
 
 	if (ri) {

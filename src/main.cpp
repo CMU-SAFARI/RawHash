@@ -11,7 +11,7 @@
 static ko_longopt_t long_options[] = {
 	{ (char*)"level_column",     	ko_required_argument, 	300 },
 	{ (char*)"q-mid-occ",     		ko_required_argument, 	301 },
-	{ (char*)"mid_occ_frac",     		ko_required_argument, 	302 },
+	{ (char*)"mid_occ_frac",     	ko_required_argument, 	302 },
 	{ (char*)"min-events",			ko_required_argument, 	303 },
 	{ (char*)"bw",					ko_required_argument, 	304 },
 	{ (char*)"max-target-gap",		ko_required_argument, 	305 },
@@ -69,15 +69,17 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"dtw-min-score", 		ko_required_argument, 	357 },
 	{ (char*)"log-anchors",			ko_no_argument,			358 },
 	{ (char*)"log-num-anchors",		ko_no_argument,			359 },
-	// { (char*)"ava",					ko_no_argument, 	  	360 },
-	{ (char*)"r10",					ko_no_argument, 		361 },
+	{ (char*)"rev-collision-count", ko_required_argument, 	360 },
+	{ (char*)"chn-rev-bump", 		ko_required_argument, 	361 },
 	{ (char*)"rev-query",			ko_no_argument, 		362 },
+	{ (char*)"r10",					ko_no_argument, 		363 },
 	{ (char*)"fine-min",			ko_required_argument, 	364 },
 	{ (char*)"fine-max",			ko_required_argument, 	365 },
 	{ (char*)"fine-range",			ko_required_argument, 	366 },
 	{ (char*)"out-quantize",		ko_no_argument,  		367 },
 	{ (char*)"no-event-detection",	ko_no_argument,  		368 },
-	{ (char*)"version",				ko_no_argument, 	  	369 },
+	{ (char*)"io-thread",			ko_required_argument, 	369 },
+	{ (char*)"version",				ko_no_argument, 	  	370 },
 	{ 0, 0, 0 }
 };
 
@@ -221,7 +223,7 @@ int main(int argc, char *argv[])
 	ketopt_t o = KETOPT_INIT;
 	ri_mapopt_t opt;
   	ri_idxopt_t ipt;
-	int c, n_threads = 3;
+	int c, n_threads = 3, io_n_threads = 1;
 	// int n_parts;
 	char *fnw = 0, *fpore = 0, *s;
 	FILE *fp_help = stderr;
@@ -353,7 +355,10 @@ int main(int argc, char *argv[])
 		else if (c == 357) opt.dtw_min_score = atof(o.arg); // --dtw-min-score
 		else if (c == 358) opt.flag |= RI_M_LOG_ANCHORS; // --log-anchors
 		else if (c == 359) opt.flag |= RI_M_LOG_NUM_ANCHORS; // --log-num-anchors
-		else if (c == 361) { // --r10
+		else if (c == 360) opt.rev_col_limit = atoi(o.arg); // --rev-collision-count
+		else if (c == 361) opt.chn_rev_bump = atof(o.arg); // --chn-rev-bump
+		// else if (c == 362) {ipt.flag |= RI_I_REV_QUERY;}// --rev-query
+		else if (c == 363) { // --r10
 			ipt.k = 9;
 
 			ipt.window_length1 = 3; ipt.window_length2 = 6;
@@ -366,13 +371,13 @@ int main(int argc, char *argv[])
 
 			opt.chain_gap_scale = 1.2f;
 		}
-		else if (c == 362) {ipt.flag |= RI_I_REV_QUERY;}// --rev-query
 		else if (c == 364) {ipt.fine_min = atof(o.arg);}// --fine-min
 		else if (c == 365) {ipt.fine_max = atof(o.arg);}// --fine-max
 		else if (c == 366) {ipt.fine_range = atof(o.arg);}// --fine-range
 		else if (c == 367) {ipt.flag |= RI_I_OUT_QUANTIZE; ipt.flag |= RI_I_SIG_TARGET;}// --out-quantize
 		else if (c == 368) {ipt.flag |= RI_I_NO_EVENT_DETECTION;}// --no-event-detection
-		else if (c == 369) {puts(RH_VERSION); return 0;}// --version
+		else if (c == 369) {io_n_threads = atoi(o.arg);}// --io-thread
+		else if (c == 379) {puts(RH_VERSION); return 0;}// --version
 		else if (c == 'V') {puts(RH_VERSION); return 0;}
 	}
 
@@ -454,6 +459,7 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "\n  Input/Output:\n");
 		fprintf(fp_help, "    -o FILE     output mappings to FILE [stdout]\n");
 		fprintf(fp_help, "    -t INT      number of threads [%d]\n", n_threads);
+		fprintf(fp_help, "    --io-thread INT      number of threads allocated for IO operations (i.e., reading from a file) out of all threads that will be used for this run (-t). Only available for S/BLOW5 files for now. INT must be smaller than the overall number of threads (-t) [%d]\n", io_n_threads);
 		fprintf(fp_help, "    -K NUM      minibatch size for mapping [500M]. Increasing this value may increase thread utilization. If there are many larger FAST5 files, it is recommended to keep this value between 500M - 5G to use less memory while utilizing threads nicely.\n");
 //		fprintf(fp_help, "    -v INT     verbose level [%d]\n", ri_verbose);
 
@@ -477,6 +483,11 @@ int main(int argc, char *argv[])
 		
 		// fprintf(fp_help, "\nSee `man ./rawhash.1' for detailed description of these and other advanced command-line options.\n");
 		return fp_help == stdout? 0 : 1;
+	}
+
+	if(n_threads <= io_n_threads){
+		fprintf(stderr, "[ERROR] The number of IO threads must be smaller than the overall number of threads. Please set --io-thread INT smaller than -t INT\n");
+		return 1;
 	}
 
 	if(ipt.w && ipt.n){
@@ -517,7 +528,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	while ((ri = ri_idx_reader_read(idx_rdr, &pore, n_threads)) != 0) {
+	while ((ri = ri_idx_reader_read(idx_rdr, &pore, n_threads, io_n_threads)) != 0) {
 		int ret;
 		if (ri_verbose >= 3)
 			fprintf(stderr, "[M::%s::%.3f*%.2f] loaded/built the index for %d target sequence(s)\n",
@@ -532,12 +543,12 @@ int main(int argc, char *argv[])
 		ret = 0;
 		// if (!(opt.flag & MM_F_FRAG_MODE)) { //TODO: enable frag mode directly from options
 		// for (i = o.ind + 1; i < argc; ++i) {
-		// 	ret = ri_map_file(ri, argv[i], &opt, n_threads);
+		// 	ret = ri_map_file(ri, argv[i], &opt, n_threads, io_n_threads);
 		// 	if (ret < 0) break;
 		// }
 		// }
 		// else { //TODO: enable frag mode directly from options
-			ret = ri_map_file_frag(ri, argc - (o.ind + 1), (const char**)&argv[o.ind + 1], &opt, n_threads);
+			ret = ri_map_file_frag(ri, argc - (o.ind + 1), (const char**)&argv[o.ind + 1], &opt, n_threads, io_n_threads);
 		// }
 		ri_idx_destroy(ri);
 		if (ret < 0) {

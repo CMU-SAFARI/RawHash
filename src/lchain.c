@@ -373,7 +373,7 @@ mm128_t *mg_lchain_dp(int max_dist_t,
                       int min_sc,
                       float chn_pen_gap,
                       float chn_pen_skip,
-					//   int is_cdna, 
+					//   float chn_rev_bump, 
                     //   int n_seg, 
                       int64_t *n, 
                       mm128_t *a, 
@@ -470,6 +470,7 @@ mm128_t *mg_lchain_dp(int max_dist_t,
 
 		// Update the score and the predecessor of anchor i based on the found best predecessor max_j
 		f[i] = max_f, p[i] = max_j;
+		// if(a[i].x >> 63) f[i] *= chn_rev_bump; //this is mainly for reverse complememting using signals, otherwise it has no effect (1.0)
 
 		// v[] keeps the peak score up to i; f[] is the score ending at i, not always the peak
 		// v[i] is almost the same as f[i] but it can assign v[i] = v[max_j] where peak score of max_j can be better than f[i]

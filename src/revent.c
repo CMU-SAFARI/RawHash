@@ -274,6 +274,8 @@ float* detect_events(void *km,
 	uint32_t n_signals = 0;
 	(*n_events) = 0;
 	float* norm_signals = normalize_signal(km, sig, s_len, mean_sum, std_dev_sum, n_events_sum, &n_signals);
+
+	//output the signal
 	if(n_signals == 0) return 0;
 	comp_prefix_prefixsq(norm_signals, n_signals, prefix_sum, prefix_sum_square);
 	

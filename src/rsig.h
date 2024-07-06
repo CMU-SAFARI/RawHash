@@ -10,6 +10,7 @@
 #endif
 #ifndef NSLOW5RH
 #include <slow5/slow5.h>
+#include <slow5/slow5_mt.h>
 #endif
 
 #ifdef __cplusplus
@@ -53,6 +54,9 @@ typedef struct ri_sig_file_s {
 	#endif
 
 	#ifndef NSLOW5RH
+	slow5_mt_t* slow5_mt;
+	slow5_batch_t* slow5_batch;
+	// slow5_rec_t** slow5_rec;
 	slow5_file_t* sp; //SLOW5 file pointer
 	#endif
 } ri_sig_file_t;
@@ -73,7 +77,7 @@ void ri_sig_close(ri_sig_file_t *fp);
  * @return		a struct that includes the file pointer to the opened signal file
  * 				Returned struct (and its variables) is allocated in this function.
  */
-ri_sig_file_t *open_sig(const char *fn);
+ri_sig_file_t *open_sig(const char *fn, int io_n_threads = 1);
 
 /**
  * Opens all the signal files (e.g., FAST5 files)
@@ -84,7 +88,7 @@ ri_sig_file_t *open_sig(const char *fn);
  * @return		List of structs that include the file pointers to each opened signal file
  * 				Returned structs (and their variables) are allocated in this function.
  */
-ri_sig_file_t **open_sigs(int n, const char **fn);
+ri_sig_file_t **open_sigs(int n, const char **fn, int io_n_threads = 1);
 
 /**
  * Converts the sequence into its expected event values
@@ -114,7 +118,7 @@ void ri_seq_to_sig(const char *str,
  * 				$s->sig = signal values
  * 				$s->l_sig = number of signal values
  */
-void ri_read_sig(ri_sig_file_t* fp, ri_sig_t* s);
+void ri_read_sig(ri_sig_file_t* fp, ri_sig_t* s, int io_n_threads = 1);
 
 /**
  * Recursively find all files that ends with "fast5" under input directory const char *A

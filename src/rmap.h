@@ -44,7 +44,7 @@ typedef struct ri_reg1_s{
 } ri_reg1_t;
 
 typedef struct pipeline_ms{
-	int n_processed, n_threads, n_fp, cur_fp, n_f, cur_f;
+	int n_processed, n_threads, io_n_threads, n_fp, cur_fp, n_f, cur_f;
 	int64_t mini_batch_size;
 	const ri_mapopt_t *opt;
 	char **f;
@@ -73,10 +73,11 @@ typedef struct step_ms{
  * @param fn		path to the signal files
  * @param opt		mapping options
  * @param n_threads	number of threads to use in mapping
+ * @param io_n_threads	number of threads to use in I/O operations (reading from a file)
  * 
  * @return		returns 0 if mapping is completed with no issues. -1, otherwise.
  */
-int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int n_threads);
+int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int n_threads, int io_n_threads = 1);
 
 /**
  * Map raw nanopore signals of many reads to a reference genome
@@ -86,10 +87,11 @@ int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int
  * @param fn		paths to the signal files
  * @param opt		mapping options
  * @param n_threads	number of threads to use in mapping
+ * @param io_n_threads	number of threads to use in I/O operations (reading from a file)
  * 
  * @return			returns 0 if mapping is completed with no issues. -1, otherwise.
  */
-int ri_map_file_frag(const ri_idx_t *idx, int n_segs, const char **fn, const ri_mapopt_t *opt, int n_threads);
+int ri_map_file_frag(const ri_idx_t *idx, int n_segs, const char **fn, const ri_mapopt_t *opt, int n_threads, int io_n_threads = 1);
 
 #ifdef __cplusplus
 }
