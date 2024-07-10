@@ -7,15 +7,21 @@ function(override_cached name value)
     set(${name} ${value} CACHE ${type} ${doc_string} FORCE)
 endfunction()
 
+
 function(link_imported_library TARGET_NAME LIB_NAME LIB_DIR)
-    add_library(${LIB_NAME} SHARED IMPORTED)
-    file(MAKE_DIRECTORY ${LIB_DIR}/include)
     set_target_properties(${LIB_NAME} PROPERTIES
         IMPORTED_LOCATION ${LIB_DIR}/lib/lib${LIB_NAME}.so
         INTERFACE_INCLUDE_DIRECTORIES ${LIB_DIR}/include
     )
     target_link_libraries(${TARGET_NAME} PRIVATE ${LIB_NAME})
 endfunction()
+
+
+function(define_imported_library LIB_NAME LIB_DIR)
+    add_library(${LIB_NAME} SHARED IMPORTED)
+    file(MAKE_DIRECTORY ${LIB_DIR}/include)
+endfunction()
+
 
 function(check_directory_exists_and_non_empty DIR)
     if(NOT EXISTS ${DIR})

@@ -1,3 +1,15 @@
+include(${CMAKE_CURRENT_LIST_DIR}/SetupRUClient.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/SetupPOD5.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/SetupHDF5.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/SetupSLOW5.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/SetupTFLite.cmake)
+
+setup_pod5()
+setup_ruclient()
+setup_hdf5()
+setup_slow5()
+setup_tflite()
+
 function(setup_rawhashlike_target TARGET_NAME)
     # if(PYBINDING)
     #     message(FATAL_ERROR "Building with Python binding support is not implemented")
@@ -77,4 +89,10 @@ function(setup_rawhashlike_target TARGET_NAME)
             PROFILERH=1
         )
     endif()
+
+    add_pod5_to_target(${TARGET_NAME})
+    add_hdf5_to_target(${TARGET_NAME})
+    add_slow5_to_target(${TARGET_NAME})
+    add_tflite_to_target(${TARGET_NAME})
+    add_ruclient_to_target(${TARGET_NAME})
 endfunction()
