@@ -510,17 +510,19 @@ static inline void ri_read_sig_slow5(ri_sig_file_t* fp, ri_sig_t* s){
 	// 	fp->cur_read = fp->num_read;
 	// }
 
-	// if(fp->cur_read >= fp->num_read){
-	// 	fp->num_read = slow5_get_next_batch(fp->slow5_mt, fp->slow5_batch, 4096);
-	// 	fp->cur_read = 0;
+	if((fp->cur_read >= fp->num_read) && !(fp->num_read < 4096)){
 
-	// 	if(fp->num_read <= 0){
-	// 		fp->num_read = 0;
-	// 		// fprintf(stderr, "ERROR: Failed to read the next batch of reads\n");
-	// 		// slow5_rec_free(rec);
-	// 		// return;
-	// 	}
-	// }
+		fp->num_read = slow5_get_next_batch(fp->slow5_mt, fp->slow5_batch, 4096);
+		fp->cur_read = 0;
+
+		if(fp->num_read <= 0){
+			fp->num_read = 0;
+			// fprintf(stderr, "ERROR: Failed to read the next batch of reads\n");
+			// slow5_rec_free(rec);
+			// return;
+		}
+	}
+
 
 	s->sig = (float*)calloc(l_sig, sizeof(float));
 	s->l_sig = l_sig;
