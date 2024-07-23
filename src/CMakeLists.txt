@@ -42,21 +42,20 @@ set(CMAKE_VERBOSE_MAKEFILE TRUE CACHE BOOL "verbose makefile" FORCE) # print com
 enable_ccache()
 set_alternate_linker(mold)
 
-add_executable(rawhash2 main.cpp)
-setup_rawhashlike_target(rawhash2)
+add_executable(rawhash2_builtin main.cpp)
+setup_rawhashlike_target(rawhash2_builtin)
 
-add_library(rawhash2_wrapper SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
-setup_rawhashlike_target(rawhash2_wrapper)
+add_library(rawhash2_lib SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
+setup_rawhashlike_target(rawhash2_lib)
 
 file(GLOB_RECURSE HEADER_FILES ${CMAKE_SOURCE_DIR}/src/*.h ${CMAKE_SOURCE_DIR}/src/*.hpp)
-set_property(TARGET rawhash2_wrapper PROPERTY PUBLIC_HEADER ${HEADER_FILES})
-set_target_properties(rawhash2_wrapper PROPERTIES INSTALL_RPATH $ORIGIN)
-
-add_executable(rawhash2_usinglib wrapper_example.cpp)
-target_link_libraries(rawhash2_usinglib PRIVATE rawhash2_wrapper)
-set_target_properties(rawhash2_usinglib PROPERTIES INSTALL_RPATH $ORIGIN/../lib)
-
-install(TARGETS rawhash2_wrapper rawhash2_usinglib
-        RUNTIME DESTINATION bin
+set_property(TARGET rawhash2_lib PROPERTY PUBLIC_HEADER ${HEADER_FILES})
+set_target_properties(rawhash2_lib PROPERTIES INSTALL_RPATH $ORIGIN OUTPUT_NAME rawhash2)
+install(TARGETS rawhash2_lib
         LIBRARY DESTINATION lib
         PUBLIC_HEADER DESTINATION include/${PROJECT_NAME})
+
+add_executable(rawhash2 wrapper_example.cpp)
+target_link_libraries(rawhash2 PRIVATE rawhash2_lib)
+set_target_properties(rawhash2 PROPERTIES INSTALL_RPATH $ORIGIN/../lib)
+install(TARGETS rawhash2 RUNTIME DESTINATION bin)
