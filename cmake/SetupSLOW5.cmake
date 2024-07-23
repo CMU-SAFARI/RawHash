@@ -1,4 +1,4 @@
-include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
 function(add_slow5_to_target TARGET_NAME)
     if(NOSLOW5)
@@ -7,7 +7,7 @@ function(add_slow5_to_target TARGET_NAME)
         if(SLOW5_COMPILE)
             add_dependencies(${TARGET_NAME} slow5_build)
         endif()
-        link_imported_library(${TARGET_NAME} slow5 ${SLOW5_DIR})
+        target_link_libraries(${TARGET_NAME} PRIVATE slow5)
     endif()
 endfunction()
 

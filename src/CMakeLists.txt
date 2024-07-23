@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(RawHash2Src)
+project(RawHash2)
 
 # option(USE_CCACHE "Use ccache to speed up rebuilds" ON)
 # option(USE_MOLD "Use mold linker for faster linking" ON)
@@ -48,5 +48,15 @@ setup_rawhashlike_target(rawhash2)
 add_library(rawhash2_wrapper SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
 setup_rawhashlike_target(rawhash2_wrapper)
 
+file(GLOB_RECURSE HEADER_FILES ${CMAKE_SOURCE_DIR}/src/*.h ${CMAKE_SOURCE_DIR}/src/*.hpp)
+set_property(TARGET rawhash2_wrapper PROPERTY PUBLIC_HEADER ${HEADER_FILES})
+set_target_properties(rawhash2_wrapper PROPERTIES INSTALL_RPATH $ORIGIN)
+
 add_executable(rawhash2_usinglib wrapper_example.cpp)
 target_link_libraries(rawhash2_usinglib PRIVATE rawhash2_wrapper)
+set_target_properties(rawhash2_usinglib PROPERTIES INSTALL_RPATH $ORIGIN/../lib)
+
+install(TARGETS rawhash2_wrapper rawhash2_usinglib
+        RUNTIME DESTINATION bin
+        LIBRARY DESTINATION lib
+        PUBLIC_HEADER DESTINATION include/${PROJECT_NAME})

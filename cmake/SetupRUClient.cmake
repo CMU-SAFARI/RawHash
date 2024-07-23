@@ -1,4 +1,4 @@
-include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
 function(add_ruclient_to_target TARGET_NAME)
     if(RUCLIENT_ENABLED)

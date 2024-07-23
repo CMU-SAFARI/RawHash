@@ -1,9 +1,9 @@
-include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
 function(add_zstd_to_target TARGET_NAME)
     set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
     add_dependencies(${TARGET_NAME} zstd_build)
-    link_imported_library(${TARGET_NAME} zstd ${ZSTD_DIR})
+    target_link_libraries(${TARGET_NAME} PRIVATE zstd)
 endfunction()
 
 function(setup_zstd)
@@ -100,7 +100,7 @@ endfunction()
 
 
 # not working because of improper design, PARENT_SCOPE should not be used, rather define targets properly
-# include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+# include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
 # set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
 

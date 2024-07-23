@@ -1,4 +1,4 @@
-include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
 function(add_hdf5_to_target TARGET_NAME)
     if(NOHDF5)
@@ -7,7 +7,7 @@ function(add_hdf5_to_target TARGET_NAME)
         if(HDF5_COMPILE)
             add_dependencies(${TARGET_NAME} hdf5_build)
         endif()
-        link_imported_library(${TARGET_NAME} hdf5 ${HDF5_DIR})
+        target_link_libraries(${TARGET_NAME} PRIVATE hdf5)
     endif()
 endfunction()
 

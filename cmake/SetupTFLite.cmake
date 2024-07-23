@@ -1,4 +1,4 @@
-include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
 function(add_tflite_to_target TARGET_NAME)
     target_link_libraries(${TARGET_NAME} PRIVATE tensorflow-lite)
