@@ -9,7 +9,7 @@ COPY . /rawhash2
 
 RUN mkdir -p build && cd build \
     && cmake .. \
-    && make -j
+    && make -j 3
 
 ENTRYPOINT ["./build/bin/rawhash2"]
 
