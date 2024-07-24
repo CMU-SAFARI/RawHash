@@ -45,7 +45,7 @@ cd rawhash2 && git submodule update --init --recursive
 # if not doing a fresh clone, make sure that the submodules don't have anything built from previous makefile-based 
 # setup , i.e. delete extern directory, then initialize submodules as above
 (mkdir -p build && cd build && cmake .. && make -j)
-build/bin/rawhash2
+build/bin/rawhash2 -h
 ```
 
 Troubleshooting:
@@ -53,6 +53,26 @@ Troubleshooting:
 - updating submodules: the current cmake setup may not correctly handle this, so the easiest solution is to delete the build directory
 
 If the compilation is successful, the default path to the binary will be `build/bin/rawhash2`.
+
+* Installation
+
+You can install RawHash2 into the CMake-provided platform-specific destination (e.g. `/usr/local/` on UNIX) with `make install`:
+
+```bash
+make install
+rawhash2 -h
+```
+
+Installation directory can be overridden by providing `-DCMAKE_INSTALL_PREFIX=...` argument to the `cmake ..` command, e.g.
+
+```bash
+cmake -DCMAKE_INSTALL_PREFIX=./install ..
+make -j
+make install
+./install/bin/rawhash2 -h
+```
+
+Note that `CMAKE_INSTALL_PREFIX` is a cached variable in CMake.
 
 ## Compiling with HDF5, SLOW5, and POD5
 

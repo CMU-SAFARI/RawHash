@@ -5,6 +5,12 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      use_cache:
+        description: 'Use cache for this run'
+        required: true
+        default: 'true'
 
 jobs:
   build:
@@ -30,6 +36,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build directory
+        if: github.event_name != 'workflow_dispatch' || github.event.inputs.use_cache == 'true'
         uses: actions/cache@v3
         with:
           path: build
