@@ -56,6 +56,7 @@ jobs:
         run: |
           container_id=$(docker create ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest)
           docker cp $container_id:/rawhash2/build ./build
+          find ./build -type f -name "*.a" -exec touch {} \;
           docker rm $container_id
 
       - name: Run Docker container
