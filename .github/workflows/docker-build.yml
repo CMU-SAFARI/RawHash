@@ -5,6 +5,12 @@ on:
     branches:
       - main
   pull_request:
+  workflow_dispatch:
+    inputs:
+      use_cache:
+        description: 'Use cache for this run'
+        required: true
+        default: 'true'
 
 jobs:
   build:
@@ -30,6 +36,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Cache build directory
+        if: github.event.inputs.use_cache == 'true'
         uses: actions/cache@v3
         with:
           path: build
@@ -56,8 +63,6 @@ jobs:
         run: |
           container_id=$(docker create ghcr.io/${{ steps.repo_owner.outputs.owner }}/build_test:latest)
           docker cp $container_id:/rawhash2/build ./build
-          find ./build -type f -name "*.o" -exec touch {} \;
-          find ./build -type f -name "*.a" -exec touch {} \;
           docker rm $container_id
 
       - name: Run Docker container
