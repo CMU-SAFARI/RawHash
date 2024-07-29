@@ -485,8 +485,8 @@ int main(int argc, char *argv[])
 		return fp_help == stdout? 0 : 1;
 	}
 
-	if(n_threads <= io_n_threads){
-		fprintf(stderr, "[ERROR] The number of IO threads must be smaller than the overall number of threads. Please set --io-thread INT smaller than -t INT\n");
+	if(n_threads < io_n_threads){
+		fprintf(stderr, "[ERROR] The overall number of threads (-t [%d]) must NOT be smaller than the number of IO threads (--io-thread [%d).\n", n_threads, io_n_threads);
 		return 1;
 	}
 

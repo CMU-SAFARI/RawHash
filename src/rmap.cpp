@@ -656,6 +656,11 @@ static void *map_worker_pipeline(void *shared,
         s = (step_mt*)calloc(1, sizeof(step_mt));
 
 		s->sig = ri_sig_read_frag(p, p->mini_batch_size, &s->n_sig);
+
+		#ifdef PROFILERH
+		ri_filereadtime += ri_realtime() - file_t;
+		#endif
+
 		if (s->n_sig && !p->su_stop) {
 			s->p = p;
 			for (i = 0; i < s->n_sig; ++i)
@@ -671,10 +676,7 @@ static void *map_worker_pipeline(void *shared,
 			if(s->sig) {free(s->sig); s->sig = NULL;}
 			free(s); s = NULL;
 		}
-		#ifdef PROFILERH
-		ri_filereadtime += ri_realtime() - file_t;
-		#endif
-    } else if (step == 1) { // step 1: detect events
+    } else if (step == 1) { // step 1: map
 		step_mt *s = (step_mt*)in;
 		#ifdef PROFILERH
 		double map_multit = ri_realtime();
@@ -810,7 +812,7 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	pl.io_n_threads = io_n_threads > 1?io_n_threads:1;
 	pl.n_threads = (n_threads - pl.io_n_threads > 1)?(n_threads - pl.io_n_threads):1;
 	pl.mini_batch_size = opt->mini_batch_size;
-	pl_threads = (pl.io_n_threads > 1 || n_threads > 1)?2:1;
+	pl_threads = (pl.n_threads > 1)?2:1;
 	if(!fnames.n || ((pl.fp = open_sig(pl.f[0], pl.io_n_threads)) == 0)){rh_kv_destroy(fnames); return -1;}
 	if (pl.fp == 0){rh_kv_destroy(fnames); return -1;}
 	pl.fn = fn;
