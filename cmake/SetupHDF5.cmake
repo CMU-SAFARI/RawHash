@@ -7,7 +7,7 @@ function(add_hdf5_to_target TARGET_NAME)
         if(HDF5_COMPILE)
             add_dependencies(${TARGET_NAME} hdf5_build)
         endif()
-        target_link_libraries(${TARGET_NAME} PRIVATE hdf5)
+        add_imported_library(${TARGET_NAME} hdf5)
     endif()
 endfunction()
 
@@ -24,6 +24,7 @@ function(setup_hdf5)
             set(HDF5_BUILD_DIR ${HDF5_DIR}/build)
             ExternalProject_Add(
                 hdf5_build
+                BUILD_ALWAYS 1 # Rebuild if local checkout is updated
                 SOURCE_DIR ${HDF5_SOURCE_DIR}
                 BINARY_DIR ${HDF5_BUILD_DIR}
                 CONFIGURE_COMMAND ${HDF5_SOURCE_DIR}/configure --enable-threadsafe --disable-hl --prefix=${HDF5_BUILD_DIR}
@@ -35,6 +36,6 @@ function(setup_hdf5)
                 message(FATAL_ERROR "HDF5_COMPILE is OFF, but no dir provided")
             endif()
         endif()
-        define_imported_library(hdf5 ${HDF5_DIR})
+        define_imported_library(hdf5 ${HDF5_DIR} SHARED)
     endif()
 endfunction()

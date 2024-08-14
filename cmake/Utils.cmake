@@ -8,16 +8,24 @@ function(override_cached name value)
 endfunction()
 
 
-function(define_imported_library LIB_NAME LIB_DIR)
-    add_library(${LIB_NAME} SHARED IMPORTED)
-    set_target_properties(${LIB_NAME} PROPERTIES
-        IMPORTED_LOCATION ${LIB_DIR}/lib/lib${LIB_NAME}.so
+function(add_imported_library TARGET_NAME LIB_NAME)
+    target_link_libraries(${TARGET_NAME} PRIVATE ${LIB_NAME}_RAWHASH_LIB)
+endfunction()
+
+function(define_imported_library LIB_NAME LIB_DIR LIB_TYPE)
+    add_library(${LIB_NAME}_RAWHASH_LIB ${LIB_TYPE} IMPORTED)
+    set(EXTENSION ".a")
+    if(LIB_TYPE STREQUAL SHARED)
+        set(EXTENSION ".so")
+    endif()
+    set_target_properties(${LIB_NAME}_RAWHASH_LIB PROPERTIES
+        IMPORTED_LOCATION ${LIB_DIR}/lib/lib${LIB_NAME}${EXTENSION}
         INTERFACE_INCLUDE_DIRECTORIES ${LIB_DIR}/include)
     file(MAKE_DIRECTORY ${LIB_DIR}/include)
     # Can't install(TARGETS ...) for external projects
     # Also some .so are symlinks, so install all
     install(DIRECTORY ${LIB_DIR}/lib/ DESTINATION lib
-            FILES_MATCHING PATTERN "*.so*")
+            FILES_MATCHING PATTERN *${EXTENSION}*)
     install(DIRECTORY ${LIB_DIR}/include/
             DESTINATION include/${PROJECT_NAME})
 endfunction()

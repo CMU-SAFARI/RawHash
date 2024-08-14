@@ -5,7 +5,7 @@ function(add_ruclient_to_target TARGET_NAME)
         set_target_properties(${TARGET_NAME} PROPERTIES CXX_STANDARD 20)
         target_compile_definitions(${TARGET_NAME} PRIVATE RUCLIENT_ENABLED)
         target_sources(${TARGET_NAME} PRIVATE rawhash_ruclient.cpp)
-        add_dependencies(${TARGET_NAME} ruclient_build)
+        target_link_libraries(${TARGET_NAME} PRIVATE ont_device_client_LIB ru_method_LIB)
     endif()
 endfunction()
 
@@ -14,15 +14,9 @@ function(setup_ruclient)
         if(NOT RUCLIENT_DIR)
             override_cached(RUCLIENT_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/ruclient)
         endif()
-        ExternalProject_Add(
-            ruclient_build
-            SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/readuntil_fake
-            BINARY_DIR ${RUCLIENT_DIR}/build
-            CMAKE_ARGS
-                -DCMAKE_INSTALL_PREFIX=${RUCLIENT_DIR}
-        )
-        include_directories(${RUCLIENT_DIR}/include)
-        message(STATUS "ruclient enabled")
+        set(RUCLIENT_SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/readuntil_fake)
+        add_subdirectory(${RUCLIENT_SOURCE_DIR} ${RUCLIENT_DIR})
+        include_directories(${RUCLIENT_SOURCE_DIR}/include)
     else()
         message(STATUS "ruclient disabled")
     endif()

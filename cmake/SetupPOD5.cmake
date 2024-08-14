@@ -3,25 +3,26 @@ include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 function(add_zstd_to_target TARGET_NAME)
     set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
     add_dependencies(${TARGET_NAME} zstd_build)
-    target_link_libraries(${TARGET_NAME} PRIVATE zstd)
+    add_imported_library(${TARGET_NAME} zstd)
 endfunction()
 
 function(setup_zstd)
     set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
     ExternalProject_Add(
         zstd_build
+        BUILD_ALWAYS 1 # Rebuild if local checkout is updated
         SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/zstd/build/cmake
         BINARY_DIR ${ZSTD_DIR}/build
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${ZSTD_DIR}
     )
-    define_imported_library(zstd ${ZSTD_DIR})
+    define_imported_library(zstd ${ZSTD_DIR} SHARED)
 endfunction()
 
 function(add_pod5_to_target TARGET_NAME)
     if(NOPOD5)
         target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1)
     else()
-        add_zstd_to_target(${TAARGET_NAME})
+        add_zstd_to_target(${TARGET_NAME})
 
         set(POD5_VERSION "0.2.2")
         set(POD5_URLDIR "pod5-${POD5_VERSION}-${CMAKE_SYSTEM_NAME}")
@@ -32,7 +33,7 @@ function(add_pod5_to_target TARGET_NAME)
         if(POD5_DOWNLOAD)
             add_dependencies(${TARGET_NAME} pod5_download)
         endif()
-        target_link_libraries(${TARGET_NAME} PRIVATE ${POD5_LIBRARIES} zstd)
+        target_link_libraries(${TARGET_NAME} PRIVATE ${POD5_LIBRARIES})
     endif()
 endfunction()
 

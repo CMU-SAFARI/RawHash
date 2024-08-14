@@ -26,7 +26,7 @@ option(RUCLIENT_ENABLED "Enable ReadUntil client" OFF)
 set(POD5_DIR "" CACHE PATH "Path to POD5 directory (already built or where it should be built)")
 set(HDF5_DIR "" CACHE PATH "Path to HDF5 directory (already built or where it should be built)")
 set(SLOW5_DIR "" CACHE PATH "Path to SLOW5 directory (already built or where it should be built)")
-set(RUCLIENT_DIR "" CACHE PATH "Path to ReadUntil directory (already built or where it should be built)")
+set(RUCLIENT_DIR "" CACHE PATH "Path to ReadUntil directory (where it should be built)")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin CACHE PATH "Directory where to put binaries")
 

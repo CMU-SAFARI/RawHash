@@ -7,7 +7,7 @@ function(add_slow5_to_target TARGET_NAME)
         if(SLOW5_COMPILE)
             add_dependencies(${TARGET_NAME} slow5_build)
         endif()
-        target_link_libraries(${TARGET_NAME} PRIVATE slow5)
+        add_imported_library(${TARGET_NAME} slow5)
     endif()
 endfunction()
 
@@ -21,6 +21,7 @@ function(setup_slow5)
             message(STATUS "Compiling slow5 to ${SLOW5_DIR}")
             ExternalProject_Add(
                 slow5_build
+                BUILD_ALWAYS 1 # Rebuild if local checkout is updated
                 BINARY_DIR ${SLOW5_DIR}
                 SOURCE_DIR ${SLOW5_SOURCE_DIR}
                 INSTALL_COMMAND ${CMAKE_COMMAND} -E copy_directory ${SLOW5_SOURCE_DIR}/include ${SLOW5_DIR}/include
@@ -34,6 +35,6 @@ function(setup_slow5)
             endif()
         endif()
         message(STATUS "Using slow5 from ${SLOW5_DIR}")
-        define_imported_library(slow5 ${SLOW5_DIR})
+        define_imported_library(slow5 ${SLOW5_DIR} SHARED)
     endif()
 endfunction()
