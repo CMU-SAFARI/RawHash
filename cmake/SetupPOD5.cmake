@@ -1,22 +1,45 @@
-include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
-function(setup_zstd TARGET_NAME)
-set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
+function(add_zstd_to_target TARGET_NAME)
+    set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
+    add_dependencies(${TARGET_NAME} zstd_build)
+    add_imported_library(${TARGET_NAME} zstd)
+endfunction()
+
+function(setup_zstd)
+    set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
     ExternalProject_Add(
         zstd_build
+        BUILD_ALWAYS 1 # Rebuild if local checkout is updated
         SOURCE_DIR ${CMAKE_SOURCE_DIR}/extern/zstd/build/cmake
         BINARY_DIR ${ZSTD_DIR}/build
         CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${ZSTD_DIR}
     )
-    add_dependencies(${TARGET_NAME} zstd_build)
-    link_imported_library(${TARGET_NAME} zstd ${ZSTD_DIR})
+    define_imported_library(zstd ${ZSTD_DIR} SHARED)
 endfunction()
 
-function(setup_pod5 TARGET_NAME)
+function(add_pod5_to_target TARGET_NAME)
     if(NOPOD5)
         target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1)
     else()
-        setup_zstd(${TARGET_NAME})
+        add_zstd_to_target(${TARGET_NAME})
+
+        set(POD5_VERSION "0.2.2")
+        set(POD5_URLDIR "pod5-${POD5_VERSION}-${CMAKE_SYSTEM_NAME}")
+        set(POD5_REPO "https://github.com/nanoporetech/pod5-file-format")
+
+        resolve_pod5_url()
+
+        if(POD5_DOWNLOAD)
+            add_dependencies(${TARGET_NAME} pod5_download)
+        endif()
+        target_link_libraries(${TARGET_NAME} PRIVATE ${POD5_LIBRARIES})
+    endif()
+endfunction()
+
+function(setup_pod5)
+    if(NOT NOPOD5)
+        setup_zstd()
 
         set(POD5_VERSION "0.2.2")
         set(POD5_URLDIR "pod5-${POD5_VERSION}-${CMAKE_SYSTEM_NAME}")
@@ -45,7 +68,6 @@ function(setup_pod5 TARGET_NAME)
             endif()
         endif()
         include_directories(${POD5_DIR}/include)
-        target_link_libraries(${TARGET_NAME} PRIVATE ${POD5_LIBRARIES} zstd)
     endif()
 endfunction()
 
@@ -79,7 +101,7 @@ endfunction()
 
 
 # not working because of improper design, PARENT_SCOPE should not be used, rather define targets properly
-# include(${CMAKE_CURRENT_LIST_DIR}/Util.cmake)
+# include(${CMAKE_CURRENT_LIST_DIR}/Utils.cmake)
 
 # set(ZSTD_DIR ${EXTERNAL_PROJECTS_BUILD_DIR}/zstd)
 

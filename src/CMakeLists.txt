@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(RawHash2Src)
+project(RawHash2)
 
 # option(USE_CCACHE "Use ccache to speed up rebuilds" ON)
 # option(USE_MOLD "Use mold linker for faster linking" ON)
@@ -26,7 +26,7 @@ option(RUCLIENT_ENABLED "Enable ReadUntil client" OFF)
 set(POD5_DIR "" CACHE PATH "Path to POD5 directory (already built or where it should be built)")
 set(HDF5_DIR "" CACHE PATH "Path to HDF5 directory (already built or where it should be built)")
 set(SLOW5_DIR "" CACHE PATH "Path to SLOW5 directory (already built or where it should be built)")
-set(RUCLIENT_DIR "" CACHE PATH "Path to ReadUntil directory (already built or where it should be built)")
+set(RUCLIENT_DIR "" CACHE PATH "Path to ReadUntil directory (where it should be built)")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin CACHE PATH "Directory where to put binaries")
 
@@ -34,62 +34,28 @@ set(EXTERNAL_PROJECTS_BUILD_DIR ${CMAKE_BINARY_DIR}/extern) # default build dire
 file(MAKE_DIRECTORY ${EXTERNAL_PROJECTS_BUILD_DIR})
 message(STATUS "External projects build directory: ${EXTERNAL_PROJECTS_BUILD_DIR}")
 
-include(../cmake/SetupCCacheMold.cmake)
-include(../cmake/SetupRawHashLikeTarget.cmake)
-include(../cmake/SetupRUClient.cmake)
-include(../cmake/SetupPOD5.cmake)
-include(../cmake/SetupHDF5.cmake)
-include(../cmake/SetupSLOW5.cmake)
-include(../cmake/SetupTFLite.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/SetupCCacheMold.cmake)
+include(${CMAKE_SOURCE_DIR}/cmake/SetupRawHashLikeTarget.cmake)
 
 set(CMAKE_VERBOSE_MAKEFILE TRUE CACHE BOOL "verbose makefile" FORCE) # print compilation commands
 
 enable_ccache()
 set_alternate_linker(mold)
 
-# todo: currently can only compile rawhash2 or the below, not both
-# this happens because functions like setup_hdf5 define the hdf5 target and the relationship to the target name
-# rather than doing it separately
-set(build_cli ON)
+add_executable(rawhash2_builtin main.cpp)
+setup_rawhashlike_target(rawhash2_builtin)
 
-if (build_cli)
-    message(STATUS "Building CLI")
-    
-    set(TARGET_NAME rawhash2)
-    add_executable(${TARGET_NAME} main.cpp)
-    setup_rawhashlike_target(${TARGET_NAME})
-    setup_pod5(${TARGET_NAME})
-    setup_ruclient(${TARGET_NAME})
-    setup_hdf5(${TARGET_NAME})
-    setup_slow5(${TARGET_NAME})
-    setup_tflite(${TARGET_NAME})
+add_library(rawhash2_lib SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
+setup_rawhashlike_target(rawhash2_lib)
 
-else()
-    message(STATUS "Building shared library")
+file(GLOB_RECURSE HEADER_FILES ${CMAKE_SOURCE_DIR}/src/*.h ${CMAKE_SOURCE_DIR}/src/*.hpp)
+set_property(TARGET rawhash2_lib PROPERTY PUBLIC_HEADER ${HEADER_FILES})
+set_target_properties(rawhash2_lib PROPERTIES INSTALL_RPATH $ORIGIN OUTPUT_NAME rawhash2)
+install(TARGETS rawhash2_lib
+        LIBRARY DESTINATION lib
+        PUBLIC_HEADER DESTINATION include/${PROJECT_NAME})
 
-    # set(TARGET_NAME rawhash2_wrapper_example)
-    # add_executable(${TARGET_NAME} wrapper_example.cpp rawhash_wrapper.cpp rawhash_wrapper.hpp)
-    set(TARGET_NAME rawhash2_wrapper)
-    add_library(${TARGET_NAME} SHARED rawhash_wrapper.cpp rawhash_wrapper.hpp)
-    setup_rawhashlike_target(${TARGET_NAME})
-    setup_pod5(${TARGET_NAME})
-    setup_ruclient(${TARGET_NAME})
-    setup_hdf5(${TARGET_NAME})
-    setup_slow5(${TARGET_NAME})
-    setup_tflite(${TARGET_NAME})
-
-    set(TARGET_NAME rawhash2_usinglib)
-    add_executable(${TARGET_NAME} wrapper_example.cpp)
-    target_link_libraries(${TARGET_NAME} PRIVATE rawhash2_wrapper)
-    # setup_rawhashlike_target(${TARGET_NAME})
-    # # setup_pod5(${TARGET_NAME})
-    # target_compile_definitions(${TARGET_NAME} PRIVATE NPOD5RH=1) # todo: workaround
-    # setup_ruclient(${TARGET_NAME})
-    # setup_hdf5(${TARGET_NAME})
-    # setup_slow5(${TARGET_NAME})
-    # setup_tflite(${TARGET_NAME})
-endif()
-
-
-# setup_pod5()
-# add_pod5_to_target(${TARGET_NAME})
+add_executable(rawhash2 wrapper_example.cpp)
+target_link_libraries(rawhash2 PRIVATE rawhash2_lib)
+set_target_properties(rawhash2 PROPERTIES INSTALL_RPATH $ORIGIN/../lib)
+install(TARGETS rawhash2 RUNTIME DESTINATION bin)
