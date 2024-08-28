@@ -11,6 +11,10 @@ on:
         description: 'Use cache for this run'
         required: true
         default: 'true'
+      num_build_jobs:
+        description: 'Number of build jobs'
+        required: true
+        default: '2'
 
 jobs:
   build:
@@ -58,6 +62,7 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BUILDKIT_INLINE_CACHE=1
+            RAWHASH_NUM_BUILD_JOBS=${{ github.event.inputs.num_build_jobs || '2' }}
 
       - name: Extract build directory from Docker image
         run: |
