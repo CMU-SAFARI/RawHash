@@ -197,7 +197,7 @@ Please follow the instructions in the [README](test/README.md) file in [test](./
 
 # Citing RawHash, RawHash2, and RawAlign
 
-If you use RawHash in your work, please consider citing the following papers:
+If you use RawHash (or RawHash2) in your work, please consider citing the following papers:
 
 ```bibtex
 @article{firtina_rawhash_2023,
@@ -215,13 +215,15 @@ If you use RawHash in your work, please consider citing the following papers:
 }
 
 @article{firtina_rawhash2_2024,
-  title = {{RawHash2: Mapping Raw Nanopore Signals Using Hash-Based Seeding and Adaptive Quantization}},
+  title = {{RawHash2}: {Mapping} {Raw} {Nanopore} {Signals} {Using} {Hash}-{Based} {Seeding} and {Adaptive} {Quantization}},
   author = {Firtina, Can and Soysal, Melina and Lindegger, Joël and Mutlu, Onur},
-  journal = {arXiv},
+  journal = {Bioinformatics},
   year = {2024},
-  month = may,
-  doi = {10.48550/arXiv.2309.05771},
-  url = {https://doi.org/10.48550/arXiv.2309.05771},
+  month = jul,
+  doi = {10.1093/bioinformatics/btae478},
+  url = {https://doi.org/10.1093/bioinformatics/btae478},
+  pages = {btae478},
+  issn = {1367-4811}
 }
 
 @article{lindegger_rawalign_2023,
