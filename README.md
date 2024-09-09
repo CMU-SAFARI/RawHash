@@ -215,15 +215,17 @@ If you use RawHash (or RawHash2) in your work, please consider citing the follow
 }
 
 @article{firtina_rawhash2_2024,
-  title = {{RawHash2}: {Mapping} {Raw} {Nanopore} {Signals} {Using} {Hash}-{Based} {Seeding} and {Adaptive} {Quantization}},
-  author = {Firtina, Can and Soysal, Melina and Lindegger, Joël and Mutlu, Onur},
-  journal = {Bioinformatics},
-  year = {2024},
-  month = jul,
-  doi = {10.1093/bioinformatics/btae478},
-  url = {https://doi.org/10.1093/bioinformatics/btae478},
-  pages = {btae478},
-  issn = {1367-4811}
+	title = {{RawHash2}: mapping raw nanopore signals using hash-based seeding and adaptive quantization},
+	volume = {40},
+	issn = {1367-4811},
+	url = {https://doi.org/10.1093/bioinformatics/btae478},
+	doi = {10.1093/bioinformatics/btae478},
+	number = {8},
+	journal = {Bioinformatics},
+	author = {Firtina, Can and Soysal, Melina and Lindegger, Joël and Mutlu, Onur},
+	month = aug,
+	year = {2024},
+	pages = {btae478},
 }
 
 @article{lindegger_rawalign_2023,
