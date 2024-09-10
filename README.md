@@ -166,10 +166,10 @@ We provide the following presets for Rawsamble to enable the overlapping mode (s
 
 ```bash
 Rawsamble Presets:
-                 - ava-viral             All-vs-all overlapping for very small genomes such as viral genomes.
-                 - ava-small             All-vs-all overlapping for small genomes of size < 500M.
-                 - ava-fast              All-vs-all overlapping for large genomes of size > 500M and < 5Gb
-                 - ava-faster            All-vs-all overlapping for very large genomes > 5Gb)
+                 - ava     	 			All-vs-all overlapping mode (default for Rawsamble)
+                 - ava-sensitive     	More sensitive All-vs-all overlapping mode. Can be slightly slower than -ava but likely to generate longer unitigs in downstream asssembly
+                 - ava-viral     	 	All-vs-all overlapping for very small genomes such as viral genomes.
+                 - ava-large     	 	All-vs-all overlapping for large genomes of size > 10Gb
 ```
 
 ## Potential issues you may encounter during mapping
@@ -229,13 +229,13 @@ If you use RawHash (or RawHash2) in your work, please consider citing the follow
 }
 
 @article{lindegger_rawalign_2023,
-  title = {{RawAlign}: {Accurate, Fast, and Scalable Raw Nanopore Signal Mapping via Combining Seeding and Alignment}},
-  author = {Lindegger, Joël and Firtina, Can and Ghiasi, Nika Mansouri and Sadrosadati, Mohammad and Alser, Mohammed and Mutlu, Onur},
-  journal = {arXiv},
-  year = {2023},
-  month = oct,
-  doi = {10.48550/arXiv.2310.05037},
-  url = {https://doi.org/10.48550/arXiv.2310.05037},
+	title = {{RawAlign}: {Accurate, Fast, and Scalable Raw Nanopore Signal Mapping via Combining Seeding and Alignment}},
+	author = {Lindegger, Joël and Firtina, Can and Ghiasi, Nika Mansouri and Sadrosadati, Mohammad and Alser, Mohammed and Mutlu, Onur},
+	journal = {arXiv},
+	year = {2023},
+	month = oct,
+	doi = {10.48550/arXiv.2310.05037},
+	url = {https://doi.org/10.48550/arXiv.2310.05037},
 }
 ```
 

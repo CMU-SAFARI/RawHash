@@ -165,7 +165,6 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 
 		mo->pri_ratio = 0.0f;
 	} else if (strcmp(preset, "ava-sensitive") == 0) {
-		//default
 		io->w = 0;
 		io->diff = 0.45f;
 		mo->min_chaining_score = 75;
