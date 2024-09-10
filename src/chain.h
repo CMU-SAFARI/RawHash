@@ -96,7 +96,8 @@ mm128_t *mg_lchain_dp(int max_dist_t,
 					  mm128_t **_a,
                       int *n_u_,  
                       uint64_t **_u, 
-                      void *km);
+                      void *km,
+					  double* profile_sort_time = NULL);
 /**
  * Create the chain from a list of anchors using the Range Minimum Query (RMQ) technique (i.e., less accurate but faster than DP)
  *

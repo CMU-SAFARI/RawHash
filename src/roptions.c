@@ -61,6 +61,7 @@ void ri_mapopt_init(ri_mapopt_t *opt)
 	opt->min_num_anchors = 2; //--min-anchors
 	// opt->num_best_chains = 3; //--best-chains
 	opt->min_chaining_score = 15; //--min-score
+	opt->min_chaining_score2 = 0; //--min-score2
 	opt->rmq_inner_dist = 1000; //--rmq-inner-dist
 	opt->rmq_size_cap = 100000; //--rmq-size-cap
 	opt->chain_gap_scale = 0.8f; //--chain-gap-scale

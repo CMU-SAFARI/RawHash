@@ -8,6 +8,7 @@ test/data/d5_*
 test/data/d6_*
 test/data/d7_*
 test/data/d8_*
+test/data/download_d8_*
 test/data/*/*.fa
 test/data/*/*.fasta
 test/data/*/*.tar

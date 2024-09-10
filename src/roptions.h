@@ -94,6 +94,7 @@ typedef struct ri_mapopt_s{
 	int max_num_skips;
 	int min_num_anchors;
 	int min_chaining_score;
+	int min_chaining_score2;
 	float chain_gap_scale;
 	float chain_skip_scale;
 

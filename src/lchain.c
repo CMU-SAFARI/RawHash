@@ -9,6 +9,10 @@
 #include "krmq.h"
 #include "chain.h"
 
+#ifdef PROFILERH
+double ri_sorttime = 0.0;
+#endif
+
 /*
 * @brief 			Compute the log2 of a float number.
 *
@@ -120,7 +124,13 @@ uint64_t *mg_chain_backtrack(void *km,
 		if(f[i] >= min_sc) z[k].x = f[i], z[k++].y = i;
 
 	// Sort z[] by score.
+	#ifdef PROFILERH
+	double csort_t = ri_realtime();
+	#endif
 	radix_sort_128x(z, z + n_z); //this sorting existed in the earlier version of RawHash as well.
+	#ifdef PROFILERH
+	ri_sorttime += ri_realtime() - csort_t;
+	#endif
 
 	// Filling t with 0s
 	memset(t, 0, n * 4);
@@ -241,7 +251,15 @@ static mm128_t *compact_a(void *km,
 		w[i].x = b[k].x, w[i].y = (uint64_t)k<<32|i;
 		k += (int32_t)u[i];
 	}
+
+	#ifdef PROFILERH
+	double csort_t = ri_realtime();
+	#endif
 	radix_sort_128x(w, w + n_u);
+	#ifdef PROFILERH
+	ri_sorttime += ri_realtime() - csort_t;
+	#endif
+	
 	KMALLOC(km, u2, n_u);
 	for (i = k = 0; i < n_u; ++i){
 		//j is the chain id, n is the number of anchors in chain j
@@ -380,8 +398,13 @@ mm128_t *mg_lchain_dp(int max_dist_t,
                       mm128_t **_a,
 					  int *n_u_,  
                       uint64_t **_u, 
-                      void *km)
+                      void *km,
+					  double* profile_sort_time)
 {	// TODO: make sure this works when *n has more than 32 bits
+
+	#ifdef PROFILERH
+	ri_sorttime = 0.0;
+	#endif
 
 	//t[i] provides the anchor index j whose predecessor (k) is i. So i -> k -> j (i.e., there is k between i and j)
 	//f[i] is the best score for anchor i
@@ -496,7 +519,14 @@ mm128_t *mg_lchain_dp(int max_dist_t,
 	// Sort the chains by their target positions and return the anchors in the sorted chains
 	// a is deallocated at return
 	*n=n_v;
-	return compact_a(km, n_u, u, n, v, a, _a);
+	
+	#ifdef PROFILERH
+	mm128_t* ret_val = compact_a(km, n_u, u, n, v, a, _a);
+	if(profile_sort_time)*profile_sort_time = ri_sorttime;
+	return ret_val;
+	#else
+		return compact_a(km, n_u, u, n, v, a, _a);
+	#endif
 }
 
 typedef struct lc_elem_s {

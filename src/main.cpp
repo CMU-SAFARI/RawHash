@@ -79,6 +79,7 @@ static ko_longopt_t long_options[] = {
 	{ (char*)"out-quantize",		ko_no_argument,  		367 },
 	{ (char*)"no-event-detection",	ko_no_argument,  		368 },
 	{ (char*)"io-thread",			ko_required_argument, 	369 },
+	{ (char*)"min-score2",			ko_required_argument, 	370 },
 	{ (char*)"version",				ko_no_argument, 	  	370 },
 	{ 0, 0, 0 }
 };
@@ -127,47 +128,82 @@ int ri_set_opt(const char *preset, ri_idxopt_t *io, ri_mapopt_t *mo)
 		mo->max_num_chunk = 5; mo->min_mapq = 5, mo->min_chaining_score = 10, mo->chain_gap_scale = 0.6f;
 	} else if (strcmp(preset, "ava-viral") == 0) {
 		io->e = 6;
-		mo->bw = 100; mo->max_target_gap_length = 500; mo->max_query_gap_length = 500;
-		mo->max_num_chunk = 5, mo->min_chaining_score = 10; mo->chain_gap_scale = 1.2f; mo->chain_skip_scale = 0.3f;
+		mo->chain_gap_scale = 1.2f; mo->chain_skip_scale = 0.3f;
+
+		io->w = 0;
+		io->diff = 0.45f;
+		mo->min_chaining_score = 20;
+		mo->min_chaining_score2 = 30;
+		mo->min_num_anchors = 5;
+		mo->min_mapq = 5;
+		mo->bw = 1000;
+		mo->max_target_gap_length = 2500;
+		mo->max_query_gap_length = 2500;
 
 		io->flag |= RI_I_SIG_TARGET;
 		mo->flag |= RI_M_ALL_CHAINS;
-		mo->min_chaining_score = 80;
 		mo->flag |= RI_M_NO_ADAPTIVE;
-	} else if (strcmp(preset, "ava-small") == 0) {
+
+		mo->pri_ratio = 0.0f;
+	} else if (strcmp(preset, "ava") == 0) {
 		//default
+		io->w = 3;
+		io->diff = 0.45f;
+		mo->min_chaining_score = 40;
+		mo->min_chaining_score2 = 75;
+		mo->min_num_anchors = 5;
+		mo->min_mapq = 5;
+		mo->bw = 5000;
+		mo->max_target_gap_length = 2500;
+		mo->max_query_gap_length = 2500;
+
+		// mo->min_mid_occ = 5000;
 
 		io->flag |= RI_I_SIG_TARGET;
 		mo->flag |= RI_M_ALL_CHAINS;
-		mo->min_chaining_score = 100;
 		mo->flag |= RI_M_NO_ADAPTIVE;
 
+		mo->pri_ratio = 0.0f;
+	} else if (strcmp(preset, "ava-sensitive") == 0) {
+		//default
+		io->w = 0;
+		io->diff = 0.45f;
+		mo->min_chaining_score = 75;
+		mo->min_chaining_score2 = 100;
+		mo->min_num_anchors = 5;
+		mo->min_mapq = 5;
+		mo->bw = 1000;
+		mo->max_target_gap_length = 2500;
+		mo->max_query_gap_length = 2500;
+
+		// mo->min_mid_occ = 10000;
+
+		io->flag |= RI_I_SIG_TARGET;
+		mo->flag |= RI_M_ALL_CHAINS;
+		mo->flag |= RI_M_NO_ADAPTIVE;
+
+		mo->pri_ratio = 0.0f;
 	} else if (strcmp(preset, "ava-large") == 0) {
 		io->fine_range = 0.6;
 		mo->chain_gap_scale = 0.6f;
 
-		io->flag |= RI_I_SIG_TARGET;
-		mo->flag |= RI_M_ALL_CHAINS;
-		mo->min_chaining_score = 70;
-		mo->flag |= RI_M_NO_ADAPTIVE;
+		io->w = 5;
+		io->diff = 0.45f;
+		mo->min_chaining_score = 20;
+		mo->min_chaining_score2 = 50;
+		mo->min_num_anchors = 2;
+		mo->min_mapq = 2;
+		mo->bw = 5000;
+		mo->max_target_gap_length = 2500;
+		mo->max_query_gap_length = 2500;
 
-	} else if (strcmp(preset, "ava-pro") == 0) {
-		io->flag |= RI_I_SIG_TARGET;
-		mo->flag |= RI_M_ALL_CHAINS;
-		mo->min_chaining_score = 50;
-		mo->flag |= RI_M_NO_ADAPTIVE;
-	}
-	
-	 else if (strcmp(preset, "ava-faster") == 0) {
-		io->e = 11; io->w = 3;
-		io->fine_range = 0.6;
-		mo->max_num_chunk = 5; mo->min_mapq = 5, mo->chain_gap_scale = 0.6f;
+		// mo->min_mid_occ = 10000;
 
 		io->flag |= RI_I_SIG_TARGET;
 		mo->flag |= RI_M_ALL_CHAINS;
-		mo->min_chaining_score = 100;
 		mo->flag |= RI_M_NO_ADAPTIVE;
 
+		mo->pri_ratio = 0.0f;
 	} else if (strcmp(preset, "sequence-until") == 0) {
 		//default
 	} else return -1;
@@ -377,7 +413,8 @@ int main(int argc, char *argv[])
 		else if (c == 367) {ipt.flag |= RI_I_OUT_QUANTIZE; ipt.flag |= RI_I_SIG_TARGET;}// --out-quantize
 		else if (c == 368) {ipt.flag |= RI_I_NO_EVENT_DETECTION;}// --no-event-detection
 		else if (c == 369) {io_n_threads = atoi(o.arg);}// --io-thread
-		else if (c == 379) {puts(RH_VERSION); return 0;}// --version
+		else if (c == 370) opt.min_chaining_score2 = atoi(o.arg);// --min-score2
+		else if (c == 371) {puts(RH_VERSION); return 0;}// --version
 		else if (c == 'V') {puts(RH_VERSION); return 0;}
 	}
 
@@ -405,7 +442,7 @@ int main(int argc, char *argv[])
 		
 		fprintf(fp_help, "\n  Seeding:\n");
 		fprintf(fp_help, "    --q-mid-occ INT1[,INT2]     Lower and upper bounds of k-mer occurrences [%d, %d]. The final k-mer occurrence threshold is max{INT1, min{INT2, --occ-frac}}. This option prevents excessively small or large -f estimated from the input reference.\n", opt.min_mid_occ, opt.max_mid_occ);
-		fprintf(fp_help, "    --occ-frac FLOAT     Discard a query seed if its occurrence is higher than FLOAT fraction of all query seeds [%g]. Set 0 to disable. [Note: Both --q-mid-occ and --occ-frac should be met for a seed to be discarded].\n", opt.q_occ_frac);
+		// fprintf(fp_help, "    --occ-frac FLOAT     Discard a query seed if its occurrence is higher than FLOAT fraction of all query seeds [%g]. Set 0 to disable. [Note: Both --q-mid-occ and --occ-frac should be met for a seed to be discarded].\n", opt.q_occ_frac);
 		
 		fprintf(fp_help, "\n  Chaining Parameters:\n");
 		fprintf(fp_help, "    --min-events INT     minimum number of INT events in a chunk to start chain elongation [%u].\n", opt.min_events);
@@ -476,10 +513,10 @@ int main(int argc, char *argv[])
 		fprintf(fp_help, "                 - fast     Enables fast mapping with slightly reduced accuracy. Suitable when reads are mapped to large genomes of size > 500M and < 5Gb (-e 8 -q 4 --max-chunks 20).\n");
 		fprintf(fp_help, "                 - faster     Enables faster mapping than '-x fast' and reduced memory space usage for indexing with slightly reduced accuracy. This mechanism uses the minimizer sketching technique and should be used when '-x fast' cannot meet the real-time requirements for a particular genome (e.g., for very large genomes > 5Gb)\n");
 		fprintf(fp_help, "\n  Rawsamble Presets:\n");
+		fprintf(fp_help, "                 - ava     	 All-vs-all overlapping mode (default for Rawsamble).\n");
+		fprintf(fp_help, "                 - ava-sensitive     	 More sensitive All-vs-all overlapping mode. Can be slightly slower than -ava but likely to generate longer unitigs in downstream asssembly.\n");
 		fprintf(fp_help, "                 - ava-viral     	 All-vs-all overlapping for very small genomes such as viral genomes.\n");
-		fprintf(fp_help, "                 - ava-small   All-vs-all overlapping for small genomes of size < 500M.\n");
-		fprintf(fp_help, "                 - ava-fast     	 All-vs-all overlapping for large genomes of size > 500M and < 5Gb\n");
-		fprintf(fp_help, "                 - ava-faster    	 All-vs-all overlapping for very large genomes > 5Gb)\n");
+		fprintf(fp_help, "                 - ava-large     	 All-vs-all overlapping for large genomes of size > 10Gb\n");
 		
 		// fprintf(fp_help, "\nSee `man ./rawhash.1' for detailed description of these and other advanced command-line options.\n");
 		return fp_help == stdout? 0 : 1;

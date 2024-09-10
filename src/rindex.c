@@ -260,11 +260,7 @@ static void *worker_sig_pipeline(void *shared, int step, void *in)
 				!((*(s->sig[i])).name) ||
 				!((*(s->sig[i])).sig)) continue;
 				ri_sig_t *sig = &p->ri->sig[p->ri->n_seq];
-				sig->name = (char*)ri_kmalloc(
-					p->ri->km,
-					strlen((*(
-						s->sig[i]))
-					.name) + 1);
+				sig->name = (char*)ri_kmalloc(p->ri->km, strlen((*(s->sig[i])).name) + 1);
 				strcpy(sig->name, (*(s->sig[i])).name);
 				sig->l_sig = (*(s->sig[i])).l_sig;
 				sig->offset = p->sum_len;
@@ -1051,8 +1047,8 @@ void ri_mapopt_update(ri_mapopt_t *opt, const ri_idx_t *ri)
 		if (opt->max_mid_occ > opt->min_mid_occ && opt->mid_occ > opt->max_mid_occ)
 			opt->mid_occ = opt->max_mid_occ;
 
-		fprintf(stderr, "[M::%s::%.6f*%.6f] mid_occ = %d, min_mid_occ = %d, max_mid_occ = %d\n", __func__,
-				opt->mid_occ_frac, opt->q_occ_frac, opt->mid_occ, opt->min_mid_occ, opt->max_mid_occ);
+		fprintf(stderr, "[M::%s::%.6f] mid_occ = %d, min_mid_occ = %d, max_mid_occ = %d\n", __func__,
+				opt->mid_occ_frac, opt->mid_occ, opt->min_mid_occ, opt->max_mid_occ);
 	}
 	if (opt->bw_long < opt->bw) opt->bw_long = opt->bw;
 }

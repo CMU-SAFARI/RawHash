@@ -21,6 +21,8 @@ double ri_seedtime = 0.0;
 double ri_chaintime = 0.0;
 double ri_maptime = 0.0;
 double ri_maptime_multithread = 0.0;
+double ri_seedsorttime = 0.0;
+double ri_chainsorttime = 0.0;
 #endif
 
 static ri_tbuf_t *ri_tbuf_init(void)
@@ -113,7 +115,13 @@ static mm128_t *collect_seed_hits(void *km,
 		reg->n_prev_anchors = 0;
 	}
 
+	#ifdef PROFILERH
+	double ssort_t = ri_realtime();
+	#endif
 	radix_sort_128x(seed_hits, seed_hits + *n_seed_pos);
+	#ifdef PROFILERH
+	ri_seedsorttime += ri_realtime() - ssort_t;
+	#endif
 	return seed_hits;
 }
 
@@ -308,11 +316,19 @@ void ri_map_frag(const ri_idx_t *ri,
 	//Chaining (DP or RMQ)
 	int max_gap = (opt->max_target_gap_length > opt->max_query_gap_length)?opt->max_target_gap_length:opt->max_query_gap_length;
 	float chn_pen_gap = opt->chain_gap_scale * 0.01 * (ri->e + ri->k - 1), chn_pen_skip = opt->chain_skip_scale * 0.01 * (ri->e + ri->k - 1);
-	if(!(opt->flag & RI_M_RMQ))
+	if(!(opt->flag & RI_M_RMQ)){
+		#ifdef PROFILERH
+		double profile_chain_sort = 0.0;
+		seed_hits = mg_lchain_dp(opt->max_target_gap_length, opt->max_query_gap_length, opt->bw, opt->max_num_skips, 
+								opt->max_chain_iter, opt->min_num_anchors, opt->min_chaining_score, chn_pen_gap,
+								chn_pen_skip, &n_seed_pos, seed_hits, &(reg->prev_anchors), &(reg->n_cregs), &u, b->km, &profile_chain_sort);
+		ri_chainsorttime += profile_chain_sort;
+		#else
 		seed_hits = mg_lchain_dp(opt->max_target_gap_length, opt->max_query_gap_length, opt->bw, opt->max_num_skips, 
 								opt->max_chain_iter, opt->min_num_anchors, opt->min_chaining_score, chn_pen_gap,
 								chn_pen_skip, &n_seed_pos, seed_hits, &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
-	else
+		#endif
+	}else
 		seed_hits = mg_lchain_rmq(max_gap, opt->rmq_inner_dist, opt->bw, opt->max_num_skips, opt->rmq_size_cap,
 							 	  opt->min_num_anchors, opt->min_chaining_score, chn_pen_gap, chn_pen_skip, &n_seed_pos,
 								  seed_hits, &(reg->prev_anchors), &(reg->n_cregs), &u, b->km);
@@ -385,7 +401,7 @@ static void map_worker_for(void *_data,
 
 	uint32_t qlen = sig->l_sig;
 	uint32_t l_chunk = (opt->chunk_size > qlen || (opt->flag&RI_M_NO_ADAPTIVE))?qlen:opt->chunk_size;
-	uint32_t max_chunk = (opt->flag&RI_M_NO_ADAPTIVE)?(qlen/(l_chunk+1))+1:opt->max_num_chunk;
+	uint32_t max_chunk = (opt->flag&RI_M_NO_ADAPTIVE)?1:opt->max_num_chunk;
 	uint32_t s_qs, s_qe = l_chunk;
 
 	uint32_t c_count = 0;
@@ -473,7 +489,7 @@ static void map_worker_for(void *_data,
 			}
 			
 			// Compare the weighted sum against a threshold to make the decision
-			if (weighted_sum >= opt->w_threshold || opt->flag&RI_M_ALL_CHAINS) {
+			if (weighted_sum >= opt->w_threshold || (opt->flag&RI_M_ALL_CHAINS && reg0->creg[ic].score >= opt->min_chaining_score2)) {
 				reg0->n_maps++;
 				reg0->maps = (ri_map_t*)ri_krealloc(0, reg0->maps, reg0->n_maps*sizeof(ri_map_t));
 				reg0->maps[reg0->n_maps-1].c_id = ic;
@@ -849,7 +865,7 @@ int ri_map_file_frag(const ri_idx_t *idx,
 	}
 
 	#ifdef PROFILERH
-	fprintf(stderr, "\n[M::%s] File read: %.6f sec; Signal-to-event: %.6f sec; Sketching: %.6f sec; Seeding: %.6f sec; Chaining: %.6f sec; Mapping: %.6f sec; Mapping (multi-threaded): %.6f sec\n", __func__, ri_filereadtime, ri_signaltime, ri_sketchtime, ri_seedtime, ri_chaintime, ri_maptime, ri_maptime_multithread);
+	fprintf(stderr, "\n[M::%s] File read: %.6f sec; Signal-to-event: %.6f sec; Sketching: %.6f sec; Seeding: %.6f sec (of which sorting: %6f sec); Chaining: %.6f sec (of which sorting: %6f sec); Mapping: %.6f sec; Mapping (multi-threaded): %.6f sec\n", __func__, ri_filereadtime, ri_signaltime, ri_sketchtime, ri_seedtime, ri_seedsorttime, ri_chaintime, ri_chainsorttime, ri_maptime, ri_maptime_multithread);
 	#endif
 
 	rh_kv_destroy(fnames);
