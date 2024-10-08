@@ -166,10 +166,10 @@ We provide the following presets for Rawsamble to enable the overlapping mode (s
 
 ```bash
 Rawsamble Presets:
-                 - ava     	 			All-vs-all overlapping mode (default for Rawsamble)
+                 - ava     	All-vs-all overlapping mode (default for Rawsamble)
                  - ava-sensitive     	More sensitive All-vs-all overlapping mode. Can be slightly slower than -ava but likely to generate longer unitigs in downstream asssembly
-                 - ava-viral     	 	All-vs-all overlapping for very small genomes such as viral genomes.
-                 - ava-large     	 	All-vs-all overlapping for large genomes of size > 10Gb
+                 - ava-viral     	All-vs-all overlapping for very small genomes such as viral genomes.
+                 - ava-large     	All-vs-all overlapping for large genomes of size > 10Gb
 ```
 
 ## Potential issues you may encounter during mapping

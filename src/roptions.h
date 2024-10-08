@@ -11,7 +11,7 @@
 #define RI_I_SYNCMER	0x8
 #define RI_I_STORE_SIG	0x10
 #define RI_I_SIG_TARGET	0x20
-#define RI_I_REV_QUERY	0x40
+#define RI_I_NO_REV_TARGET	0x40
 #define RI_I_OUT_QUANTIZE 0x80
 #define RI_I_NO_EVENT_DETECTION 0x100
 

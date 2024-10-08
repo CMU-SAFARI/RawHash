@@ -90,9 +90,9 @@ static mm128_t *collect_seed_hits(void *km,
 			p->x = (hits[k]&mask_id_shift) | ref_pos;
 			if(hits[k]&1) p->x |= 1ULL<<63; // reverse reference strand
 			
-			// if(ri->flag&RI_I_REV_QUERY && s_match->q_pos&1 == 1){
+			// if(ri->flag&RI_I_NO_REV_TARGET && s_match->q_pos&1 == 1){
 			// 	int32_t rlen;
-			// 	if(ri->flag&RI_I_REV_QUERY) rlen = ri->sig[hits[k]>>32].l_sig;
+			// 	if(ri->flag&RI_I_NO_REV_TARGET) rlen = ri->sig[hits[k]>>32].l_sig;
 			// 	else rlen = ri->seq[hits[k]>>32].len;
 
 			// 	p->x = 1ULL<<63 | (hits[k]&mask_id_shift) | (rlen - (ref_pos + 1 - s_match->q_span) - 1);
@@ -248,7 +248,7 @@ void ri_map_frag(const ri_idx_t *ri,
 	mm128_v riv = {0,0,0};
 	ri_sketch(b->km, events, 0, 0, n_events, ri->diff, ri->w, ri->e, ri->n, ri->q, ri->k, ri->fine_min, ri->fine_max, ri->fine_range, &riv, 0);
 
-	// if(ri->flag&RI_I_REV_QUERY){
+	// if(ri->flag&RI_I_NO_REV_TARGET){
 	// 	uint32_t span = ri->k+ri->e-1;
 	// 	mm128_v riv_rev = {0,0,0};
 	// 	mm128_t rev_anchor = {0,0};

@@ -134,10 +134,10 @@ static void *worker_pipeline(void *shared, int step, void *in)
 			p->ri->F = (float**)ri_krealloc(p->ri->km, p->ri->F,seq_c * sizeof(float*));
 			p->ri->f_l_sig = (uint32_t*)ri_krealloc(p->ri->km, p->ri->f_l_sig,seq_c * sizeof(uint32_t));
 
-			// if(!(p->ri->flag&RI_I_REV_QUERY)){
+			if(!(p->ri->flag&RI_I_NO_REV_TARGET)){
 				p->ri->R = (float**)ri_krealloc(p->ri->km, p->ri->R,seq_c * sizeof(float*));
 				p->ri->r_l_sig = (uint32_t*)ri_krealloc(p->ri->km, p->ri->r_l_sig,seq_c * sizeof(uint32_t));
-			// }
+			}
 
 			for (i = 0; i < s->n_seq; ++i) {
 				mm_bseq1_t* t = &s->seq[i];
@@ -151,13 +151,13 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 					p->ri->f_l_sig[r_id] = s_len;
 
-					// if(!(p->ri->flag&RI_I_REV_QUERY)){
+					if(!(p->ri->flag&RI_I_NO_REV_TARGET)){
 						p->ri->R[r_id] = (float*)ri_kcalloc(p->ri->km, t->l_seq, sizeof(float));
 						s_values = p->ri->R[r_id];
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
 						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 						p->ri->r_l_sig[r_id] = s_len;
-					// }
+					}
 				}
 				free(t->seq); free(t->name);
 			}
@@ -171,10 +171,10 @@ static void *worker_pipeline(void *shared, int step, void *in)
 					ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 0, &s_len, s_values);
 					ri_sketch(0, s_values, t->rid, 0, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
 
-					// if(!(p->ri->flag&RI_I_REV_QUERY)){
+					if(!(p->ri->flag&RI_I_NO_REV_TARGET)){
 						ri_seq_to_sig(t->seq, t->l_seq, p->ri->pore, p->ri->k, 1, &s_len, s_values);
 						ri_sketch(0, s_values, t->rid, 1, s_len, p->ri->diff, p->ri->w, p->ri->e, p->ri->n, p->ri->q, p->ri->k, p->ri->fine_min, p->ri->fine_max, p->ri->fine_range, &s->a, 0);
-					// }
+					}
 
 					free(s_values);
 				}
@@ -462,7 +462,7 @@ static void worker_post_P(void *g, long i, int tid){
  
 static void ri_idx_post(ri_idx_t *ri, int n_threads){
 	kt_for(n_threads, worker_post, ri, 1<<ri->b);
-	// if(ri->flag&RI_I_REV_QUERY)
+	// if(ri->flag&RI_I_NO_REV_TARGET)
 	// 	kt_for(n_threads, worker_post_P, ri, 1<<ri->b);
 
 	// int* histogram = (int*)calloc(201, sizeof(int));
@@ -591,21 +591,21 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 			fwrite(&(ri->f_l_sig[i]), 4, 1, idx_file);
 			fwrite(ri->F[i], 4, ri->f_l_sig[i], idx_file);
 			ri_kfree(ri->km, ri->F[i]);
-			// if(!(ri->flag&RI_I_REV_QUERY)){
+			if(!(ri->flag&RI_I_NO_REV_TARGET)){
 				fwrite(&(ri->r_l_sig[i]), 4, 1, idx_file);
 				fwrite(ri->R[i], 4, ri->r_l_sig[i], idx_file);
 				ri_kfree(ri->km, ri->R[i]);
-			// }
+			}
 		}
 	}
 
 	if(ri->flag & RI_I_STORE_SIG){
 		ri_kfree(ri->km, ri->F);
 		ri_kfree(ri->km, ri->f_l_sig);
-		// if(!(ri->flag&RI_I_REV_QUERY)){
+		if(!(ri->flag&RI_I_NO_REV_TARGET)){
 			ri_kfree(ri->km, ri->R);
 			ri_kfree(ri->km, ri->r_l_sig);
-		// }
+		}
 	}
 
 	for (i = 0; i < 1U<<ri->b; ++i) {
@@ -625,7 +625,7 @@ void ri_idx_dump(FILE* idx_file, const ri_idx_t* ri){
 		}
 	}
 
-	// if(ri->flag&RI_I_REV_QUERY){
+	// if(ri->flag&RI_I_NO_REV_TARGET){
 	// 	for (i = 0; i < 1U<<ri->b; ++i) {
 	// 		ri_idx_bucket_t *b = &ri->P[i];
 	// 		khint_t k;
@@ -681,10 +681,10 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 	if(ri->flag & RI_I_STORE_SIG){
 		ri->F = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
 		ri->f_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
-		// if(!(ri->flag&RI_I_REV_QUERY)){
+		if(!(ri->flag&RI_I_NO_REV_TARGET)){
 			ri->R = (float**)ri_kcalloc(ri->km, ri->n_seq, sizeof(float*));
 			ri->r_l_sig = (uint32_t*)ri_kcalloc(ri->km, ri->n_seq, sizeof(uint32_t));
-		// }
+		}
 	}
 
 	for (i = 0; i < ri->n_seq; ++i) {
@@ -718,11 +718,11 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 			ri->F[i] = (float*)ri_kmalloc(ri->km, ri->f_l_sig[i] * sizeof(float));
 			fread(ri->F[i], 4, ri->f_l_sig[i], idx_file);
 
-			// if(!(ri->flag&RI_I_REV_QUERY)){
+			if(!(ri->flag&RI_I_NO_REV_TARGET)){
 				fread(&(ri->r_l_sig[i]), 4, 1, idx_file);
 				ri->R[i] = (float*)ri_kmalloc(ri->km, ri->r_l_sig[i] * sizeof(float));
 				fread(ri->R[i], 4, ri->r_l_sig[i], idx_file);
-			// }
+			}
 		}
 	}
 	
@@ -748,7 +748,7 @@ ri_idx_t* ri_idx_load(FILE* idx_file){
 		}
 	}
 
-	// if(ri->flag&RI_I_REV_QUERY){
+	// if(ri->flag&RI_I_NO_REV_TARGET){
 	// 	for (i = 0; i < 1U<<ri->b; ++i) {
 	// 		ri_idx_bucket_t *b = &ri->P[i];
 	// 		uint32_t j, size;
@@ -916,7 +916,7 @@ ri_idx_t* ri_idx_gen(mm_bseq_file_t* fp, ri_pore_t* pore, float diff, int b, int
 	pl.ri->pore->pore_inds = (ri_porei_t*)ri_kmalloc(pl.ri->km, pore->n_pore_vals * sizeof(ri_porei_t));
 	memcpy(pl.ri->pore->pore_inds, pore->pore_inds, pore->n_pore_vals * sizeof(ri_porei_t));
 
-	// if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
+	// if(pl.ri->flag&RI_I_NO_REV_TARGET) generate_kmers(pl.ri);
 
 	kt_pipeline(n_threads < 3? n_threads : 3, worker_pipeline, &pl, 3);
 	ri_idx_post(pl.ri, n_threads);
@@ -954,7 +954,7 @@ ri_idx_t* ri_idx_siggen(ri_sig_file_t** fp, char **f, int &cur_f, int n_f, ri_po
 	pl.ri->threshold2 = threshold2;
 	pl.ri->peak_height = peak_height;
 
-	// if(pl.ri->flag&RI_I_REV_QUERY) generate_kmers(pl.ri);
+	// if(pl.ri->flag&RI_I_NO_REV_TARGET) generate_kmers(pl.ri);
 
 	int n_steps = (pl.ri->flag&RI_I_OUT_QUANTIZE)?2:3;
 	kt_pipeline(n_threads < n_steps? n_threads : n_steps, worker_sig_pipeline, &pl, n_steps);
