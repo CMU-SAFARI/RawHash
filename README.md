@@ -1,10 +1,16 @@
 <p align="center" width="100%">
-    <img width="70%" src="./gitfigures/rawhash-preview.png">
+    <img width="65%" src="./gitfigures/rawhash-preview.png">
 </p>
 
-# Overview
+<p align="center" width="100%">
+    <img width="75%" src="./gitfigures/rawsamble.png">
+</p>
+
+# RawHash and Rawsamble Overview
 
 RawHash (and RawHash2) is a hash-based mechanism to map raw nanopore signals to a reference genome in real-time. To achieve this, it 1) generates an index from the reference genome and 2) efficiently and accurately maps the raw signals to the reference genome such that it can match the throughput of nanopore sequencing even when analyzing large genomes (e.g., human genome.
+
+Rawsamble is a mechanism that finds overlaps betweel raw signals without a reference genome (all-vs-all overlapping). The overlap information is generated in a PAF output and can be used by assemblers such as `miniasm` to construct *de novo* assemblies.
 
 Below figure shows the overview of the steps that RawHash takes to find matching regions between a reference genome and a raw nanopore signal.
 
