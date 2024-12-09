@@ -93,6 +93,27 @@ int ri_map_file(const ri_idx_t *idx, const char *fn, const ri_mapopt_t *opt, int
  */
 int ri_map_file_frag(const ri_idx_t *idx, int n_segs, const char **fn, const ri_mapopt_t *opt, int n_threads, int io_n_threads = 1);
 
+
+// functions used in rmap.cpp and rawhash_wrapper.cpp
+
+// init thread-local buffer
+ri_tbuf_t *ri_tbuf_init(void);
+// destroy thread-local buffer
+void ri_tbuf_destroy(ri_tbuf_t *b);
+
+// write out relevant mapping results to stdout, then free reg0
+// was_mapped: if false, write out "*" for mapping info even when read was mapped, e.g. when sequence until terminates the pipeline)
+void write_out_mappings_to_stdout(ri_reg1_t *reg0, const ri_idx_t *ri, bool was_mapped=true);
+
+// frees mappings (works even if no mappings were set), which is not freed by "free_most_of_ri_reg1_t" and reg0 itself
+void free_mappings_ri_reg1_t(ri_reg1_t* reg0);
+// finally need to call free(reg0)
+
+// map a single read to a reference, called in parallel
+void map_worker_for(void *_data,
+					long i,
+					int tid);
+
 #ifdef __cplusplus
 }
 #endif

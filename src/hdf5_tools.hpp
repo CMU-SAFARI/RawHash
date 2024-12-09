@@ -8,6 +8,7 @@
 #ifndef __HDF5_TOOLS_HPP
 #define __HDF5_TOOLS_HPP
 
+#include <array>
 #include <cassert>
 #include <cstring>
 #include <exception>

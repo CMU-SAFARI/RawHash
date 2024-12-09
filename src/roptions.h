@@ -11,6 +11,7 @@
 #define RI_I_SYNCMER	0x8
 #define RI_I_STORE_SIG	0x10
 #define RI_I_SIG_TARGET	0x20
+#define RI_I_REV_QUERY	0x40 // whether the index should NOT store the reverse strand, this assumes that we query the index with the revcomp of the read as well
 #define RI_I_NO_REV_TARGET	0x40
 #define RI_I_OUT_QUANTIZE 0x80
 #define RI_I_NO_EVENT_DETECTION 0x100
@@ -31,6 +32,7 @@
 #define RI_M_LOG_NUM_ANCHORS	0x1000
 //Overlapping related
 #define RI_M_ALL_CHAINS			0x2000
+#define RI_M_DONT_QUERY_REVCOMP	0x4000 // whether to transform the read to its revcomp and query index (defaults to RI_I_REV_QUERY)
 
 //Characterization related
 #define RI_M_OUT_ALL_CHAINS 0x4000

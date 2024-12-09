@@ -38,6 +38,10 @@ void liftrlimit(void);
 
 void load_pore(const char* fpore, const short k, const short lev_col, ri_pore_t* pore);
 
+// Explicit definition for rseed.c
+extern void ks_heapdown_uint64_t(size_t i, size_t n, uint64_t*);
+extern void ks_heapmake_uint64_t(size_t n, uint64_t*);
+
 #ifdef __cplusplus
 }
 #endif

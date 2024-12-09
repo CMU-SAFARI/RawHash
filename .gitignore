@@ -1,4 +1,9 @@
 bin/
+build/
+run_dir/
+.venv/
+example_out/
+__pycache__/
 
 test/data/d1_*
 test/data/d2_*
@@ -8,7 +13,6 @@ test/data/d5_*
 test/data/d6_*
 test/data/d7_*
 test/data/d8_*
-test/data/download_d8_*
 test/data/*/*.fa
 test/data/*/*.fasta
 test/data/*/*.tar
@@ -73,13 +77,17 @@ test/eval/*.summary
 */.DS_Store
 test/*.time
 test/*.idx
-src/*.o
+#src/*.o
 
 extern/pod5*
 
 test/evaluation/rawsamble/
 
-extern/tensorflow/
-
-test/evaluation/read_mapping/*_parameters/
+test/scripts/*test*
+test/evaluation/read_mapping/*/parameters.txt
+test/evaluation/read_mapping/*/results.txt
+test/evaluation/read_mapping/*parameters*.txt
+test/evaluation/read_mapping/*parameters/
 test/evaluation/read_mapping/s_modify.py
+
+test/evaluation/read_mapping/*.features
